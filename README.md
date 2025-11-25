@@ -77,4 +77,4 @@ Once deployed, verify the live site downloads `immolate.wasm` successfully (Netw
 
 ## Production site
 
-The latest stable deployment lives at https://spectralpack.github.io/TheSoul/.
+The latest stable deployment lives at https://soul.liafonx.net .
