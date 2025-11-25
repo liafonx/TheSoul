@@ -6,27 +6,38 @@ const nodeFs = hasNodeEnv ? require("fs") : null;
 const nodePath = hasNodeEnv ? require("path") : null;
 
 const JOKER_TRANSLATIONS = Object.freeze({
-  "DNA": "DNA",
-  "Blueprint": "蓝图",
-  "Baron": "男爵",
-  "Brainstorm": "头脑风暴",
-  "Mime": "哑剧",
-  "Showman": "马戏团",
-  "Burglar": "窃贼",
+  DNA: "DNA",
+  Blueprint: "蓝图",
+  Baron: "男爵",
+  Brainstorm: "头脑风暴",
+  Mime: "哑剧",
+  Showman: "🎪马戏团",
+  Burglar: "窃贼",
   "Reserved Parking": "车位",
   "Turtle Bean": "黑龟豆",
-  "Seance": "通灵",
+  Seance: "通灵",
   "Sixth Sense": "第六感",
   "Diet Cola": "可乐",
   "Invisible Joker": "隐形小丑",
 });
 
 const SPECTRAL_TRANSLATIONS = Object.freeze({
-  "Cryptid": "神秘生物",
+  Cryptid: "神秘生物",
   "Deja Vu": "既视感",
-  "Ectoplasm": "灵质",
+  Ectoplasm: "灵质",
   "The Soul": "灵魂",
 });
+
+const KING_DISPLAY = Object.freeze({
+  "Red Seal": "红封K",
+  "Steel": "钢铁K",
+  "Gold": "黄金K",
+  "Red Seal Steel": "红封钢K",
+  "Red Seal Gold": "红封金K",
+});
+
+const JOKER_NAMES = Object.freeze(Object.keys(JOKER_TRANSLATIONS));
+const SPECTRAL_NAMES = Object.freeze(Object.keys(SPECTRAL_TRANSLATIONS));
 
 const TAG_EMOJI = Object.freeze({
   "Negative Tag": "🔘",
@@ -55,6 +66,53 @@ function escapeRegExp(str) {
   return str.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
 }
 
+function splitCsv(listStr) {
+  return (listStr || "")
+    .split(",")
+    .map((s) => s.trim())
+    .filter(Boolean);
+}
+
+function capitalizeWord(word) {
+  return word && word.length
+    ? word.charAt(0).toUpperCase() + word.slice(1).toLowerCase()
+    : word;
+}
+
+function isPackLine(line, baseName) {
+  // Matches: "<baseName> -", "Jumbo <baseName> -", or "Mega <baseName> -"
+  return (
+    line.startsWith(`${baseName} -`) ||
+    line.startsWith(`Jumbo ${baseName} -`) ||
+    line.startsWith(`Mega ${baseName} -`)
+  );
+}
+
+function formatKingName(name) {
+  const variants = normalizeKingVariants(name);
+  if (!variants.length) return null; // omit plain kings
+
+  const prefix = variants.join(" ");
+  const chinese = KING_DISPLAY[prefix] || "";
+  if (!chinese) return null;
+
+  return `${chinese}(${prefix} King)`;
+}
+
+function normalizeKingVariants(cardText) {
+  const hasRed = /\bRed Seal\b/i.test(cardText);
+  const hasSteel = /\bSteel\b/i.test(cardText);
+  const hasGold = /\bGold\b/i.test(cardText);
+
+  if (!hasRed && !hasSteel && !hasGold) return [];
+
+  const result = [];
+  if (hasRed) result.push("Red Seal");
+  if (hasSteel) result.push("Steel");
+  if (hasGold) result.push("Gold");
+  return result;
+}
+
 class AnteData {
   constructor(number) {
     this.number = number;
@@ -65,7 +123,8 @@ class AnteData {
     this.spectralCards = [];
     this.spectralSeen = new Set();
     this.tagNames = [];
-    this.hasRedSealKing = false;
+    this.kingCards = [];
+    this.kingSeen = new Set();
     this.voucher = null;
     this.boss = null;
   }
@@ -76,14 +135,22 @@ class AnteData {
     }
     const current = this.jesterCards.get(name);
     if (!current) {
-      this.jesterCards.set(name, { negative, index, order: this.orderCounter++ });
+      this.jesterCards.set(name, {
+        negative,
+        index,
+        order: this.orderCounter++,
+      });
       return;
     }
     if (current.negative) {
       return;
     }
     if (negative) {
-      this.jesterCards.set(name, { negative: true, index, order: this.orderCounter++ });
+      this.jesterCards.set(name, {
+        negative: true,
+        index,
+        order: this.orderCounter++,
+      });
     }
   }
 
@@ -118,6 +185,18 @@ class AnteData {
     }
   }
 
+  addKing(name) {
+    if (!name) {
+      return;
+    }
+    const normalized = name.trim();
+    if (this.kingSeen.has(normalized)) {
+      return;
+    }
+    this.kingSeen.add(normalized);
+    this.kingCards.push(normalized);
+  }
+
   getTagOutput() {
     const display = [];
     const names = [];
@@ -129,30 +208,19 @@ class AnteData {
     const voucherTriggered = showNegative && !firstIsNegative && specialVoucher;
 
     for (const tagName of this.tagNames) {
-      if (tagName === "Negative Tag") {
-        if (!showNegative) {
-          continue;
-        }
-        const emoji = TAG_EMOJI[tagName];
-        if (!emoji) {
-          continue;
-        }
-        display.push(voucherTriggered ? `‼️${emoji}` : emoji);
-        names.push(tagName);
-        continue;
-      }
       const emoji = TAG_EMOJI[tagName];
-      if (emoji) {
+      if (!emoji) continue;
+
+      if (tagName === "Negative Tag") {
+        if (!showNegative) continue;
+        display.push(voucherTriggered ? `‼️${emoji}` : emoji);
+      } else {
         display.push(emoji);
-        names.push(tagName);
       }
+      names.push(tagName);
     }
 
     return { display, names };
-  }
-
-  setRedSealKing() {
-    this.hasRedSealKing = true;
   }
 
   hasOutput() {
@@ -161,7 +229,7 @@ class AnteData {
       tagOutput.display.length ||
         this.jesterCards.size ||
         this.spectralCards.length ||
-        this.hasRedSealKing ||
+        this.kingCards.length ||
         this.buffoonJesters.length
     );
   }
@@ -185,8 +253,9 @@ class AnteData {
       parts.push(`💠${spectral.join("、")}`);
     }
 
-    if (this.hasRedSealKing) {
-      parts.push("♦️红封K(Red Seal King)");
+    if (this.kingCards.length) {
+      const kingDisplay = this.kingCards.map(formatKingName).filter(Boolean);
+      parts.push(`♔${kingDisplay.join("、")}`);
     }
 
     if (this.buffoonJesters.length) {
@@ -205,9 +274,8 @@ class AnteData {
       const anteNumber = Number.parseInt(this.number, 10) || 0;
       const jesterParts = entries.map(([name, info]) => {
         const chinese = JOKER_TRANSLATIONS[name] || name;
-        const prefix = name === "Showman" ? "🎪" : "";
         const negativeSuffix = info.negative ? "🔘" : "";
-        let entry = `${prefix}${chinese}${negativeSuffix}(${name} #${info.index})`;
+        let entry = `${chinese}${negativeSuffix}(${name} #${info.index})`;
         if (
           (name === "Sixth Sense" || name === "Seance") &&
           anteNumber > 8 &&
@@ -233,7 +301,7 @@ class AnteData {
       tagEmojis: [...tagOutput.display],
       tagOutputNames: [...tagOutput.names],
       spectralCards: [...this.spectralCards],
-      hasRedSealKing: this.hasRedSealKing,
+      kingCards: [...this.kingCards],
       buffoonJesters: [...this.buffoonJesters],
       jesterCards: [...this.jesterCards.entries()].map(([name, info]) => ({
         name,
@@ -285,11 +353,7 @@ function collectAnteData(lines) {
     if (line.startsWith("Tags")) {
       const parts = line.split(":");
       if (parts.length > 1) {
-        parts[1]
-          .split(",")
-          .map((tag) => tag.trim())
-          .filter(Boolean)
-          .forEach((tag) => currentAnte.addTag(tag));
+        splitCsv(parts[1]).forEach((tag) => currentAnte.addTag(tag));
       }
       state = null;
       continue;
@@ -314,11 +378,13 @@ function collectAnteData(lines) {
       }
       const index = Number.parseInt(match[1], 10) || 0;
       const itemStr = match[2];
-      for (const name of Object.keys(JOKER_TRANSLATIONS)) {
+      for (const name of JOKER_NAMES) {
         if (!itemStr.includes(name)) {
           continue;
         }
-        const negPattern = new RegExp(`\\bNegative\\s+${escapeRegExp(name)}\\b`);
+        const negPattern = new RegExp(
+          `\\bNegative\\s+${escapeRegExp(name)}\\b`
+        );
         const negative = negPattern.test(itemStr);
         currentAnte.addJester(name, negative, index);
       }
@@ -326,44 +392,47 @@ function collectAnteData(lines) {
     }
 
     if (state === "packs") {
-      if (line.startsWith("Standard Pack -")) {
-        if (/Red\s+Seal\s+King/i.test(line)) {
-          currentAnte.setRedSealKing();
-        }
+      if (isPackLine(line, "Standard Pack")) {
+        const dashIndex = line.indexOf("-");
+        const cardList = dashIndex >= 0 ? line.slice(dashIndex + 1) : "";
+        splitCsv(cardList).forEach((card) => {
+          const suitMatch = /\bKing of ([A-Za-z]+)/i.exec(card);
+          if (!suitMatch) return;
+          const variants = normalizeKingVariants(card);
+          if (!variants.length) return; // skip plain kings
+          const suit = capitalizeWord(suitMatch[1]);
+          const variantPrefix = variants.join(" ");
+          currentAnte.addKing(`${variantPrefix} King of ${suit}`);
+        });
         continue;
       }
       const dashIndex = line.indexOf("-");
       const cardList = dashIndex >= 0 ? line.slice(dashIndex + 1) : line;
 
-      if (BUFFOON_PACK_PREFIXES.some((prefix) => line.startsWith(prefix))) {
-        cardList
-          .split(",")
-          .map((card) => card.trim())
-          .filter(Boolean)
-          .forEach((card) => {
-            for (const name of Object.keys(JOKER_TRANSLATIONS)) {
-              const namePattern = new RegExp(`\\b${escapeRegExp(name)}\\b`);
-              if (namePattern.test(card)) {
-                currentAnte.addBuffoonJester(name);
-              }
+      if (isPackLine(line, "Buffoon Pack")) {
+        splitCsv(cardList).forEach((card) => {
+          for (const name of JOKER_NAMES) {
+            const namePattern = new RegExp(`\\b${escapeRegExp(name)}\\b`);
+            if (namePattern.test(card)) {
+              currentAnte.addBuffoonJester(name);
             }
-          });
+          }
+        });
         continue;
       }
 
-      if (SPECTRAL_PACK_PREFIXES.some((prefix) => line.startsWith(prefix))) {
-        cardList
-          .split(",")
-          .map((card) => card.trim())
-          .filter(Boolean)
-          .forEach((card) => {
-            for (const name of Object.keys(SPECTRAL_TRANSLATIONS)) {
-              const specPattern = new RegExp(`\\b${escapeRegExp(name)}\\b`);
-              if (specPattern.test(card)) {
-                currentAnte.addSpectral(name);
-              }
+      if (
+        isPackLine(line, "Spectral Pack") ||
+        isPackLine(line, "Arcana Pack")
+      ) {
+        splitCsv(cardList).forEach((card) => {
+          for (const name of SPECTRAL_NAMES) {
+            const specPattern = new RegExp(`\\b${escapeRegExp(name)}\\b`);
+            if (specPattern.test(card)) {
+              currentAnte.addSpectral(name);
             }
-          });
+          }
+        });
         continue;
       }
     }
@@ -422,7 +491,9 @@ if (typeof window !== "undefined") {
 if (hasNodeEnv && require.main === module) {
   const inputFiles = process.argv.slice(2);
   if (inputFiles.length === 0) {
-    console.error("Usage: node balatro_analysis.js <analysis.txt> [more files...]");
+    console.error(
+      "Usage: node balatro_analysis.js <analysis.txt> [more files...]"
+    );
     process.exit(1);
   }
   let exitCode = 0;

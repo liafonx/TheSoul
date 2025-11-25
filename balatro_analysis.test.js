@@ -3,7 +3,7 @@
 
 const fs = require("fs");
 const path = require("path");
-const { collectAnteDetails } = require("./balatro_analysis");
+const { collectAnteDetails, summarizeText } = require("./balatro_analysis");
 // Run via: `node balatro_analysis.test.js`
 
 function normalizeText(value) {
@@ -14,34 +14,6 @@ function escapeRegExp(str) {
   return str.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
 }
 
-function hashString(str) {
-  let hash = 0x811c9dc5;
-  for (let i = 0; i < str.length; i++) {
-    hash ^= str.charCodeAt(i);
-    hash = Math.imul(hash, 0x01000193);
-    hash >>>= 0;
-  }
-  return hash >>> 0;
-}
-
-function createRng(seed) {
-  let state = seed >>> 0;
-  return () => {
-    state = Math.imul(state, 1664525) + 1013904223;
-    return state >>> 0;
-  };
-}
-
-function pickSampleIndices(total, sampleSize, seed) {
-  if (total === 0) return [];
-  const rng = createRng(seed || 0x12345678);
-  const indices = Array.from({ length: total }, (_, i) => i);
-  for (let i = indices.length - 1; i > 0; i--) {
-    const j = rng() % (i + 1);
-    [indices[i], indices[j]] = [indices[j], indices[i]];
-  }
-  return indices.slice(0, Math.min(sampleSize, total)).sort((a, b) => a - b);
-}
 
 function buildRawAnteMap(lines) {
   const map = new Map();
@@ -108,11 +80,7 @@ function verifyFile(inputPath) {
   }
 
   const rawMap = buildRawAnteMap(lines);
-  const sampleIndices = pickSampleIndices(
-    anteDetails.length,
-    20,
-    hashString(path.basename(inputPath))
-  );
+  const sampleIndices = Array.from({ length: anteDetails.length }, (_, i) => i);
 
   sampleIndices.forEach((idx) => {
     const summary = anteDetails[idx];
@@ -182,9 +150,110 @@ function runFixtureTests() {
   console.log("Fixture verification complete.");
 }
 
+function runKingTests() {
+  const fixture = normalizeText(`
+==ANTE 1==
+Boss: The Ox
+Voucher: X
+Tags:
+Shop Queue:
+Packs:
+Standard Pack - Red Seal King of Hearts
+
+==ANTE 2==
+Boss: The Ox
+Voucher: X
+Tags:
+Shop Queue:
+Packs:
+Standard Pack - Steel King of Clubs
+
+==ANTE 3==
+Boss: The Ox
+Voucher: X
+Tags:
+Shop Queue:
+Packs:
+Standard Pack - Gold King of Diamonds
+
+==ANTE 4==
+Boss: The Ox
+Voucher: X
+Tags:
+Shop Queue:
+Packs:
+Standard Pack - Red Seal Steel King of Spades
+
+==ANTE 5==
+Boss: The Ox
+Voucher: X
+Tags:
+Shop Queue:
+Packs:
+Standard Pack - Red Seal Gold King of Hearts
+`).split("\n");
+
+  const details = collectAnteDetails(fixture);
+  if (details.length !== 5) {
+    throw new Error(`Expected 5 antes in king test fixture, got ${details.length}`);
+  }
+
+  const expectedKingCards = [
+    ["Red Seal King of Hearts"],
+    ["Steel King of Clubs"],
+    ["Gold King of Diamonds"],
+    ["Red Seal Steel King of Spades"],
+    ["Red Seal Gold King of Hearts"],
+  ];
+
+  details.forEach((ante, idx) => {
+    const expected = expectedKingCards[idx];
+    if (!Array.isArray(ante.kingCards)) {
+      throw new Error(`Ante ${ante.number}: kingCards missing`);
+    }
+    const sameLength = ante.kingCards.length === expected.length;
+    const allMatch =
+      sameLength &&
+      expected.every((name, i) => ante.kingCards[i] === name);
+    if (!allMatch) {
+      throw new Error(
+        `Ante ${ante.number}: kingCards mismatch.\nExpected: ${JSON.stringify(
+          expected
+        )}\nGot:      ${JSON.stringify(ante.kingCards)}`
+      );
+    }
+  });
+
+  const summary = summarizeText(fixture.join("\n")).split("\n");
+  const expectedSnippets = [
+    "♔红封K(Red Seal King)",
+    "♔钢铁K(Steel King)",
+    "♔黄金K(Gold King)",
+    "♔红封钢K(Red Seal Steel King)",
+    "♔红封金K(Red Seal Gold King)",
+  ];
+
+  summary.forEach((line, idx) => {
+    const snippet = expectedSnippets[idx];
+    if (!line.includes(snippet)) {
+      throw new Error(
+        `Ante line ${idx + 1}: expected to contain "${snippet}", got: ${line}`
+      );
+    }
+  });
+
+  console.log("✓ King variant formatting verified");
+}
+
+
+function runAllTests() {
+  runFixtureTests();
+  runKingTests();
+}
+
 if (require.main === module) {
   try {
-    runFixtureTests();
+    runAllTests();
   } catch (err) {
     console.error(err.message);
     process.exit(1);
@@ -193,4 +262,6 @@ if (require.main === module) {
 
 module.exports = {
   runFixtureTests,
+  runKingTests,
+  runAllTests,
 };
