@@ -21,20 +21,13 @@
   <script src="immolate.js"></script>
   <script src="UI.js" defer></script>
   <style>
-    @font-face {
-      font-family: 'm6x11';
-      src: url('./m6x11plus.ttf') format('truetype');
-      font-weight: normal;
-      font-style: normal;
-    }
-
     body, h1, p {
       margin: 0;
       padding: 0;
     }
 
     body {
-      font-family: "m6x11", Arial, sans-serif;
+      font-family: sans-serif;
       line-height: 1.6;
       color: #333;
       background-color: #a0c3ac;
@@ -43,7 +36,7 @@
     h1 {
       text-align: center;
       font-weight: normal;
-      padding: 2rem 0;
+      padding: 1.2rem 0;
       background-color: #006025;
       color: #ffffff;
     }
@@ -53,6 +46,7 @@
       font-weight: normal;
       background-color: #006025;
       color: #ffffff;
+      font-size: 1rem;
     }
 
     p {
@@ -65,6 +59,10 @@
 
     label {
       font-size: 1.2em;
+    }
+
+    div.input-section label {
+      font-size: 1em;
     }
 
     .container {
@@ -80,6 +78,18 @@
       border-radius: 5px;
     }
 
+    .checkbox-row {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      margin: 4px 0;
+    }
+
+    .checkbox-row label {
+      font-size: 1em;
+    }
+
+
     .output-section {
       flex: 1;
       padding: 20px;
@@ -94,14 +104,14 @@
 
     /* Change the font and background color */
     select {
-      font-family: "m6x11", sans-serif;
+      font-family: inherit;
       font-size: 1em;
       background-color: #f2f2f2;
       color: #333;
     }
 
     button {
-      font-family: "m6x11", sans-serif;
+      font-family: inherit;
       font-size: 1.5em;
       background-color: #f2f2f2;
       color: #333;
@@ -128,6 +138,7 @@
       border: 1px solid #ccc;
       padding: 6px 10px;
       border-radius: 4px;
+      font-size: 0.9rem;
     }
 
     /* Style the dropdown options */
@@ -139,7 +150,7 @@
 
     /* Change the font and background color */
     input {
-      font-family: "m6x11", sans-serif;
+      font-family: inherit;
       font-size: 1em;
       background-color: #f2f2f2;
       color: #333;
@@ -218,9 +229,17 @@
 
     button#analyzeButton {
       margin-top: 12px;
+      font-size: 0.9rem;
     }
 
-    button#downloadButton {
+    button#downloadButton,
+    button#exportButton,
+    button#openCheckboxesBtn,
+    button#copyButton {
+      font-size: 0.9rem;
+    }
+
+    button#exportButton {
       margin-top: 4px;
     }
   </style>
@@ -228,6 +247,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>The Soul</title>
+    <link rel="stylesheet" href="ui.css">
   </head>
   <body>
     <h1>The Soul</h1>
@@ -238,10 +258,10 @@
         <input type="text" id="seed" maxlength="8" pattern="[A-Z1-9]{1,8}" required>
         <br>
         <label for="ante">Max Ante:</label>
-        <input type="number" id="ante" min="1" max="999" value="8" required>
+        <input type="number" id="ante" min="1" max="999" value="39" required>
         <br>
         <label for="cardsPerAnte">Cards per Ante:</label>
-        <input type="number" id="cardsPerAnte" min="0" max="100" value="15" required>
+        <input type="number" id="cardsPerAnte" min="0" max="100" value="100" required>
         <br>
         <label for="deck">Deck:</label>
         <select id="deck" required>
@@ -285,6 +305,10 @@
           <!-- Add version options here -->
         </select>
         <br>
+        <div class="checkbox-row">
+          <input type="checkbox" id="omitBeforeAnte9" checked>
+          <label for="omitBeforeAnte9">Omit results before Ante 9</label>
+        </div>
         <button id="analyzeButton">Analyze</button>
         <button id="openCheckboxesBtn">Modify Unlocks</button>
         <div id="checkboxesOverlay">
@@ -303,6 +327,7 @@
         <textarea id="outputBox" rows="14" readonly></textarea>
         <br>
         <button id="downloadButton">Download</button>
+        <button id="exportButton">Export</button>
       </div>
     </div>
   </body>
@@ -465,12 +490,13 @@
     const deckSelect = document.getElementById('deck');
     const stakeSelect = document.getElementById('stake');
     const versionSelect = document.getElementById('version');
+    const omitBeforeAnte9Checkbox = document.getElementById('omitBeforeAnte9');
     const seedInput = document.getElementById('seed');
     const analyzeButton = document.getElementById('analyzeButton');
     const copyLinkButton = document.getElementById('copyButton');
     const downloadButton = document.getElementById('downloadButton');
+    const exportButton = document.getElementById('exportButton');
     const outputBox = document.getElementById('outputBox');
-
     // Add event listener for the "Copy Link" button
     copyLinkButton.addEventListener('click', copyLink);
 
@@ -500,11 +526,12 @@
       const base64Unlocks = btoa(String.fromCharCode.apply(null, byteArray));
 
       // Add non-default input values as URL parameters
-      if (anteInput.value !== '8') params.append('ante', anteInput.value);
-      if (cardsPerAnteInput.value !== '15') params.append('cardsPerAnte', cardsPerAnteInput.value);
+      if (anteInput.value !== '39') params.append('ante', anteInput.value);
+      if (cardsPerAnteInput.value !== '100') params.append('cardsPerAnte', cardsPerAnteInput.value);
       if (deckSelect.value !== 'Red Deck') params.append('deck', deckSelect.value);
       if (stakeSelect.value !== 'White Stake') params.append('stake', stakeSelect.value);
       if (versionSelect.value !== '10115') params.append('version', versionSelect.value);
+      if (!omitBeforeAnte9Checkbox.checked) params.append('omitBeforeAnte9', 'false');
       if (seedInput.value !== '') params.append('seed', seedInput.value);
       if (base64Unlocks != '/////////x/4') params.append('unlocks', base64Unlocks);
 
@@ -533,6 +560,53 @@
       a.click();
 
       URL.revokeObjectURL(url);
+    });
+
+    let balatroAnalysisPromise = null;
+    function ensureBalatroAnalysisLoaded() {
+      if (window.BalatroAnalysis && typeof window.BalatroAnalysis.summarizeText === 'function') {
+        return Promise.resolve(window.BalatroAnalysis);
+      }
+      if (!balatroAnalysisPromise) {
+        balatroAnalysisPromise = new Promise((resolve, reject) => {
+          const script = document.createElement('script');
+          script.src = 'balatro_analysis.js';
+          script.onload = () => {
+            if (window.BalatroAnalysis && typeof window.BalatroAnalysis.summarizeText === 'function') {
+              resolve(window.BalatroAnalysis);
+            } else {
+              reject(new Error('BalatroAnalysis helper missing after load.'));
+            }
+          };
+          script.onerror = () => reject(new Error('Failed to load balatro_analysis.js'));
+          document.head.appendChild(script);
+        });
+      }
+      return balatroAnalysisPromise;
+    }
+
+    exportButton.addEventListener('click', () => {
+      const content = outputBox.value;
+      if (!content) {
+        alert('Nothing to export yet.');
+        return;
+      }
+      ensureBalatroAnalysisLoaded()
+        .then((balatro) => {
+          const summary = balatro.summarizeText(content);
+          if (!summary) {
+            alert('No summary generated.');
+            return;
+          }
+          return navigator.clipboard.writeText(summary)
+            .then(() => {
+              alert('Summary copied to clipboard!');
+            });
+        })
+        .catch((err) => {
+          alert('Export helper unavailable.');
+          console.error('Failed to prepare summary:', err);
+        });
     });
 
     // Add event listener to the "Analysis" button
@@ -575,12 +649,15 @@
       inst.setStake(stake);
       inst.setDeck(deck);
       var ghostDeck = (deck == "Ghost Deck");
+      const omitBeforeAnte9 = omitBeforeAnte9Checkbox.checked;
       for (let a = 1; a <= ante; a++) {
         inst.initUnlocks(a, false);
-        output += "==ANTE " + a + "==\n"
-        output += "Boss: " + inst.nextBoss(a) + "\n";
+        const shouldOutput = !(omitBeforeAnte9 && a < 9);
+        const addOutput = shouldOutput ? (text) => { output += text; } : () => {};
+        addOutput("==ANTE " + a + "==\n");
+        addOutput("Boss: " + inst.nextBoss(a) + "\n");
         var voucher = inst.nextVoucher(a);
-        output += "Voucher: " + voucher + "\n";
+        addOutput("Voucher: " + voucher + "\n");
         inst.lock(voucher);
         // Unlock next level voucher
         for (let i = 0; i < Immolate.VOUCHERS.size(); i+=2) {
@@ -591,49 +668,49 @@
                 };
             };
         };
-        output += "Tags: " + inst.nextTag(a) + ", " + inst.nextTag(a) + "\n";
+        addOutput("Tags: " + inst.nextTag(a) + ", " + inst.nextTag(a) + "\n");
 
-        output += "Shop Queue: \n";
+        addOutput("Shop Queue: \n");
         for (let q = 1; q <= cardsPerAnte[a-1]; q++) {
-          output += q + ") ";
+          addOutput(q + ") ");
           var item = inst.nextShopItem(a);
           if (item.type == "Joker") {
-            if (item.jokerData.stickers.eternal) output += "Eternal ";
-            if (item.jokerData.stickers.perishable) output += "Perishable ";
-            if (item.jokerData.stickers.rental) output += "Rental ";
-            if (item.jokerData.edition != "No Edition") output += item.jokerData.edition + " ";
+            if (item.jokerData.stickers.eternal) addOutput("Eternal ");
+            if (item.jokerData.stickers.perishable) addOutput("Perishable ");
+            if (item.jokerData.stickers.rental) addOutput("Rental ");
+            if (item.jokerData.edition != "No Edition") addOutput(item.jokerData.edition + " ");
           }
-          output += item.item + "\n";
+          addOutput(item.item + "\n");
           item.delete();
         }
 
-        output += "\nPacks: \n";
+        addOutput("\nPacks: \n");
         var numPacks = (a == 1) ? 4 : 6;
         for (let p = 1; p <= numPacks; p++) {
           var pack = inst.nextPack(a);
-          output += pack + " - ";
+          addOutput(pack + " - ");
           var packInfo = Immolate.packInfo(pack);
           if (packInfo.type == "Celestial Pack") {
             var cards = inst.nextCelestialPack(packInfo.size, a);
             for (let c = 0; c < packInfo.size; c++) {
-              output += cards.get(c);
-              output += (c + 1 != packInfo.size) ? ", " : "";
+              addOutput(cards.get(c));
+              addOutput((c + 1 != packInfo.size) ? ", " : "");
             }
             cards.delete();
           }
           if (packInfo.type == "Arcana Pack") {
             var cards = inst.nextArcanaPack(packInfo.size, a);
             for (let c = 0; c < packInfo.size; c++) {
-              output += cards.get(c);
-              output += (c + 1 != packInfo.size) ? ", " : "";
+              addOutput(cards.get(c));
+              addOutput((c + 1 != packInfo.size) ? ", " : "");
             }
             cards.delete();
           }
           if (packInfo.type == "Spectral Pack") {
             var cards = inst.nextSpectralPack(packInfo.size, a);
             for (let c = 0; c < packInfo.size; c++) {
-              output += cards.get(c);
-              output += (c + 1 != packInfo.size) ? ", " : "";
+              addOutput(cards.get(c));
+              addOutput((c + 1 != packInfo.size) ? ", " : "");
             }
             cards.delete();
           }
@@ -641,13 +718,13 @@
             var cards = inst.nextBuffoonPack(packInfo.size, a);
             for (let c = 0; c < packInfo.size; c++) {
               var joker = cards.get(c);
-              if (joker.stickers.eternal) output += "Eternal ";
-              if (joker.stickers.perishable) output += "Perishable ";
-              if (joker.stickers.rental) output += "Rental ";
-              if (joker.edition != "No Edition") output += joker.edition + " ";
-              output += joker.joker;
+              if (joker.stickers.eternal) addOutput("Eternal ");
+              if (joker.stickers.perishable) addOutput("Perishable ");
+              if (joker.stickers.rental) addOutput("Rental ");
+              if (joker.edition != "No Edition") addOutput(joker.edition + " ");
+              addOutput(joker.joker);
+              addOutput((c + 1 != packInfo.size) ? ", " : "");
               joker.delete();
-              output += (c + 1 != packInfo.size) ? ", " : "";
             }
             cards.delete();
           }
@@ -655,31 +732,31 @@
             var cards = inst.nextStandardPack(packInfo.size, a);
             for (let c = 0; c < packInfo.size; c++) {
               var card = cards.get(c);
-              if (card.seal != "No Seal") output += card.seal + " ";
-              if (card.edition != "No Edition") output += card.edition + " ";
-              if (card.enhancement != "No Enhancement") output += card.enhancement + " ";
+              if (card.seal != "No Seal") addOutput(card.seal + " ");
+              if (card.edition != "No Edition") addOutput(card.edition + " ");
+              if (card.enhancement != "No Enhancement") addOutput(card.enhancement + " ");
               var rank = card.base[2];
-              if (rank == "T") output += "10";
-              else if (rank == "J") output += "Jack";
-              else if (rank == "Q") output += "Queen";
-              else if (rank == "K") output += "King";
-              else if (rank == "A") output += "Ace";
-              else output += rank;
-              output += " of ";
+              if (rank == "T") addOutput("10");
+              else if (rank == "J") addOutput("Jack");
+              else if (rank == "Q") addOutput("Queen");
+              else if (rank == "K") addOutput("King");
+              else if (rank == "A") addOutput("Ace");
+              else addOutput(rank);
+              addOutput(" of ");
               var suit = card.base[0];
-              if (suit == "C") output += "Clubs";
-              else if (suit == "S") output += "Spades";
-              else if (suit == "D") output += "Diamonds";
-              else if (suit == "H") output += "Hearts";
+              if (suit == "C") addOutput("Clubs");
+              else if (suit == "S") addOutput("Spades");
+              else if (suit == "D") addOutput("Diamonds");
+              else if (suit == "H") addOutput("Hearts");
+              addOutput((c + 1 != packInfo.size) ? ", " : "");
               card.delete();
-              output += (c + 1 != packInfo.size) ? ", " : "";
             }
             cards.delete();
           }
-          output += "\n";
+          addOutput("\n");
         }
 
-        output += "\n";
+        addOutput("\n");
       };
 
       inst.delete();
@@ -704,6 +781,7 @@
       const urlDeck = urlParams.get('deck');
       const urlStake = urlParams.get('stake');
       const urlVersion = urlParams.get('version');
+      const urlOmitBeforeAnte9 = urlParams.get('omitBeforeAnte9');
       const urlUnlocks = urlParams.get('unlocks');
 
       if (urlUnlocks) {
@@ -727,7 +805,7 @@
         anteInput.value = urlAnte;
         anteInput.value = Math.min(anteInput.value, 999);
         anteInput.value = Math.max(anteInput.value, 1);
-        cardsPerAnteInput.value = Array(anteInput.value).fill(Number(urlCardsPerAnte ? urlCardsPerAnte : "15"));
+        cardsPerAnteInput.value = Array(anteInput.value).fill(Number(urlCardsPerAnte ? urlCardsPerAnte : "100"));
       }
       if (urlCardsPerAnte) {
         cardsPerAnteInput.value = Array(anteInput.value).fill(Number(urlCardsPerAnte));
@@ -744,6 +822,9 @@
       }
       if (urlVersion) {
         versionInput.value = urlVersion;
+      }
+      if (urlOmitBeforeAnte9 !== null) {
+        omitBeforeAnte9Checkbox.checked = urlOmitBeforeAnte9 !== 'false' && urlOmitBeforeAnte9 !== '0';
       }
 
       // Add event listener for input event
