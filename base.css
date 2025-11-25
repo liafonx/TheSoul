@@ -1,0 +1,222 @@
+body, h1, p {
+  margin: 0;
+  padding: 0;
+}
+
+body {
+  font-family: sans-serif;
+  line-height: 1.6;
+  color: #333;
+  background-color: #a0c3ac;
+}
+
+h1 {
+  text-align: center;
+  font-weight: normal;
+  padding: 1.2rem 0;
+  background-color: #006025;
+  color: #ffffff;
+}
+
+h2 {
+  text-align: center;
+  font-weight: normal;
+  background-color: #006025;
+  color: #ffffff;
+  font-size: 1rem;
+}
+
+p {
+  max-width: 600px;
+  margin: 2rem auto;
+  padding: 0 1rem;
+  text-align: center;
+  font-size: 1.2em;
+}
+
+label {
+  font-size: 1.2em;
+}
+
+div.input-section label {
+  font-size: 1em;
+}
+
+.container {
+  display: flex;
+  justify-content: space-around;
+  margin-top: 20px;
+}
+
+.input-section {
+  flex: 1;
+  padding: 20px;
+  background-color: #f5f5f5;
+  border-radius: 5px;
+}
+
+.checkbox-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin: 4px 0;
+}
+
+.checkbox-row label {
+  font-size: 1em;
+}
+
+
+.output-section {
+  flex: 1;
+  padding: 20px;
+  background-color: #f5f5f5;
+  border-radius: 5px;
+}
+
+textarea {
+  width: 100%;
+  resize: vertical;
+}
+
+/* Change the font and background color */
+select {
+  font-family: inherit;
+  font-size: 1em;
+  background-color: #f2f2f2;
+  color: #333;
+}
+
+button {
+  font-family: inherit;
+  font-size: 1.5em;
+  background-color: #f2f2f2;
+  color: #333;
+}
+
+/* Remove the default arrow and add custom styling */
+select {
+  -webkit-appearance: none;
+  -moz-appearance: none;
+  appearance: none;
+  background-repeat: no-repeat;
+  background-position: right 8px center;
+  padding-right: 25px; /* Adjust as needed to accommodate the custom arrow */
+}
+
+/* Add border and padding */
+select {
+  border: 1px solid #ccc;
+  padding: 6px 10px;
+  border-radius: 4px;
+}
+
+button {
+  border: 1px solid #ccc;
+  padding: 6px 10px;
+  border-radius: 4px;
+  font-size: 0.9rem;
+}
+
+/* Style the dropdown options */
+select option {
+  background-color: #fff;
+  color: #333;
+  padding: 6px 10px;
+}
+
+/* Change the font and background color */
+input {
+  font-family: inherit;
+  font-size: 1em;
+  background-color: #f2f2f2;
+  color: #333;
+}
+
+/* Add border, padding, and rounded corners */
+input {
+  border: 1px solid #ccc;
+  border-radius: 4px;
+}
+
+/* Style the focused input box */
+input:focus {
+  outline: none;
+  border-color: #6495ed;
+  box-shadow: 0 0 5px rgba(100, 149, 237, 0.5);
+}
+
+#checkboxesOverlay {
+  display: none;
+  position: fixed;
+  z-index: 1;
+  left: 0;
+  top: 0;
+  width: 100%;
+  height: 100%;
+  overflow: auto;
+  background-color: rgba(0, 0, 0, 0.4);
+}
+
+#checkboxesPopup {
+  background-color: #fefefe;
+  margin: 15% auto;
+  padding: 20px;
+  border: 1px solid #888;
+  width: 75%;
+}
+
+.checkbox-column {
+  float: left;
+  width: 16.66%;
+  box-sizing: border-box;
+  padding: 0 10px;
+}
+
+.checkbox-column label {
+  display: block;
+  margin-bottom: 5px;
+}
+
+.clearfix::after {
+  content: "";
+  clear: both;
+  display: table;
+}
+
+div.input-section > label {
+  width: 120px;
+  display: inline-block;
+}
+
+div.input-section > input, div.input-section > select {
+  /* width: 200px; */
+  margin-bottom: 4px;
+}
+
+div.input-section > input {
+  padding-inline-start: 10px;
+  height: 28.5px;
+  width: 186px;
+}
+
+div.input-section > select {
+  width: 200px;
+}
+
+button#analyzeButton {
+  margin-top: 12px;
+  font-size: 0.9rem;
+}
+
+button#downloadButton,
+button#exportButton,
+button#openCheckboxesBtn,
+button#copyButton {
+  font-size: 0.9rem;
+}
+
+button#exportButton {
+  margin-top: 4px;
+}
+
