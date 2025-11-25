@@ -35,9 +35,12 @@
     }
 
     const activeToggleTerms = new Set(
-      [...trackedJokers, ...trackedSpectrals, ...trackedTags, ...trackedBosses].map(
-        (term) => term.toLowerCase()
-      )
+      [
+        ...trackedJokers,
+        ...trackedSpectrals,
+        ...trackedTags,
+        ...trackedBosses,
+      ].map((term) => term.toLowerCase())
     );
 
     function searchAndHighlight() {
@@ -342,6 +345,10 @@
             const queueItem = document.createElement("div");
             queueItem.className = "queueItem";
 
+            // Wrapper so we can anchor overlays to the image area itself
+            const canvasWrapper = document.createElement("div");
+            canvasWrapper.className = "cardCanvasWrapper";
+
             const canvas = document.createElement("canvas");
             canvas.width = 80;
             canvas.height = 107;
@@ -357,18 +364,38 @@
               );
             }
 
-            queueItem.appendChild(canvas);
+            canvasWrapper.appendChild(canvas);
+            queueItem.appendChild(canvasWrapper);
 
             const itemText = document.createElement("div");
             itemText.textContent = cardName;
             queueItem.appendChild(itemText);
 
-            itemModifiers.forEach((mod) => {
+            // Create a single overlaid modifier label for edition-like modifiers
+            const overlayMod = itemModifiers.find((mod) =>
+              ["Foil", "Holographic", "Polychrome", "Negative"].includes(mod)
+            );
+
+            if (overlayMod) {
               const modifierText = document.createElement("div");
-              modifierText.className = "modifier";
-              modifierText.textContent = mod;
-              queueItem.appendChild(modifierText);
-            });
+              modifierText.classList.add("modifier");
+
+              const lower = overlayMod.toLowerCase();
+              if (lower === "polychrome") {
+                modifierText.classList.add("polychrome");
+              } else if (lower === "foil") {
+                modifierText.classList.add("foil");
+              } else if (lower === "negative") {
+                // use the custom class name spelling used in CSS
+                modifierText.classList.add("negAtive");
+              } else if (lower === "holographic") {
+                modifierText.classList.add("holographic");
+              }
+
+              // keep the label text as the original modifier
+              modifierText.textContent = overlayMod;
+              canvasWrapper.appendChild(modifierText);
+            }
 
             itemStickers.forEach((stick) => {
               const stickerText = document.createElement("div");
@@ -380,11 +407,38 @@
           });
 
           if (packs.length > 0) {
-            const packFilters = {
-              "Arcana Pack": false,
-              "Celestial Pack": false,
-              "Standard Pack": false,
-            };
+            // 只允许一个 pack 过滤器激活：
+            // "ALL" 显示所有，其它则按类型过滤
+            // 先统计当前 ANTE 中有哪些 pack 类型
+            const packTypesPresent = new Set();
+            packs.forEach((packStr) => {
+              const packNameOnly = packStr.split(" - ")[0];
+              const type = getPackTypeFromName(packNameOnly);
+              if (type) {
+                packTypesPresent.add(type);
+              }
+            });
+
+            const hasSpectralBuffoon =
+              packTypesPresent.has("Spectral Pack") ||
+              packTypesPresent.has("Buffoon Pack");
+            const hasArcana = packTypesPresent.has("Arcana Pack");
+            const hasCelestial = packTypesPresent.has("Celestial Pack");
+            const hasStandard = packTypesPresent.has("Standard Pack");
+
+            // 默认优先选 Spectral&Buffoon；
+            // 如果没有，则按 Standard → Arcana → Celestial 的顺序
+            // 选择第一个存在的类型；如果都没有，则退回 All Packs
+            let activePackFilter = "ALL";
+            if (hasSpectralBuffoon) {
+              activePackFilter = "SPECTRAL_BUFFOON";
+            } else if (hasStandard) {
+              activePackFilter = "STANDARD";
+            } else if (hasArcana) {
+              activePackFilter = "ARCANA";
+            } else if (hasCelestial) {
+              activePackFilter = "CELESTIAL";
+            }
 
             const packHeaderRow = document.createElement("div");
             packHeaderRow.className = "packHeaderRow";
@@ -394,46 +448,106 @@
             packsTitle.textContent = "Packs";
             packHeaderRow.appendChild(packsTitle);
 
-            const packsSep = document.createElement("div");
-            packsSep.className = "packSep";
-            packsSep.textContent = "|";
-            packHeaderRow.appendChild(packsSep);
-
             const packToggles = document.createElement("div");
             packToggles.className = "pack-filter pack-inline";
-            const toggleTypes = [
-              "Arcana Pack",
-              "Celestial Pack",
-              "Standard Pack",
+
+            // 定义 pack 过滤按钮：All, Arcana, Celestial, Standard, Spectral&Buffoon
+            const toggleDefs = [
+              { key: "ALL", label: "All Packs" },
+              { key: "SPECTRAL_BUFFOON", label: "Spectral&Buffoon" },
+              { key: "STANDARD", label: "Standard" },
+              { key: "ARCANA", label: "Arcana" },
+              { key: "CELESTIAL", label: "Celestial" },
             ];
-            toggleTypes.forEach((type) => {
+
+            const packFilterButtons = {};
+
+            toggleDefs.forEach((def) => {
               const btn = document.createElement("button");
               btn.type = "button";
               btn.className = "toggle-button";
-              btn.textContent = type.replace(" Pack", "");
+              btn.textContent = def.label;
 
-              if (packFilters[type]) btn.classList.add("active");
+              // 根据当前 ANTE 中的 pack 类型决定按钮是否可用
+              let isEnabled = true;
+              if (def.key === "ALL") {
+                isEnabled = packs.length > 0;
+              } else if (def.key === "SPECTRAL_BUFFOON") {
+                isEnabled = hasSpectralBuffoon;
+              } else if (def.key === "ARCANA") {
+                isEnabled = hasArcana;
+              } else if (def.key === "CELESTIAL") {
+                isEnabled = hasCelestial;
+              } else if (def.key === "STANDARD") {
+                isEnabled = hasStandard;
+              }
+
+              btn.disabled = !isEnabled;
+
+              // 默认激活当前选中的过滤器（前提是可用）
+              if (def.key === activePackFilter && isEnabled) {
+                btn.classList.add("active");
+              }
 
               btn.addEventListener("click", () => {
-                packFilters[type] = !packFilters[type];
-                btn.classList.toggle("active", packFilters[type]);
+                if (btn.disabled) return;
+
+                // 把当前点击的设为唯一激活
+                activePackFilter = def.key;
+
+                // 更新所有按钮的 active 状态
+                Object.values(packFilterButtons).forEach((b) =>
+                  b.classList.remove("active")
+                );
+                btn.classList.add("active");
+
                 renderPacks();
               });
 
+              packFilterButtons[def.key] = btn;
               packToggles.appendChild(btn);
             });
-            packHeaderRow.appendChild(packToggles);
-
+            // Header row only contains the title and separator
             queueContainer.appendChild(packHeaderRow);
+            // Pack toggle buttons are rendered on a separate line below the header
+            queueContainer.appendChild(packToggles);
+
             const packsContainer = document.createElement("div");
             queueContainer.appendChild(packsContainer);
 
             function shouldShowPack(packName) {
               const packType = getPackTypeFromName(packName);
-              if (!packType) return true;
-              if (packType === "Buffoon Pack" || packType === "Spectral Pack")
+
+              // All Packs 模式：显示所有
+              if (activePackFilter === "ALL") {
                 return true;
-              return Boolean(packFilters[packType]);
+              }
+
+              // 没法识别类型时，非 ALL 模式下隐藏
+              if (!packType) {
+                return false;
+              }
+
+              if (activePackFilter === "ARCANA") {
+                return packType === "Arcana Pack";
+              }
+
+              if (activePackFilter === "CELESTIAL") {
+                return packType === "Celestial Pack";
+              }
+
+              if (activePackFilter === "STANDARD") {
+                return packType === "Standard Pack";
+              }
+
+              if (activePackFilter === "SPECTRAL_BUFFOON") {
+                return (
+                  packType === "Spectral Pack" || packType === "Buffoon Pack"
+                );
+              }
+
+              // 兜底：万一有什么未知值，就都显示
+              return true;
             }
 
             function renderPacks() {
@@ -441,6 +555,7 @@
               packs.forEach((pack) => {
                 const packItems = pack.split(" - ");
                 const packName = packItems[0];
+                const packType = getPackTypeFromName(packName);
                 if (!shouldShowPack(packName)) {
                   return;
                 }
@@ -465,9 +580,17 @@
                   const cardContainer = document.createElement("div");
 
                   if (itemType !== "unknown") {
+                    // For Buffoon Pack cards (jokers, etc.), use the same overlaid
+                    // modifier label on the image as in the main queue.
+                    // Pack card canvas size now matches queue cards (80x107).
+
+                    // Wrap canvas so we can anchor overlays on the image itself
+                    const canvasWrapper = document.createElement("div");
+                    canvasWrapper.className = "cardCanvasWrapper";
+
                     const canvas = document.createElement("canvas");
-                    canvas.width = 71;
-                    canvas.height = 95;
+                    canvas.width = 80;
+                    canvas.height = 107;
                     maskToCanvas(
                       canvas,
                       parsedCardName,
@@ -475,20 +598,54 @@
                       itemModifiers,
                       itemStickers
                     );
-                    cardContainer.appendChild(canvas);
+                    canvasWrapper.appendChild(canvas);
+                    cardContainer.appendChild(canvasWrapper);
 
                     const itemText = document.createElement("div");
                     itemText.textContent = parsedCardName;
                     itemText.classList.add("cardName");
                     cardContainer.appendChild(itemText);
 
-                    itemModifiers.forEach((mod) => {
-                      const modifierText = document.createElement("div");
-                      modifierText.classList.add("modifier");
-                      modifierText.textContent = mod;
-                      cardContainer.appendChild(modifierText);
-                    });
+                    if (packType === "Buffoon Pack") {
+                      // Edition-like modifiers become an overlaid label on the image
+                      const overlayMod = itemModifiers.find((mod) =>
+                        [
+                          "Foil",
+                          "Holographic",
+                          "Polychrome",
+                          "Negative",
+                        ].includes(mod)
+                      );
 
+                      if (overlayMod) {
+                        const modifierLabel = document.createElement("div");
+                        modifierLabel.classList.add("modifier");
+
+                        const lower = overlayMod.toLowerCase();
+                        if (lower === "polychrome") {
+                          modifierLabel.classList.add("polychrome");
+                        } else if (lower === "foil") {
+                          modifierLabel.classList.add("foil");
+                        } else if (lower === "negative") {
+                          modifierLabel.classList.add("negAtive");
+                        } else if (lower === "holographic") {
+                          modifierLabel.classList.add("holographic");
+                        }
+
+                        modifierLabel.textContent = overlayMod;
+                        canvasWrapper.appendChild(modifierLabel);
+                      }
+                    } else {
+                      // Non-Buffoon packs keep textual modifier labels under the card
+                      itemModifiers.forEach((mod) => {
+                        const modifierText = document.createElement("div");
+                        modifierText.classList.add("modifier");
+                        modifierText.textContent = mod;
+                        cardContainer.appendChild(modifierText);
+                      });
+                    }
+
+                    // Stickers are always shown as text under the card
                     itemStickers.forEach((stick) => {
                       const stickerText = document.createElement("div");
                       stickerText.classList.add("sticker");
@@ -503,8 +660,8 @@
                     const { rank, suit, modifiers, seal } = parsed;
 
                     const canvas = document.createElement("canvas");
-                    canvas.width = 71;
-                    canvas.height = 95;
+                    canvas.width = 80;
+                    canvas.height = 107;
                     renderStandardCard(canvas, rank, suit, modifiers, seal);
                     cardContainer.appendChild(canvas);
 
@@ -535,6 +692,9 @@
 
                 packsContainer.appendChild(packItem);
               });
+
+              // Re-apply highlight state to newly rendered pack cards
+              searchAndHighlight();
             }
 
             renderPacks();

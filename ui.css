@@ -1,6 +1,21 @@
+/* Card display variables */
+:root {
+  /* Queue cards size */
+  --card-width: 80px;
+  --card-height: 107px; /* keeps ~71:95 aspect ratio */
+  --card-gap: 10px;
+  --card-padding: 12px;
+}
+
 body {
   background-color: #1e1e1e;
   color: #ffffff;
+}
+
+h1 {
+  color: #ffffff;
+  background-color: #444444;
+  text-align: center;
 }
 
 .container {
@@ -12,11 +27,6 @@ body {
 .output-section {
   background-color: #333333;
   color: #ffffff;
-}
-
-h1 {
-  color: #ffffff;
-  background-color: #444444;
 }
 
 h2 {
@@ -43,16 +53,22 @@ button {
 }
 
 button:hover {
-  background-color: #666666;
 }
 
-/* Card display variables */
-:root {
-  /* Queue cards size */
-  --card-width: 80px;
-  --card-height: 107px; /* keeps ~71:95 aspect ratio */
-  --card-gap: 10px;
-  --card-padding: 12px;
+/* Omit results before Ante 9 checkbox/label spacing */
+#omitBeforeAnte9,
+label[for="omitBeforeAnte9"] {
+  display: inline-block;
+  margin-top: 6px;
+}
+
+#checkboxesOverlay {
+  background-color: rgba(0, 0, 0, 0.8);
+}
+
+#checkboxesPopup {
+  background-color: #333333;
+  color: #ffffff;
 }
 
 .search-container {
@@ -74,14 +90,6 @@ button:hover {
   display: flex;
   flex-direction: column;
   gap: 8px;
-}
-
-/* Omit results before Ante 9 checkbox/label spacing */
-/* Omit results before Ante 9 checkbox/label spacing */
-#omitBeforeAnte9,
-label[for="omitBeforeAnte9"] {
-  display: inline-block;
-  margin-top: 6px;
 }
 
 .toggle-group {
@@ -129,8 +137,15 @@ label[for="omitBeforeAnte9"] {
   font-size: 13px;
 }
 
-.toggle-button:hover {
-  background-color: #2b2b2b;
+.toggle-button:disabled {
+  opacity: 0.5;
+  text-decoration: line-through;   /* 文字删除线 */
+  background-color: #333333;       /* 略浅一点的灰背景 */
+  border-color: #555555;
+  cursor: default;                 /* 鼠标不再是手型 */
+}
+
+.toggle-button:not(:disabled):hover {
 }
 
 .toggle-button.active {
@@ -162,11 +177,9 @@ label[for="omitBeforeAnte9"] {
   align-items: center;
   gap: 4px;
   flex-wrap: nowrap;
-  margin-bottom: 6px;
-
   /* Make the whole row a subheading bar (matches ANTE style, but lighter) */
   background-color: rgba(255, 255, 255, 0.04);
-  padding: 7px 9px;
+  padding: 4px 9px;
   border-left: 3px solid rgba(180, 180, 180, 0.7);
   border-radius: 4px;
 }
@@ -177,14 +190,14 @@ label[for="omitBeforeAnte9"] {
   border-radius: 0;
   display: flex;
   align-items: center;
-  margin: 0;
+  flex-wrap: wrap;
+  margin: 8px 0 10px 0;  /* standalone row below the header */
   padding: 0;
   gap: 8px;
 }
 
-.pack-filter.pack-inline .toggle-button {
-    font-size: 12px;
-    padding: 4px 8px;
+.pack-filter.pack-inline .toggle-button.active {
+  background-color: #787878;
 }
 
 /* .pack-filter.pack-inline label {
@@ -202,22 +215,11 @@ label[for="omitBeforeAnte9"] {
   margin: 0;
 } */
 
-#checkboxesOverlay {
-  background-color: rgba(0, 0, 0, 0.8);
-}
-
-#checkboxesPopup {
-  background-color: #333333;
-  color: #ffffff;
-}
-
 .cardSet {
   border: 1px solid #555555;
   border-radius: 8px;
   background-color: #2a2a2a;
-  padding: var(--card-padding);
-  padding-left: 24px;
-  padding-right: 24px;
+  padding: calc(var(--card-padding) + 0px) calc(var(--card-padding) + 2px);
   margin-top: 10px;
   margin-bottom: 10px;
   display: flex;
@@ -230,9 +232,11 @@ label[for="omitBeforeAnte9"] {
   display: flex;
   align-items: center;
   justify-content: flex-start;
+  margin-bottom: 2px;
 }
 
-.cardSetToggle {
+.cardSetToggle,
+.pack-filter.pack-inline .toggle-button {
   padding: 6px 10px;
   border: 1px solid #666666;
   border-radius: 6px;
@@ -244,15 +248,9 @@ label[for="omitBeforeAnte9"] {
     transform 0.1s ease;
 }
 
-.cardSetToggle:hover {
-  background-color: #4a4a4a;
-  border-color: #777777;
-}
-
 .cardSetToggle:active {
   transform: translateY(1px);
 }
-/* Layout toggle end */
 
 #scrollingContainer {
   display: block;
@@ -282,7 +280,7 @@ label[for="omitBeforeAnte9"] {
   text-transform: uppercase;
   color: #ffffff;
   background-color: rgba(255, 255, 255, 0.08);
-  padding: 8px 10px 8px 12px; /* extra left padding */
+  padding: 8px 0 6px 12px; /* extra left padding */
   border-left: 3px solid #ffffff;
   border-radius: 4px;
   text-shadow: 0 0 6px rgba(255, 255, 255, 0.25);
@@ -300,12 +298,10 @@ label[for="omitBeforeAnte9"] {
   line-height: 1.15;
   margin-left: 1px;
   display: inline-block;
-  transform: translateY(-1px); /* let flex centering handle alignment */
 }
 
 .anteNumOrange { color: #f48a18; } /* dim warm orange */
 .anteNumRed { color: #f94141; }    /* dim soft red */
-
 
 .packTitle {
   font-size: 16px;
@@ -313,7 +309,7 @@ label[for="omitBeforeAnte9"] {
   color: #d0d0d0;
   background: transparent;
   border-left: none;
-  padding: 0;
+  padding: 2px 0px 0px 0px;
   margin: 0;
   white-space: nowrap;
 }
@@ -342,9 +338,17 @@ label[for="omitBeforeAnte9"] {
 
 .cardList {
   width: 100%;
-  padding: 0;
-  margin: 0;
   box-sizing: border-box;
+  scrollbar-width: none; /* Firefox */
+}
+
+.cardList::-webkit-scrollbar {
+  display: none; /* WebKit-based browsers */
+}
+
+.cardList:active,
+.cardList:hov {
+  cursor: grabbing;
 }
 
 .scrollable {
@@ -353,10 +357,10 @@ label[for="omitBeforeAnte9"] {
   white-space: nowrap;
   cursor: grab;
   scrollbar-width: none;
-  -ms-overflow-style: none;
   gap: var(--card-gap);
   padding: 0;
   margin: 0;
+  min-height: calc((var(--card-height) + 28px));
   align-items: flex-start; /* keep card heights consistent across layouts */
 }
 
@@ -365,28 +369,21 @@ label[for="omitBeforeAnte9"] {
   flex: 0 0 calc(var(--card-width) + 6px);
 }
 
-.scrollable:active {
-  cursor: grabbing;
-}
-
-.scrollable::-webkit-scrollbar {
-  display: none;
-}
-
-/* Grid layout for card set - start */
 .grid-layout {
   display: grid;
   grid-template-columns: repeat(
     auto-fill,
-    minmax(calc(var(--card-width) + 4px), 1fr)
+    minmax(calc(var(--card-width) + 0px), 1fr)
   );
   gap: clamp(8px, 2vw, 24px);
   justify-items: start;
   align-items: start;
   padding: 0;
   margin: 0;
+  /* Limit grid height to about 4 rows, then scroll vertically */
+  max-height: calc(3 * (var(--card-height) + 32px));
+  overflow-y: auto;
 }
-/* Grid layout for card set - end */
 
 .queueItem {
   display: inline-flex;
@@ -398,35 +395,85 @@ label[for="omitBeforeAnte9"] {
   color: #ffffff;
   width: calc(var(--card-width) + 6px);
   box-sizing: border-box;
-  height: calc(var(--card-height) + 38px); /* lock overall item height so borders match */
+  /* height: calc(var(--card-height) + 38px); lock overall item height so borders match */
   vertical-align: top; /* remove baseline gap difference between scroll/grid */
 }
 
-
 .queueItem canvas {
   width: calc(var(--card-width) - 0px);
-  height: calc(var(--card-height) - 0px);
+  height: calc(var(--card-height) + 1px);
   display: block;
   margin: 0 auto;
   pointer-events: none;
   transform: translate(0px, 1px); /* nudge card art left + up */
 }
 
-.queueItem div {
-  margin-top: 4px;
+/* Target the second direct div child inside .queueItem */
+.queueItem > div:nth-child(2) {
+  margin-top: 6px;
   line-height: 1.2;
-  max-width: 100%;
 }
 
-.queueItem > div:first-of-type {
-  white-space: nowrap;
+/* 只有在 grid 布局下，最多显示两行，超出用 ... 省略 */
+.grid-layout .queueItem > div:nth-child(2) {
+  display: -webkit-box;
+  -webkit-line-clamp: 1;          /* 最大两行 */
+  line-clamp: 1;                  /* 标准属性以提高兼容性 */
+  -webkit-box-orient: vertical;
   overflow: hidden;
   text-overflow: ellipsis;
 }
 
 .modifier {
-  color: #aaaaaa;
+  color: #979797;
 }
+
+/* Modifier label overlay on card images - start */
+/* Card image overlay anchor wrapper */
+.cardCanvasWrapper {
+  position: relative;
+  display: inline-block;
+  width: var(--card-width);
+  height: var(--card-height);
+}
+
+.cardCanvasWrapper .modifier {
+  position: absolute;
+  /* 3px from the bottom, horizontally centered in the card */
+  bottom: 6px;
+  left: 50%;
+  transform: translateX(-50%);
+  padding: 2px 4px;
+  line-height: 1.2;
+  border-radius: 4px; /* all four corners rounded */
+  background-color: rgba(255, 80, 150, 0.9); /* default magenta tag background to match dark theme */
+  color: #ffffff;
+  pointer-events: none;
+  box-shadow: 0 0 4px rgba(0, 0, 0, 0.4);
+}
+
+/* Type-specific colors for different modifier kinds (all using gradients) */
+.cardCanvasWrapper .modifier.polychrome {
+  /* magenta-pink to warm violet */
+  background: linear-gradient(135deg, #ff4f9a, #ff7ad1);
+}
+
+.cardCanvasWrapper .modifier.foil {
+  /* cool blue foil look */
+  background: linear-gradient(135deg, #4d9eff, #7fd8ff);
+}
+
+.cardCanvasWrapper .modifier.negAtive,
+.cardCanvasWrapper .modifier.negative {
+  /* neutral gray gradient so it still looks "muted" but not flat */
+  background: linear-gradient(135deg, #5e5e5e, #8a8a8a);
+}
+
+.cardCanvasWrapper .modifier.holographic {
+  /* green-teal holographic style */
+  background: linear-gradient(135deg, #48c774, #38b2ff);
+}
+/* Modifier label overlay on card images - end */
 
 .sticker {
   color: #ffcc00;
@@ -471,27 +518,23 @@ label[for="omitBeforeAnte9"] {
   align-items: center;
   text-align: center;
   font-size: 10px;
-  width: 71px;
+  width: calc(var(--card-width) + 6px);
   margin-right: 5px;
 }
 
 .packItem canvas {
-  width: 71px;
-  height: 95px;
-  margin-bottom: 3px;
+  width: calc(var(--card-width) - 0px);
+  height: calc(var(--card-height) + 1px);
+  margin-bottom: 0;      /* do not push the wrapper taller than the image */
   pointer-events: none;
 }
 
 .packItem .cardName {
   font-size: 10px;
   margin-bottom: 3px;
+  margin-top: 4px;
   word-wrap: break-word;
   color: #ffffff;
-}
-
-.highlight .cardName,
-.highlight .tagName {
-  color: #ff5a5a;
 }
 
 .packItem .standardCardName {
@@ -506,6 +549,11 @@ label[for="omitBeforeAnte9"] {
   color: #aaaaaa;
 }
 
+/* Ensure overlaid modifier labels on pack card images keep white text */
+.packItem .cardCanvasWrapper .modifier {
+  color: #ffffff;
+}
+
 .packItem > .packName {
   display: flex;
   align-items: center;
@@ -514,6 +562,27 @@ label[for="omitBeforeAnte9"] {
   margin-right: 5px;
   height: 95px; /* Match the pack card height */
   justify-content: center;
+}
+
+.highlight {
+  background: transparent;
+  border: none;
+  border-radius: 0;
+  box-sizing: border-box;
+  color: #ff5a5a; /* keep non-card text colors unchanged */
+}
+
+.highlight .cardName,
+.highlight .tagName {
+  color: #ff5a5a;
+}
+
+.highlight canvas,
+.highlight img {
+  border: 2px solid red; /* single visible border on media only */
+  border-radius: 4px;
+  display: block;
+  box-sizing: border-box;
 }
 
 .voucherContainer,
@@ -544,75 +613,6 @@ label[for="omitBeforeAnte9"] {
   display: flex;
   flex-wrap: wrap;
   gap: 5px;
-}
-
-.search-container {
-  margin-bottom: 10px;
-}
-
-#searchInput {
-  width: 100%;
-  padding: 5px;
-  font-size: 14px;
-}
-
-.highlight {
-  background: transparent;
-  border: none;
-  border-radius: 0;
-  box-sizing: border-box;
-  color: #ff5a5a; /* keep non-card text colors unchanged */
-}
-
-.highlight canvas,
-.highlight img {
-  border: 2px solid red; /* single visible border on media only */
-  border-radius: 4px;
-  display: block;
-  box-sizing: border-box;
-}
-
-/* Queue items: draw highlight border above canvas/text reliably */
-.queueItem {
-  position: relative; /* anchor pseudo-element */
-  padding: 2px;
-}
-
-.queueItem.highlight {
-  border: none !important;
-  overflow: visible !important;
-  background: transparent;
-  color: #ff5a5a; /* keep card text red when highlighted */
-}
-
-.queueItem.highlight::after {
-  display: none;
-}
-
-.queueItem.highlight > * {
-  position: relative;
-  z-index: 1;
-}
-
-.queueItem.highlight canvas {
-  border: 2px solid red;
-  border-radius: 6px;
-  box-sizing: border-box;
-}
-
-.queueItem.highlight::after {
-  display: none;
-}
-
-.queueItem.highlight > * {
-  position: relative;
-  z-index: 1;
-}
-
-.queueItem.highlight canvas {
-  border: 2px solid red;
-  border-radius: 6px;
-  box-sizing: border-box;
 }
 
 .bossContainer {
