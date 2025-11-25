@@ -56,5 +56,6 @@
         "xutility": "cpp",
         "iomanip": "cpp",
         "sstream": "cpp"
-    }
+    },
+    "chatgpt.commentCodeLensEnabled": false
 }

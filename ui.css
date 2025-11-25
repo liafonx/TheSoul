@@ -91,19 +91,42 @@ label[for="omitBeforeAnte9"] {
   gap: 6px;
 }
 
+/* Filter row layout start */
+.toggle-group.filter-row {
+  align-items: flex-start;
+  flex-wrap: nowrap;
+  gap: 8px;
+}
+
+.filter-label {
+  flex: 0 0 auto;
+}
+
+.filter-buttons {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px 8px; /* extra row spacing for multi-line button groups */
+  flex: 1 1 auto;
+}
+
+.filter-buttons .toggle-button {
+  margin: 0;
+}
+/* Filter row layout end */
+
 .toggle-group-title {
   font-weight: bold;
   min-width: 80px;
 }
 
 .toggle-button {
-  padding: 4px 8px;
+  padding: 6px 12px;
   border: 1px solid #555;
   border-radius: 4px;
   background-color: #2b2b2b;
   color: #fff;
   cursor: pointer;
-  font-size: 12px;
+  font-size: 13px;
 }
 
 .toggle-button:hover {
@@ -193,9 +216,43 @@ label[for="omitBeforeAnte9"] {
   border-radius: 8px;
   background-color: #2a2a2a;
   padding: var(--card-padding);
+  padding-left: 24px;
+  padding-right: 24px;
   margin-top: 10px;
   margin-bottom: 10px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
 }
+
+/* Layout toggle start */
+.cardSetHeader {
+  display: flex;
+  align-items: center;
+  justify-content: flex-start;
+}
+
+.cardSetToggle {
+  padding: 6px 10px;
+  border: 1px solid #666666;
+  border-radius: 6px;
+  background: #3a3a3a;
+  color: #ffffff;
+  font-size: 12px;
+  cursor: pointer;
+  transition: background-color 0.15s ease, border-color 0.15s ease,
+    transform 0.1s ease;
+}
+
+.cardSetToggle:hover {
+  background-color: #4a4a4a;
+  border-color: #777777;
+}
+
+.cardSetToggle:active {
+  transform: translateY(1px);
+}
+/* Layout toggle end */
 
 #scrollingContainer {
   display: block;
@@ -283,6 +340,13 @@ label[for="omitBeforeAnte9"] {
   text-align: center;
 }
 
+.cardList {
+  width: 100%;
+  padding: 0;
+  margin: 0;
+  box-sizing: border-box;
+}
+
 .scrollable {
   display: flex;
   overflow-x: auto;
@@ -291,6 +355,14 @@ label[for="omitBeforeAnte9"] {
   scrollbar-width: none;
   -ms-overflow-style: none;
   gap: var(--card-gap);
+  padding: 0;
+  margin: 0;
+  align-items: flex-start; /* keep card heights consistent across layouts */
+}
+
+/* Keep scroll items using fixed card column width, matching grid sizing */
+.scrollable .queueItem {
+  flex: 0 0 calc(var(--card-width) + 6px);
 }
 
 .scrollable:active {
@@ -301,29 +373,55 @@ label[for="omitBeforeAnte9"] {
   display: none;
 }
 
+/* Grid layout for card set - start */
+.grid-layout {
+  display: grid;
+  grid-template-columns: repeat(
+    auto-fill,
+    minmax(calc(var(--card-width) + 4px), 1fr)
+  );
+  gap: clamp(8px, 2vw, 24px);
+  justify-items: start;
+  align-items: start;
+  padding: 0;
+  margin: 0;
+}
+/* Grid layout for card set - end */
+
 .queueItem {
   display: inline-flex;
   flex-direction: column;
+  align-items: center;
   text-align: center;
   font-size: 10px;
   white-space: normal;
   color: #ffffff;
-  width: var(--card-width);
+  width: calc(var(--card-width) + 6px);
+  box-sizing: border-box;
+  height: calc(var(--card-height) + 38px); /* lock overall item height so borders match */
+  vertical-align: top; /* remove baseline gap difference between scroll/grid */
 }
 
 
 .queueItem canvas {
-  width: calc(var(--card-width) - 2px);
-  height: calc(var(--card-height) - 3px);
+  width: calc(var(--card-width) - 0px);
+  height: calc(var(--card-height) - 0px);
   display: block;
   margin: 0 auto;
   pointer-events: none;
-  transform: translate(-1px, -1px); /* nudge card art left + up */
+  transform: translate(0px, 1px); /* nudge card art left + up */
 }
 
 .queueItem div {
-  margin-top: 3px;
+  margin-top: 4px;
   line-height: 1.2;
+  max-width: 100%;
+}
+
+.queueItem > div:first-of-type {
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
 .modifier {
@@ -391,6 +489,11 @@ label[for="omitBeforeAnte9"] {
   color: #ffffff;
 }
 
+.highlight .cardName,
+.highlight .tagName {
+  color: #ff5a5a;
+}
+
 .packItem .standardCardName {
   font-size: 10px;
   margin-bottom: 3px;
@@ -454,17 +557,19 @@ label[for="omitBeforeAnte9"] {
 }
 
 .highlight {
-  background-color: rgba(255, 0, 0, 0.18);
-  border: 2px solid red;
-  border-radius: 6px;
+  background: transparent;
+  border: none;
+  border-radius: 0;
   box-sizing: border-box;
-  overflow: hidden;
+  color: #ff5a5a; /* keep non-card text colors unchanged */
 }
 
 .highlight canvas,
 .highlight img {
+  border: 2px solid red; /* single visible border on media only */
   border-radius: 4px;
   display: block;
+  box-sizing: border-box;
 }
 
 /* Queue items: draw highlight border above canvas/text reliably */
@@ -474,27 +579,40 @@ label[for="omitBeforeAnte9"] {
 }
 
 .queueItem.highlight {
-  border: none !important; /* override generic border that renders as a line */
-  overflow: visible !important; /* avoid clipping the overlay */
-  background-color: rgba(255, 0, 0, 0.18);
-  border-radius: 6px;
-  isolation: isolate;
+  border: none !important;
+  overflow: visible !important;
+  background: transparent;
+  color: #ff5a5a; /* keep card text red when highlighted */
 }
 
 .queueItem.highlight::after {
-  content: "";
-  position: absolute;
-  inset: 0px; /* draw border outside the item */
-  border: 2px solid red;
-  border-radius: 8px;
-  pointer-events: none;
-  box-sizing: border-box;
-  z-index: 10;
+  display: none;
 }
 
 .queueItem.highlight > * {
   position: relative;
   z-index: 1;
+}
+
+.queueItem.highlight canvas {
+  border: 2px solid red;
+  border-radius: 6px;
+  box-sizing: border-box;
+}
+
+.queueItem.highlight::after {
+  display: none;
+}
+
+.queueItem.highlight > * {
+  position: relative;
+  z-index: 1;
+}
+
+.queueItem.highlight canvas {
+  border: 2px solid red;
+  border-radius: 6px;
+  box-sizing: border-box;
 }
 
 .bossContainer {
