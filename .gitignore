@@ -1,0 +1,5 @@
+# macOS cruft
+.DS_Store
+
+# Generated analysis outputs
+outputs/
