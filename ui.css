@@ -18,6 +18,19 @@ h1 {
   text-align: center;
 }
 
+h1.site-title {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+  padding: 12px;
+}
+
+.site-title-icon {
+  width: 48px;
+  height: 48px;
+}
+
 .container {
   background-color: #2b2b2b;
   color: #ffffff;
