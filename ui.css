@@ -5,6 +5,8 @@
   --card-height: 107px; /* keeps ~71:95 aspect ratio */
   --card-gap: 10px;
   --card-padding: 12px;
+  --group-line-extra: 4px;
+  --group-first-offset: 25px;
 }
 
 body {
@@ -24,6 +26,7 @@ h1.site-title {
   justify-content: center;
   gap: 12px;
   padding: 12px;
+  text-shadow: 0 0 6px rgba(255, 255, 255, 0.25);
 }
 
 .site-title-icon {
@@ -65,6 +68,9 @@ button {
   border: none;
 }
 
+input#withEnglishToggle {
+  margin-left: -2px;
+}
 
 /* Omit results before Ante 9 checkbox/label spacing */
 #omitBeforeAnte9,
@@ -83,22 +89,96 @@ label[for="omitBeforeAnte9"] {
 }
 
 .search-container {
-  margin: 8px auto 10px auto;
-  padding: 0 20px;
-  max-width: 1200px;
+  margin: 8px 40px 10px 20px;
+  padding: 0;
+  max-width: 900px;
+}
+
+#paginationContainer {
+  display: none;
+  margin: 30px 40px 80px 20px;
+  padding: 0;
+  max-width: 900px;
+  justify-content: center;
+  align-items: center;
+  gap: 8px;
+}
+.paginationButton {
+  background-color: #3d3d3d;
+  color: #f5f5f5;
+  border: 1px solid #555555;
+  border-radius: 6px;
+  padding: 4px 10px;
+  cursor: pointer;
+}
+
+.paginationButton:disabled {
+  opacity: 0.5;
+  cursor: default;
+}
+
+.paginationSelect {
+  background-color: #2c2c2c;
+  color: #f5f5f5;
+  font-size: 14px;
+  border: 1px solid #555555;
+  border-radius: 4px;
+  padding: 4px 6px;
+}
+
+.paginationInfo {
+  font-size: 13px;
+  color: #cccccc;
+}
+
+.filter-panel {
+  margin: 0 20px 12px 20px;
+  padding: 0 6px 0 8px;
+  max-width: 800px;
+  border: 1px solid #555555;
+  border-radius: 8px;
+  background-color: #242424;
+}
+
+.filter-summary {
+  /* border-bottom: 1px solid #55555500; */
+  cursor: pointer;
+  list-style: none;
+  padding: 6px 10px 6px 10px;
+  font-weight: 600;
+  letter-spacing: 0.15px;
+  font-size: 14px;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  width: fit-content;
+  /* width: 200px; */
+  margin-left: 4px;
+  padding-left: 2px;
+}
+
+.filter-summary::-webkit-details-marker {
+  display: none;
+}
+
+.filter-panel[open] .filter-summary {
+  border-bottom: 1px solid #555555;
+  margin-bottom: 4px;
 }
 
 #searchInput {
   width: 100%;
   padding: 5px;
+  max-width: 800px;
   font-size: 14px;
 }
 
 .toggle-container {
-  margin: 0 auto 12px auto;
-  padding: 0 20px;
-  max-width: 1200px;
+  margin: 0 4px;
+  padding: 4px 0 12px 0;
+  width: 100%;
   display: flex;
+  max-width: 800px;
   flex-direction: column;
   gap: 8px;
 }
@@ -114,6 +194,7 @@ label[for="omitBeforeAnte9"] {
 .toggle-group.filter-row {
   align-items: flex-start;
   flex-wrap: nowrap;
+  margin-top: 6px;
   gap: 8px;
 }
 
@@ -136,6 +217,7 @@ label[for="omitBeforeAnte9"] {
 .toggle-group-title {
   font-weight: bold;
   min-width: 80px;
+  font-size: 14px;
 }
 
 .toggle-button {
@@ -150,10 +232,10 @@ label[for="omitBeforeAnte9"] {
 
 .toggle-button:disabled {
   opacity: 0.5;
-  text-decoration: line-through;   /* 文字删除线 */
-  background-color: #333333;       /* 略浅一点的灰背景 */
+  text-decoration: line-through; /* 文字删除线 */
+  background-color: #333333; /* 略浅一点的灰背景 */
   border-color: #555555;
-  cursor: default;                 /* 鼠标不再是手型 */
+  cursor: default; /* 鼠标不再是手型 */
 }
 
 .toggle-button:not(:disabled):hover {
@@ -202,7 +284,7 @@ label[for="omitBeforeAnte9"] {
   display: flex;
   align-items: center;
   flex-wrap: wrap;
-  margin: 8px 0 10px 0;  /* standalone row below the header */
+  margin: 8px 0 10px 0; /* standalone row below the header */
   padding: 0;
   gap: 8px;
 }
@@ -242,7 +324,9 @@ label[for="omitBeforeAnte9"] {
 .cardSetHeader {
   display: flex;
   align-items: center;
-  justify-content: flex-start;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 10px;
   margin-bottom: 2px;
 }
 
@@ -261,6 +345,33 @@ label[for="omitBeforeAnte9"] {
 
 .cardSetToggle:active {
   transform: translateY(1px);
+}
+
+.groupSizeControls {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex-wrap: wrap;
+}
+
+.groupSizeLabel {
+  font-size: 14px;
+  /* text-transform: uppercase; */
+  letter-spacing: 0.4px;
+  color: #bbbbbb;
+}
+
+.groupSizeButton {
+  width: 34px;
+  font-size: 13px;
+  height: 26px;
+  text-align: center;
+}
+
+.groupSizeButton.active {
+  background: #5f5f5f;
+  border-color: #9a9a9a;
+  color: #ffffff;
 }
 
 #scrollingContainer {
@@ -297,22 +408,26 @@ label[for="omitBeforeAnte9"] {
   text-shadow: 0 0 6px rgba(255, 255, 255, 0.25);
   margin-bottom: 10px;
   display: flex;
-  align-items: center;  /* vertically center contents in the bar */
+  align-items: center; /* vertically center contents in the bar */
   gap: 4px;
-  line-height: 1;       /* avoid baseline pull-down */
+  line-height: 1; /* avoid baseline pull-down */
 }
 
 .anteNum {
-  color: #ffe08a;        /* your yellow accent */
-  font-size: 1.35em;     /* bigger than 'ANTE' */
+  color: #ffe08a; /* your yellow accent */
+  font-size: 1.35em; /* bigger than 'ANTE' */
   font-weight: 700;
   line-height: 1.15;
   margin-left: 1px;
   display: inline-block;
 }
 
-.anteNumOrange { color: #f48a18; } /* dim warm orange */
-.anteNumRed { color: #f94141; }    /* dim soft red */
+.anteNumOrange {
+  color: #f48a18;
+} /* dim warm orange */
+.anteNumRed {
+  color: #f94141;
+} /* dim soft red */
 
 .packTitle {
   font-size: 16px;
@@ -357,43 +472,175 @@ label[for="omitBeforeAnte9"] {
   display: none; /* WebKit-based browsers */
 }
 
-.cardList:active,
-.cardList:hov {
+.cardList.scrollable:active,
+.cardList.scrollable:hover {
   cursor: grabbing;
 }
 
-.scrollable {
+.cardList.scrollable {
   display: flex;
+  gap: var(--card-gap);
   overflow-x: auto;
-  white-space: nowrap;
   cursor: grab;
   scrollbar-width: none;
-  gap: var(--card-gap);
   padding: 0;
   margin: 0;
-  min-height: calc((var(--card-height) + 28px));
-  align-items: flex-start; /* keep card heights consistent across layouts */
+  min-height: calc((var(--card-height) + 32px));
+  align-items: flex-start;
 }
 
-/* Keep scroll items using fixed card column width, matching grid sizing */
-.scrollable .queueItem {
-  flex: 0 0 calc(var(--card-width) + 6px);
+.cardGroup {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding-bottom: 4px;
 }
 
-.grid-layout {
+.cardList.scrollable .cardGroup {
+  flex: 0 0 auto;
+}
+
+.cardList.grid-layout {
+  --grid-gap: clamp(8px, 1vw, 1px);
   display: grid;
   grid-template-columns: repeat(
     auto-fill,
-    minmax(calc(var(--card-width) + 0px), 1fr)
+    minmax(calc(var(--card-width) + 6px), 1fr)
   );
-  gap: clamp(8px, 2vw, 24px);
-  justify-items: start;
-  align-items: start;
+  column-gap: var(--grid-gap);
+  row-gap: 12px;
   padding: 0;
   margin: 0;
-  /* Limit grid height to about 4 rows, then scroll vertically */
   max-height: calc(3 * (var(--card-height) + 32px));
   overflow-y: auto;
+  cursor: default;
+}
+
+.cardGroupItems {
+  display: flex;
+  gap: var(--card-gap);
+  align-items: flex-start;
+  flex-wrap: nowrap;
+}
+
+.cardGroupEntry {
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  gap: 4px;
+  width: calc(var(--card-width) + 6px);
+}
+
+.cardGroupEntry .queueItem {
+  width: 100%;
+}
+
+.group-indicator {
+  width: auto;
+  display: flex;
+  align-items: center;
+  height: 18px;
+  position: relative;
+  color: #ffe08a;
+}
+
+.cardGroupEntry-first .group-indicator {
+  justify-content: flex-start;
+}
+
+.cardList.scrollable .group-indicator::before,
+.cardList.scrollable .group-indicator::after {
+  display: none;
+}
+
+.group-line {
+  flex: 0 0 auto;
+  height: 1px;
+  width: calc(var(--card-width) + var(--group-line-extra));
+  max-width: calc(var(--card-width) + var(--group-line-extra));
+  background: rgba(255, 255, 255, 0.35);
+  border-radius: 1px;
+  position: relative;
+  z-index: 1;
+}
+
+.cardGroupEntry-first .group-line {
+  width: calc(
+    var(--card-width) + var(--group-line-extra) - var(--group-first-offset)
+  );
+  max-width: calc(
+    var(--card-width) + var(--group-line-extra) - var(--group-first-offset)
+  );
+}
+
+.group-line.line-forward {
+  background: linear-gradient(
+    90deg,
+    rgba(255, 224, 138, 0.65),
+    rgba(255, 255, 255, 0.25)
+  );
+}
+
+.group-line.line-reverse {
+  background: linear-gradient(
+    90deg,
+    rgba(255, 255, 255, 0.25),
+    rgba(255, 224, 138, 0.65)
+  );
+}
+
+.cardGroup.group-style-grey .group-line.line-forward {
+  background: linear-gradient(
+    90deg,
+    rgba(214, 214, 214, 0.65),
+    rgba(148, 148, 148, 0.25)
+  );
+}
+
+.cardGroup.group-style-grey .group-line.line-reverse {
+  background: linear-gradient(
+    90deg,
+    rgba(148, 148, 148, 0.25),
+    rgba(214, 214, 214, 0.65)
+  );
+}
+
+.group-badge {
+  background: rgba(255, 224, 138, 0.15);
+  color: #ffe08a;
+  font-weight: 600;
+  font-size: 10px;
+  padding: 0px 3px 1px 3px;
+  border-radius: 5px;
+  letter-spacing: 0.15px;
+  border: 1px solid rgba(255, 224, 138, 0.65);
+  box-shadow: 0 0 6px rgba(255, 224, 138, 0.35);
+  text-transform: uppercase;
+  position: relative;
+  z-index: 1;
+  min-width: 16px;
+  max-height: 14px;
+  text-align: center;
+}
+
+.cardGroup.group-style-grey .group-badge {
+  background: #3d3d3d;
+  color: #e4e4e4;
+  border-color: rgba(204, 204, 204, 0.65);
+  box-shadow: 0 0 4px rgba(155, 155, 155, 0.6);
+}
+
+.group-badge + .group-line {
+  margin-left: 2px;
+}
+
+.cardList.scrollable .cardGroupEntry {
+  flex: 0 0 calc(var(--card-width) + 6px);
+}
+
+.cardList.grid-layout .cardGroup,
+.cardList.grid-layout .cardGroupItems {
+  display: contents;
 }
 
 .queueItem {
@@ -428,8 +675,8 @@ label[for="omitBeforeAnte9"] {
 /* 只有在 grid 布局下，最多显示两行，超出用 ... 省略 */
 .grid-layout .queueItem > div:nth-child(2) {
   display: -webkit-box;
-  -webkit-line-clamp: 1;          /* 最大两行 */
-  line-clamp: 1;                  /* 标准属性以提高兼容性 */
+  -webkit-line-clamp: 1; /* 最大两行 */
+  line-clamp: 1; /* 标准属性以提高兼容性 */
   -webkit-box-orient: vertical;
   overflow: hidden;
   text-overflow: ellipsis;
@@ -457,7 +704,12 @@ label[for="omitBeforeAnte9"] {
   padding: 2px 4px;
   line-height: 1.2;
   border-radius: 4px; /* all four corners rounded */
-  background-color: rgba(255, 80, 150, 0.9); /* default magenta tag background to match dark theme */
+  background-color: rgba(
+    255,
+    80,
+    150,
+    0.9
+  ); /* default magenta tag background to match dark theme */
   color: #ffffff;
   pointer-events: none;
   box-shadow: 0 0 4px rgba(0, 0, 0, 0.4);
@@ -536,7 +788,7 @@ label[for="omitBeforeAnte9"] {
 .packItem canvas {
   width: calc(var(--card-width) - 0px);
   height: calc(var(--card-height) + 1px);
-  margin-bottom: 0;      /* do not push the wrapper taller than the image */
+  margin-bottom: 0; /* do not push the wrapper taller than the image */
   pointer-events: none;
 }
 
@@ -622,8 +874,17 @@ label[for="omitBeforeAnte9"] {
 
 .tagsContainer {
   display: flex;
+  flex-direction: column;
   flex-wrap: wrap;
   gap: 5px;
+}
+
+.tagContainer {
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 2px;
 }
 
 .bossContainer {

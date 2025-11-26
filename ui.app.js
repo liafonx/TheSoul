@@ -42,6 +42,23 @@
         ...trackedBosses,
       ].map((term) => term.toLowerCase())
     );
+    const groupSizes = [2, 3, 4];
+    let currentGroupSize = groupSizes[0];
+    const groupButtonUpdaters = new Set();
+    const cardGroupRenderers = new Set();
+    const ANTES_PER_PAGE = 13;
+    let currentPageIndex = 0;
+    let paginationContainer = null;
+    let allShopQueues = [];
+
+    const setGlobalGroupSize = (size) => {
+      if (currentGroupSize === size) {
+        return;
+      }
+      currentGroupSize = size;
+      groupButtonUpdaters.forEach((update) => update(size));
+      cardGroupRenderers.forEach((render) => render());
+    };
 
     function searchAndHighlight() {
       const searchInput = document.getElementById("searchInput");
@@ -122,7 +139,16 @@
         toggleContainer.appendChild(groupDiv);
       });
 
-      document.body.appendChild(toggleContainer);
+      const filterPanel = document.createElement("details");
+      filterPanel.className = "filter-panel";
+
+      const filterSummary = document.createElement("summary");
+      filterSummary.className = "filter-summary";
+      filterSummary.textContent = "Search Filters";
+
+      filterPanel.appendChild(filterSummary);
+      filterPanel.appendChild(toggleContainer);
+      document.body.appendChild(filterPanel);
 
       document
         .getElementById("searchInput")
@@ -131,6 +157,11 @@
       const scrollingContainer = document.createElement("div");
       scrollingContainer.id = "scrollingContainer";
       document.body.appendChild(scrollingContainer);
+
+      paginationContainer = document.createElement("div");
+      paginationContainer.id = "paginationContainer";
+      document.body.appendChild(paginationContainer);
+
 
       document
         .getElementById("searchInput")
@@ -197,11 +228,34 @@
       function displayShopQueues() {
         const textarea = document.getElementById("outputBox");
         const text = textarea.value;
-        const shopQueues = extractShopQueues(text);
+        allShopQueues = extractShopQueues(text);
+        currentPageIndex = 0;
+        renderPaginationControls();
+        renderCurrentPage();
+      }
 
+      function renderCurrentPage() {
+        const totalPages = Math.ceil(allShopQueues.length / ANTES_PER_PAGE);
         scrollingContainer.innerHTML = "";
 
-        shopQueues.forEach(({ title, queue, boss, voucher, tags, packs }) => {
+        if (totalPages === 0) {
+          paginationContainer.innerHTML = "";
+          paginationContainer.style.display = "none";
+          groupButtonUpdaters.clear();
+          cardGroupRenderers.clear();
+          return;
+        }
+
+        paginationContainer.style.display =
+          totalPages <= 1 ? "none" : "flex";
+        groupButtonUpdaters.clear();
+        cardGroupRenderers.clear();
+
+        const start = currentPageIndex * ANTES_PER_PAGE;
+        const end = start + ANTES_PER_PAGE;
+        const pageQueues = allShopQueues.slice(start, end);
+
+        pageQueues.forEach(({ title, queue, boss, voucher, tags, packs }) => {
           const queueContainer = document.createElement("div");
           queueContainer.className = "queueContainer";
 
@@ -278,7 +332,7 @@
 
           const bossElement = document.createElement("div");
           bossElement.innerHTML = "<b>Boss</b>";
-          bossElement.style = "font-size: 16px";
+          bossElement.style = "font-size: 16px;margin-left: 10px;";
 
           if (boss) {
             const bossContainer = document.createElement("div");
@@ -313,6 +367,38 @@
           layoutToggle.className = "cardSetToggle";
           layoutToggle.textContent = "Switch to Grid";
           cardSetHeader.appendChild(layoutToggle);
+
+          const groupControls = document.createElement("div");
+          groupControls.className = "groupSizeControls";
+
+          const groupLabel = document.createElement("span");
+          groupLabel.className = "groupSizeLabel";
+          groupLabel.textContent = "Group Size:";
+          groupControls.appendChild(groupLabel);
+
+          const localButtons = [];
+          const updateLocalButtons = (size) => {
+            localButtons.forEach((btn) => {
+              btn.classList.toggle("active", Number(btn.dataset.size) === size);
+            });
+          };
+          groupButtonUpdaters.add(updateLocalButtons);
+
+          groupSizes.forEach((size) => {
+            const button = document.createElement("button");
+            button.type = "button";
+            button.dataset.size = size;
+            button.className = "cardSetToggle groupSizeButton";
+            button.textContent = size;
+            button.addEventListener("click", () => {
+              setGlobalGroupSize(size);
+            });
+            localButtons.push(button);
+            groupControls.appendChild(button);
+          });
+          updateLocalButtons(currentGroupSize);
+
+          cardSetHeader.appendChild(groupControls);
           cardSet.appendChild(cardSetHeader);
 
           const cardList = document.createElement("div");
@@ -334,11 +420,12 @@
 
           layoutToggle.addEventListener("click", () => {
             applyLayoutMode(layoutMode === "scroll" ? "grid" : "scroll");
+            renderCardGroups();
           });
 
           applyLayoutMode(layoutMode);
 
-          queue.forEach((item) => {
+          const queueNodes = queue.map((item) => {
             const { cardName, itemModifiers, itemStickers } =
               parseCardItem(item);
 
@@ -403,8 +490,81 @@
               stickerText.textContent = stick;
               queueItem.appendChild(stickerText);
             });
-            cardList.appendChild(queueItem);
+            return queueItem;
           });
+
+          const buildCardEntry = (
+            node,
+            groupIndex,
+            positionInGroup,
+            isLastInGroup
+          ) => {
+            const entry = document.createElement("div");
+            entry.className = "cardGroupEntry";
+            if (positionInGroup === 0) {
+              entry.classList.add("cardGroupEntry-first");
+            }
+            if (isLastInGroup) {
+              entry.classList.add("cardGroupEntry-last");
+            }
+
+            const indicator = document.createElement("div");
+            indicator.className = "group-indicator";
+            if (positionInGroup === 0) {
+              const badge = document.createElement("span");
+              badge.className = "group-badge";
+              badge.textContent = groupIndex + 1;
+              indicator.appendChild(badge);
+            }
+            const line = document.createElement("span");
+            line.className = "group-line";
+            line.classList.add(
+              positionInGroup % 2 === 0 ? "line-forward" : "line-reverse"
+            );
+            indicator.appendChild(line);
+
+            entry.appendChild(indicator);
+            entry.appendChild(node);
+            return entry;
+          };
+
+          const renderCardGroups = () => {
+            cardList.innerHTML = "";
+            if (queueNodes.length === 0) {
+              return;
+            }
+            const groupSize = currentGroupSize;
+            const totalGroups = Math.ceil(queueNodes.length / groupSize);
+
+            for (let groupIndex = 0; groupIndex < totalGroups; groupIndex += 1) {
+              const wrapper = document.createElement("div");
+              wrapper.className = "cardGroup";
+              wrapper.classList.add(
+                groupIndex % 2 === 0 ? "group-style-yellow" : "group-style-grey"
+              );
+
+              const groupItems = document.createElement("div");
+              groupItems.className = "cardGroupItems";
+
+              const start = groupIndex * groupSize;
+              const end = Math.min(start + groupSize, queueNodes.length);
+              for (let idx = start; idx < end; idx += 1) {
+                const entry = buildCardEntry(
+                  queueNodes[idx],
+                  groupIndex,
+                  idx - start,
+                  idx === end - 1
+                );
+                groupItems.appendChild(entry);
+              }
+
+              wrapper.appendChild(groupItems);
+              cardList.appendChild(wrapper);
+            }
+          };
+          cardGroupRenderers.add(renderCardGroups);
+
+          renderCardGroups();
 
           if (packs.length > 0) {
             // 只允许一个 pack 过滤器激活：
@@ -696,17 +856,20 @@
               // Re-apply highlight state to newly rendered pack cards
               searchAndHighlight();
             }
-
-            renderPacks();
-          }
+        renderPacks();
+      }
 
           scrollingContainer.appendChild(queueContainer);
         });
 
+        const topOffset = scrollingContainer.getBoundingClientRect().top;
+        const absoluteTop = window.scrollY + topOffset - 12;
+        window.scrollTo({ top: absoluteTop, behavior: "smooth" });
+
         document.querySelectorAll(".scrollable").forEach((scrollable) => {
           let isDown = false;
-          let startX;
-          let scrollLeft;
+      let startX;
+      let scrollLeft;
           const isScrollLayout = () =>
             scrollable.classList.contains("scrollable");
 
@@ -750,9 +913,69 @@
         searchAndHighlight();
       }
 
+      function renderPaginationControls() {
+        const totalPages = Math.ceil(allShopQueues.length / ANTES_PER_PAGE);
+        paginationContainer.innerHTML = "";
+        if (totalPages <= 1) {
+          paginationContainer.style.display = "none";
+          return;
+        }
+
+        paginationContainer.style.display = "flex";
+
+        const goToPage = (targetPage) => {
+          const clamped = Math.max(0, Math.min(targetPage, totalPages - 1));
+          if (clamped === currentPageIndex) {
+            return;
+          }
+          currentPageIndex = clamped;
+          renderPaginationControls();
+          renderCurrentPage();
+        };
+
+        const prevButton = document.createElement("button");
+        prevButton.type = "button";
+        prevButton.className = "paginationButton";
+        prevButton.textContent = "Prev";
+        prevButton.disabled = currentPageIndex === 0;
+        prevButton.addEventListener("click", () =>
+          goToPage(currentPageIndex - 1)
+        );
+
+        const nextButton = document.createElement("button");
+        nextButton.type = "button";
+        nextButton.className = "paginationButton";
+        nextButton.textContent = "Next";
+        nextButton.disabled = currentPageIndex >= totalPages - 1;
+        nextButton.addEventListener("click", () =>
+          goToPage(currentPageIndex + 1)
+        );
+
+        const info = document.createElement("span");
+        info.className = "paginationInfo";
+        info.textContent = `Page ${currentPageIndex + 1} / ${totalPages}`;
+
+        const pageSelect = document.createElement("select");
+        pageSelect.className = "paginationSelect";
+        for (let i = 0; i < totalPages; i += 1) {
+          const option = document.createElement("option");
+          option.value = i;
+          option.textContent = `Page ${i + 1}`;
+          if (i === currentPageIndex) {
+            option.selected = true;
+          }
+          pageSelect.appendChild(option);
+        }
+        pageSelect.addEventListener("change", (event) => {
+          goToPage(Number(event.target.value));
+        });
+
+        paginationContainer.append(prevButton, info, nextButton, pageSelect);
+      }
+
       document
         .getElementById("analyzeButton")
-        .addEventListener("click", displayShopQueues);
+        .addEventListener("click", () => displayShopQueues());
 
       displayShopQueues();
       global.refreshShopDisplay = displayShopQueues;
