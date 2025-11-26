@@ -18,13 +18,27 @@ const JOKER_TRANSLATIONS = Object.freeze({
   Seance: "通灵",
   "Sixth Sense": "第六感",
   "Diet Cola": "可乐",
-  "Invisible Joker": "隐形小丑",
+  "Invisible Joker": "隐形",
+  "Cloud 9": "9霄",
+  "Card Sharp": "老千",
+  Photograph: "照片",
+  "To the Moon": "月球",
+  Bull: "斗牛",
+  "Trading Card": "交易卡",
+  "Golden Ticket": "门票",
+  "Mr. Bones": "骷髅",
+  Acrobat: "杂技",
+  Certificate: "证书",
+  "Hanging Chad": "选票",
+  "The Duo": "二重奏",
+  Satellite: "卫星",
+  "Driver's License": "驾照",
 });
 
 const SPECTRAL_TRANSLATIONS = Object.freeze({
   Cryptid: "神秘生物",
-  "Deja Vu": "既视感",
-  Ectoplasm: "灵质",
+  "Deja Vu": "既视感(红封）",
+  Ectoplasm: "灵质(负片)",
   "The Soul": "灵魂",
 });
 
@@ -97,6 +111,17 @@ function formatKingName(name) {
   if (!chinese) return null;
 
   return `${chinese}(${prefix} King)`;
+}
+
+function formatKingNameChineseOnly(name) {
+  const variants = normalizeKingVariants(name);
+  if (!variants.length) return null; // omit plain kings
+
+  const prefix = variants.join(" ");
+  const chinese = KING_DISPLAY[prefix] || "";
+  if (!chinese) return null;
+
+  return chinese;
 }
 
 function normalizeKingVariants(cardText) {
@@ -234,7 +259,8 @@ class AnteData {
     );
   }
 
-  formatOutput(specialFlags) {
+  formatOutput(specialFlags, options = {}) {
+    const chineseOnly = Boolean(options.chineseOnly);
     const parts = [];
 
     const { display: tagDisplay } = this.getTagOutput();
@@ -247,22 +273,27 @@ class AnteData {
     }
 
     if (this.spectralCards.length) {
-      const spectral = this.spectralCards.map(
-        (name) => `${SPECTRAL_TRANSLATIONS[name] || name}(${name})`
-      );
+      const spectral = this.spectralCards.map((name) => {
+        const chinese = SPECTRAL_TRANSLATIONS[name] || name;
+        return chineseOnly ? chinese : `${chinese}(${name})`;
+      });
       parts.push(`💠${spectral.join("、")}`);
     }
 
     if (this.kingCards.length) {
-      const kingDisplay = this.kingCards.map(formatKingName).filter(Boolean);
+      const kingDisplay = this.kingCards
+        .map((name) =>
+          chineseOnly ? formatKingNameChineseOnly(name) : formatKingName(name)
+        )
+        .filter(Boolean);
       parts.push(`♔${kingDisplay.join("、")}`);
     }
 
     if (this.buffoonJesters.length) {
       const buffoon = this.buffoonJesters.map((name, idx) => {
         const chinese = JOKER_TRANSLATIONS[name] || name;
-        const entry = `${chinese}(${name})`;
-        return idx === 0 ? `👝${entry}` : entry;
+        const base = chineseOnly ? chinese : `${chinese}(${name})`;
+        return idx === 0 ? `👝${base}` : base;
       });
       parts.push(buffoon.join("、"));
     }
@@ -275,7 +306,14 @@ class AnteData {
       const jesterParts = entries.map(([name, info]) => {
         const chinese = JOKER_TRANSLATIONS[name] || name;
         const negativeSuffix = info.negative ? "🔘" : "";
-        let entry = `${chinese}${negativeSuffix}(${name} #${info.index})`;
+        let entry;
+        if (chineseOnly) {
+          // Chinese-only: name + negative marker + #index, no English name
+          entry = `${chinese}${negativeSuffix}#${info.index}`;
+        } else {
+          // Original mixed format with English name and index in parentheses
+          entry = `${chinese}${negativeSuffix}(${name} #${info.index})`;
+        }
         if (
           (name === "Sixth Sense" || name === "Seance") &&
           anteNumber > 8 &&
@@ -442,25 +480,25 @@ function collectAnteData(lines) {
   return anteList;
 }
 
-function formatAnteDataList(anteList) {
+function formatAnteDataList(anteList, options = {}) {
   const specialFlags = { "Sixth Sense": false, Seance: false };
-  return anteList.map((ante) => ante.formatOutput(specialFlags));
+  return anteList.map((ante) => ante.formatOutput(specialFlags, options));
 }
 
 function collectAnteDetails(lines) {
   return collectAnteData(lines).map((ante) => ante.toPlainObject());
 }
 
-function parseLines(lines) {
-  return formatAnteDataList(collectAnteData(lines));
+function parseLines(lines, options = {}) {
+  return formatAnteDataList(collectAnteData(lines), options);
 }
 
 function normalizeText(text) {
   return (text || "").replace(/\r\n/g, "\n").replace(/\r/g, "\n");
 }
 
-function summarizeText(text) {
-  return parseLines(normalizeText(text).split("\n")).join("\n");
+function summarizeText(text, options = {}) {
+  return parseLines(normalizeText(text).split("\n"), options).join("\n");
 }
 
 function parseFile(filePath) {

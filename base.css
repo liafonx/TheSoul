@@ -216,7 +216,9 @@ button#copyButton {
   font-size: 0.9rem;
 }
 
-button#exportButton {
-  margin-top: 4px;
+.checkbox-row.export-toggle {
+  display: inline-flex;
+  align-items: center;
+  gap: 0px;
+  margin: 0;
 }
-

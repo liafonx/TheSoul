@@ -324,16 +324,33 @@
     "Showman",
     "Sixth Sense",
     "Turtle Bean",
+    "Cloud 9",
+    "Card Sharp",
+    "Photograph",
+    "To the Moon",
+    "Bull",
+    "Trading Card",
+    "Golden Ticket",
+    "Mr. Bones",
+    "Acrobat",
+    "Certificate",
+    "Hanging Chad",
+    "The Duo",
+    "Satellite",
+    "Driver's License",
   ].sort((a, b) => a.localeCompare(b));
 
-  BalatroData.trackedSpectrals = ["Cryptid", "Deja Vu", "Ectoplasm", "The Soul"].sort(
-    (a, b) => a.localeCompare(b)
-  );
+  BalatroData.trackedSpectrals = [
+    "Cryptid",
+    "Deja Vu",
+    "Ectoplasm",
+    "The Soul",
+  ].sort((a, b) => a.localeCompare(b));
   BalatroData.trackedTags = ["Double Tag", "Negative Tag", "Voucher Tag"].sort(
     (a, b) => a.localeCompare(b)
   );
-  BalatroData.trackedBosses = ["The Ox", "The Psychic", "The Plant"].sort((a, b) =>
-    a.localeCompare(b)
+  BalatroData.trackedBosses = ["The Ox", "The Psychic", "The Plant"].sort(
+    (a, b) => a.localeCompare(b)
   );
 
   global.BalatroData = BalatroData;
