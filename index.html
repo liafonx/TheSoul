@@ -138,6 +138,15 @@
         </div>
       </div>
     </div>
+    <div id="summaryFloatingWindow">
+      <h3>Summary</h3>
+      <textarea
+        id="summaryFloatingContent"
+        readonly
+        placeholder="Summary will appear here after analysis."
+      ></textarea>
+    </div>
+    <button id="summaryFloatingToggle" type="button">Summary</button>
   </body>
   <script>
     // Unlocks stuff
@@ -314,10 +323,22 @@
     const copyLinkButton = document.getElementById("copyButton");
     const downloadButton = document.getElementById("downloadButton");
     const copyButton = document.getElementById("exportButton");
+    const summaryToggleButton = document.getElementById(
+      "summaryFloatingToggle"
+    );
+    const summaryFloatingWindow = document.getElementById(
+      "summaryFloatingWindow"
+    );
+    const summaryFloatingContent = document.getElementById(
+      "summaryFloatingContent"
+    );
     const outputBox = document.getElementById("outputBox");
     const withEnglishToggle = document.getElementById("withEnglishToggle");
     // Add event listener for the "Copy Link" button
     copyLinkButton.addEventListener("click", copyLink);
+
+    summaryFloatingContent.value =
+      "Summary will appear here after you click Analyze.";
 
     function copyLink() {
       const baseUrl = window.location.origin + window.location.pathname;
@@ -398,6 +419,7 @@
 
     let balatroAnalysisPromise = null;
     window.lastRawOutput = "";
+    window.lastSummary = "";
     function ensureBalatroAnalysisLoaded() {
       if (
         window.BalatroAnalysis &&
@@ -426,6 +448,10 @@
       }
       return balatroAnalysisPromise;
     }
+
+    summaryToggleButton.addEventListener("click", () => {
+      summaryFloatingWindow.classList.toggle("visible");
+    });
 
     copyButton.addEventListener("click", () => {
       const content = outputBox.value;
@@ -610,10 +636,15 @@
       ensureBalatroAnalysisLoaded()
         .then((balatro) => {
           const summary = balatro.summarizeText(output, summaryOptions);
-          outputBox.value = summary || output;
+          const finalSummary = summary || output;
+          window.lastSummary = finalSummary;
+          summaryFloatingContent.value = finalSummary;
+          outputBox.value = finalSummary;
         })
         .catch((err) => {
           console.error("Failed to run balatro_analysis:", err);
+          window.lastSummary = output;
+          summaryFloatingContent.value = output;
           outputBox.value = output;
         });
     }
