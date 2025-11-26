@@ -1,12 +1,12 @@
-<!doctype html>
+<!DOCTYPE html>
 <html>
   <script>
     var Immolate = {
-      onRuntimeInitialized: function() {
+      onRuntimeInitialized: function () {
         if (instantAnalysis) {
           performAnalysis();
         }
-      }
+      },
     };
 
     // Helper function for vectors
@@ -21,12 +21,12 @@
   <script src="immolate.js"></script>
   <script src="UI.js" defer></script>
   <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>The Soul</title>
-    <link rel="stylesheet" href="base.css">
-    <link rel="stylesheet" href="ui.css">
-    <link rel="icon" type="image/png" href="images/icon.ico">
+    <link rel="stylesheet" href="base.css" />
+    <link rel="stylesheet" href="ui.css" />
+    <link rel="icon" type="image/png" href="images/icon.ico" />
   </head>
   <body>
     <h1 class="site-title">
@@ -43,14 +43,27 @@
       <div class="input-section">
         <h2>Settings</h2>
         <label for="seed">Seed:</label>
-        <input type="text" id="seed" maxlength="8" pattern="[A-Z1-9]{1,8}" required>
-        <br>
+        <input
+          type="text"
+          id="seed"
+          maxlength="8"
+          pattern="[A-Z1-9]{1,8}"
+          required
+        />
+        <br />
         <label for="ante">Max Ante:</label>
-        <input type="number" id="ante" min="1" max="999" value="39" required>
-        <br>
+        <input type="number" id="ante" min="1" max="999" value="39" required />
+        <br />
         <label for="cardsPerAnte">Cards per Ante:</label>
-        <input type="number" id="cardsPerAnte" min="0" max="100" value="100" required>
-        <br>
+        <input
+          type="number"
+          id="cardsPerAnte"
+          min="0"
+          max="100"
+          value="100"
+          required
+        />
+        <br />
         <label for="deck">Deck:</label>
         <select id="deck" required>
           <option value="Red Deck">Red Deck</option>
@@ -70,7 +83,7 @@
           <option value="Erratic Deck">Erratic Deck</option>
           <!-- Add deck options here -->
         </select>
-        <br>
+        <br />
         <label for="stake">Stake:</label>
         <select id="stake" required>
           <option value="White Stake">White Stake</option>
@@ -83,7 +96,7 @@
           <option value="Gold Stake">Gold Stake</option>
           <!-- Add stake options here -->
         </select>
-        <br>
+        <br />
         <label for="version">Version:</label>
         <select id="version" required>
           <option value="10115">1.0.1o-full</option>
@@ -92,9 +105,9 @@
           <option value="10103">1.0.1c</option>
           <!-- Add version options here -->
         </select>
-        <br>
+        <br />
         <div class="checkbox-row">
-          <input type="checkbox" id="omitBeforeAnte9" checked>
+          <input type="checkbox" id="omitBeforeAnte9" checked />
           <label for="omitBeforeAnte9">Omit results before Ante 9</label>
         </div>
         <button id="analyzeButton">Analyze</button>
@@ -113,9 +126,13 @@
       <div class="output-section">
         <h2>Output</h2>
         <textarea id="outputBox" rows="14" readonly></textarea>
-        <br>
+        <br />
         <button id="downloadButton">Download</button>
         <button id="exportButton">Export</button>
+        <div class="checkbox-row export-toggle">
+          <input type="checkbox" id="withEnglishToggle" checked />
+          <label for="withEnglishToggle">with English</label>
+        </div>
       </div>
     </div>
   </body>
@@ -183,35 +200,39 @@
       "Illusion",
       "Petroglyph",
       "Retcon",
-      "Palette"
+      "Palette",
     ];
     selectedOptions = Array(61).fill(true);
 
     // Get references to elements
-    const openCheckboxesBtn = document.getElementById('openCheckboxesBtn');
-    const checkboxesOverlay = document.getElementById('checkboxesOverlay');
-    const checkboxesPopup = document.getElementById('checkboxesPopup');
-    const checkboxesContainer = document.getElementById('checkboxesContainer');
-    const submitBtn = document.getElementById('submitBtn');
-    const lockBtn = document.getElementById('lockBtn');
-    const unlockBtn = document.getElementById('unlockBtn');
+    const openCheckboxesBtn = document.getElementById("openCheckboxesBtn");
+    const checkboxesOverlay = document.getElementById("checkboxesOverlay");
+    const checkboxesPopup = document.getElementById("checkboxesPopup");
+    const checkboxesContainer = document.getElementById("checkboxesContainer");
+    const submitBtn = document.getElementById("submitBtn");
+    const lockBtn = document.getElementById("lockBtn");
+    const unlockBtn = document.getElementById("unlockBtn");
 
     // Function to create checkboxes
     function createCheckboxes() {
-      checkboxesContainer.innerHTML = '';
+      checkboxesContainer.innerHTML = "";
       const numColumns = 6;
       const optionsPerColumn = Math.ceil(options.length / numColumns);
 
       for (let i = 0; i < numColumns; i++) {
-        const columnDiv = document.createElement('div');
-        columnDiv.classList.add('checkbox-column');
+        const columnDiv = document.createElement("div");
+        columnDiv.classList.add("checkbox-column");
 
-        for (let j = i * optionsPerColumn; j < (i + 1) * optionsPerColumn && j < options.length; j++) {
-          const checkbox = document.createElement('input');
-          checkbox.type = 'checkbox';
+        for (
+          let j = i * optionsPerColumn;
+          j < (i + 1) * optionsPerColumn && j < options.length;
+          j++
+        ) {
+          const checkbox = document.createElement("input");
+          checkbox.type = "checkbox";
           checkbox.value = options[j];
           checkbox.checked = selectedOptions[j]; // Set checkboxes as selected by default
-          const label = document.createElement('label');
+          const label = document.createElement("label");
           label.textContent = options[j];
           label.prepend(checkbox);
           columnDiv.appendChild(label);
@@ -223,70 +244,77 @@
 
     // Function to handle checkbox selections
     function handleSubmit() {
-      const checkboxes = checkboxesContainer.querySelectorAll('input[type="checkbox"]');
+      const checkboxes = checkboxesContainer.querySelectorAll(
+        'input[type="checkbox"]'
+      );
       selectedOptions = [];
-      checkboxes.forEach(checkbox => {
+      checkboxes.forEach((checkbox) => {
         selectedOptions.push(checkbox.checked);
       });
-      console.log('Selected Options:', selectedOptions);
+      console.log("Selected Options:", selectedOptions);
       // Do something with the selected options
       closeOverlay();
     }
 
     function handleLock() {
-      const checkboxes = checkboxesContainer.querySelectorAll('input[type="checkbox"]');
+      const checkboxes = checkboxesContainer.querySelectorAll(
+        'input[type="checkbox"]'
+      );
       selectedOptions = [];
-      checkboxes.forEach(checkbox => {
-        checkbox.checked = false
+      checkboxes.forEach((checkbox) => {
+        checkbox.checked = false;
       });
     }
 
     function handleUnlock() {
-      const checkboxes = checkboxesContainer.querySelectorAll('input[type="checkbox"]');
+      const checkboxes = checkboxesContainer.querySelectorAll(
+        'input[type="checkbox"]'
+      );
       selectedOptions = [];
-      checkboxes.forEach(checkbox => {
-        checkbox.checked = true
+      checkboxes.forEach((checkbox) => {
+        checkbox.checked = true;
       });
     }
 
     // Function to open the checkbox overlay
     function openOverlay() {
       createCheckboxes();
-      checkboxesOverlay.style.display = 'block';
+      checkboxesOverlay.style.display = "block";
     }
 
     // Function to close the checkbox overlay
     function closeOverlay() {
-      checkboxesOverlay.style.display = 'none';
+      checkboxesOverlay.style.display = "none";
     }
 
     // Event listeners
-    openCheckboxesBtn.addEventListener('click', openOverlay);
-    window.addEventListener('click', (event) => {
+    openCheckboxesBtn.addEventListener("click", openOverlay);
+    window.addEventListener("click", (event) => {
       if (event.target == checkboxesOverlay) {
         closeOverlay();
       }
     });
-    submitBtn.addEventListener('click', handleSubmit);
-    lockBtn.addEventListener('click', handleLock);
-    unlockBtn.addEventListener('click', handleUnlock);
+    submitBtn.addEventListener("click", handleSubmit);
+    lockBtn.addEventListener("click", handleLock);
+    unlockBtn.addEventListener("click", handleUnlock);
 
     instantAnalysis = false;
 
-    const anteInput = document.getElementById('ante');
-    const cardsPerAnteInput = document.getElementById('cardsPerAnte');
-    const deckSelect = document.getElementById('deck');
-    const stakeSelect = document.getElementById('stake');
-    const versionSelect = document.getElementById('version');
-    const omitBeforeAnte9Checkbox = document.getElementById('omitBeforeAnte9');
-    const seedInput = document.getElementById('seed');
-    const analyzeButton = document.getElementById('analyzeButton');
-    const copyLinkButton = document.getElementById('copyButton');
-    const downloadButton = document.getElementById('downloadButton');
-    const exportButton = document.getElementById('exportButton');
-    const outputBox = document.getElementById('outputBox');
+    const anteInput = document.getElementById("ante");
+    const cardsPerAnteInput = document.getElementById("cardsPerAnte");
+    const deckSelect = document.getElementById("deck");
+    const stakeSelect = document.getElementById("stake");
+    const versionSelect = document.getElementById("version");
+    const omitBeforeAnte9Checkbox = document.getElementById("omitBeforeAnte9");
+    const seedInput = document.getElementById("seed");
+    const analyzeButton = document.getElementById("analyzeButton");
+    const copyLinkButton = document.getElementById("copyButton");
+    const downloadButton = document.getElementById("downloadButton");
+    const exportButton = document.getElementById("exportButton");
+    const outputBox = document.getElementById("outputBox");
+    const withEnglishToggle = document.getElementById("withEnglishToggle");
     // Add event listener for the "Copy Link" button
-    copyLinkButton.addEventListener('click', copyLink);
+    copyLinkButton.addEventListener("click", copyLink);
 
     function copyLink() {
       const baseUrl = window.location.origin + window.location.pathname;
@@ -294,7 +322,9 @@
 
       // Hash the unlocks
       // Convert the array of booleans to a binary string
-      const binaryString = selectedOptions.map(unlock => unlock ? '1' : '0').join('');
+      const binaryString = selectedOptions
+        .map((unlock) => (unlock ? "1" : "0"))
+        .join("");
 
       // Convert the binary string to a byte array
       const byteArray = [];
@@ -305,8 +335,11 @@
 
       // Pad the byte array with a null byte if necessary
       if (binaryString.length % 8 !== 0) {
-        const paddingBits = '0'.repeat(8 - (binaryString.length % 8));
-        const paddingByte = parseInt(`${binaryString.slice(-binaryString.length % 8)}${paddingBits}`, 2);
+        const paddingBits = "0".repeat(8 - (binaryString.length % 8));
+        const paddingByte = parseInt(
+          `${binaryString.slice(-binaryString.length % 8)}${paddingBits}`,
+          2
+        );
         byteArray.push(paddingByte);
       }
 
@@ -314,35 +347,42 @@
       const base64Unlocks = btoa(String.fromCharCode.apply(null, byteArray));
 
       // Add non-default input values as URL parameters
-      if (anteInput.value !== '39') params.append('ante', anteInput.value);
-      if (cardsPerAnteInput.value !== '100') params.append('cardsPerAnte', cardsPerAnteInput.value);
-      if (deckSelect.value !== 'Red Deck') params.append('deck', deckSelect.value);
-      if (stakeSelect.value !== 'White Stake') params.append('stake', stakeSelect.value);
-      if (versionSelect.value !== '10115') params.append('version', versionSelect.value);
-      if (!omitBeforeAnte9Checkbox.checked) params.append('omitBeforeAnte9', 'false');
-      if (seedInput.value !== '') params.append('seed', seedInput.value);
-      if (base64Unlocks != '/////////x/4') params.append('unlocks', base64Unlocks);
+      if (anteInput.value !== "39") params.append("ante", anteInput.value);
+      if (cardsPerAnteInput.value !== "100")
+        params.append("cardsPerAnte", cardsPerAnteInput.value);
+      if (deckSelect.value !== "Red Deck")
+        params.append("deck", deckSelect.value);
+      if (stakeSelect.value !== "White Stake")
+        params.append("stake", stakeSelect.value);
+      if (versionSelect.value !== "10115")
+        params.append("version", versionSelect.value);
+      if (!omitBeforeAnte9Checkbox.checked)
+        params.append("omitBeforeAnte9", "false");
+      if (seedInput.value !== "") params.append("seed", seedInput.value);
+      if (base64Unlocks != "/////////x/4")
+        params.append("unlocks", base64Unlocks);
 
       const url = `${baseUrl}?${params.toString()}`;
 
       // Copy the URL to the clipboard
-      navigator.clipboard.writeText(url)
+      navigator.clipboard
+        .writeText(url)
         .then(() => {
-          alert('Link copied to clipboard!');
+          alert("Link copied to clipboard!");
         })
         .catch((err) => {
-          console.error('Failed to copy link: ', err);
+          console.error("Failed to copy link: ", err);
         });
     }
 
-    downloadButton.addEventListener('click', () => {
+    downloadButton.addEventListener("click", () => {
       const filename = seedInput.value + "_analysis.txt";
       const content = outputBox.value;
 
-      const blob = new Blob([content], { type: 'text/plain' });
+      const blob = new Blob([content], { type: "text/plain" });
       const url = URL.createObjectURL(blob);
 
-      const a = document.createElement('a');
+      const a = document.createElement("a");
       a.href = url;
       a.download = filename;
       a.click();
@@ -352,53 +392,64 @@
 
     let balatroAnalysisPromise = null;
     function ensureBalatroAnalysisLoaded() {
-      if (window.BalatroAnalysis && typeof window.BalatroAnalysis.summarizeText === 'function') {
+      if (
+        window.BalatroAnalysis &&
+        typeof window.BalatroAnalysis.summarizeText === "function"
+      ) {
         return Promise.resolve(window.BalatroAnalysis);
       }
       if (!balatroAnalysisPromise) {
         balatroAnalysisPromise = new Promise((resolve, reject) => {
-          const script = document.createElement('script');
-          script.src = 'balatro_analysis.js';
+          const script = document.createElement("script");
+          script.src = "balatro_analysis.js";
           script.onload = () => {
-            if (window.BalatroAnalysis && typeof window.BalatroAnalysis.summarizeText === 'function') {
+            if (
+              window.BalatroAnalysis &&
+              typeof window.BalatroAnalysis.summarizeText === "function"
+            ) {
               resolve(window.BalatroAnalysis);
             } else {
-              reject(new Error('BalatroAnalysis helper missing after load.'));
+              reject(new Error("BalatroAnalysis helper missing after load."));
             }
           };
-          script.onerror = () => reject(new Error('Failed to load balatro_analysis.js'));
+          script.onerror = () =>
+            reject(new Error("Failed to load balatro_analysis.js"));
           document.head.appendChild(script);
         });
       }
       return balatroAnalysisPromise;
     }
 
-    exportButton.addEventListener('click', () => {
+    exportButton.addEventListener("click", () => {
       const content = outputBox.value;
       if (!content) {
-        alert('Nothing to export yet.');
+        alert("Nothing to export yet.");
         return;
       }
+
+      // 勾上：包含英文（默认行为）；不勾：纯中文 + #序号
+      const withEnglish = withEnglishToggle ? withEnglishToggle.checked : true;
+      const options = withEnglish ? {} : { chineseOnly: true };
+
       ensureBalatroAnalysisLoaded()
         .then((balatro) => {
-          const summary = balatro.summarizeText(content);
+          const summary = balatro.summarizeText(content, options);
           if (!summary) {
-            alert('No summary generated.');
+            alert("No summary generated.");
             return;
           }
-          return navigator.clipboard.writeText(summary)
-            .then(() => {
-              alert('Summary copied to clipboard!');
-            });
+          return navigator.clipboard.writeText(summary).then(() => {
+            alert("Summary copied to clipboard!");
+          });
         })
         .catch((err) => {
-          alert('Export helper unavailable.');
-          console.error('Failed to prepare summary:', err);
+          alert("Export helper unavailable.");
+          console.error("Failed to prepare summary:", err);
         });
     });
 
     // Add event listener to the "Analysis" button
-    analyzeButton.addEventListener('click', performAnalysis);
+    analyzeButton.addEventListener("click", performAnalysis);
 
     function performAnalysis() {
       // Get input values
@@ -407,7 +458,7 @@
       const deck = deckSelect.value;
       const stake = stakeSelect.value;
       const version = parseInt(versionSelect.value);
-      const seed = seedInput.value.toUpperCase().replace(/0/g, 'O');
+      const seed = seedInput.value.toUpperCase().replace(/0/g, "O");
 
       output = "";
 
@@ -436,44 +487,51 @@
       }
       inst.setStake(stake);
       inst.setDeck(deck);
-      var ghostDeck = (deck == "Ghost Deck");
+      var ghostDeck = deck == "Ghost Deck";
       const omitBeforeAnte9 = omitBeforeAnte9Checkbox.checked;
       for (let a = 1; a <= ante; a++) {
         inst.initUnlocks(a, false);
         const shouldOutput = !(omitBeforeAnte9 && a < 9);
-        const addOutput = shouldOutput ? (text) => { output += text; } : () => {};
+        const addOutput = shouldOutput
+          ? (text) => {
+              output += text;
+            }
+          : () => {};
         addOutput("==ANTE " + a + "==\n");
         addOutput("Boss: " + inst.nextBoss(a) + "\n");
         var voucher = inst.nextVoucher(a);
         addOutput("Voucher: " + voucher + "\n");
         inst.lock(voucher);
         // Unlock next level voucher
-        for (let i = 0; i < Immolate.VOUCHERS.size(); i+=2) {
-            if (Immolate.VOUCHERS.get(i) == voucher) {
-                // Only unlock it if it's unlockable
-                if (selectedOptions[options.indexOf(Immolate.VOUCHERS.get(i+1))]) {
-                  inst.unlock(Immolate.VOUCHERS.get(i+1));
-                };
-            };
-        };
+        for (let i = 0; i < Immolate.VOUCHERS.size(); i += 2) {
+          if (Immolate.VOUCHERS.get(i) == voucher) {
+            // Only unlock it if it's unlockable
+            if (
+              selectedOptions[options.indexOf(Immolate.VOUCHERS.get(i + 1))]
+            ) {
+              inst.unlock(Immolate.VOUCHERS.get(i + 1));
+            }
+          }
+        }
         addOutput("Tags: " + inst.nextTag(a) + ", " + inst.nextTag(a) + "\n");
 
         addOutput("Shop Queue: \n");
-        for (let q = 1; q <= cardsPerAnte[a-1]; q++) {
+        for (let q = 1; q <= cardsPerAnte[a - 1]; q++) {
           addOutput(q + ") ");
           var item = inst.nextShopItem(a);
           if (item.type == "Joker") {
             if (item.jokerData.stickers.eternal) addOutput("Eternal ");
             if (item.jokerData.stickers.perishable) addOutput("Perishable ");
             if (item.jokerData.stickers.rental) addOutput("Rental ");
-            if (item.jokerData.edition != "No Edition") addOutput(item.jokerData.edition + " ");
+            if (item.jokerData.edition != "No Edition")
+              addOutput(item.jokerData.edition + " ");
           }
           addOutput(item.item + "\n");
           item.delete();
         }
 
         addOutput("\nPacks: \n");
-        var numPacks = (a == 1) ? 4 : 6;
+        var numPacks = a == 1 ? 4 : 6;
         for (let p = 1; p <= numPacks; p++) {
           var pack = inst.nextPack(a);
           addOutput(pack + " - ");
@@ -482,7 +540,7 @@
             var cards = inst.nextCelestialPack(packInfo.size, a);
             for (let c = 0; c < packInfo.size; c++) {
               addOutput(cards.get(c));
-              addOutput((c + 1 != packInfo.size) ? ", " : "");
+              addOutput(c + 1 != packInfo.size ? ", " : "");
             }
             cards.delete();
           }
@@ -490,7 +548,7 @@
             var cards = inst.nextArcanaPack(packInfo.size, a);
             for (let c = 0; c < packInfo.size; c++) {
               addOutput(cards.get(c));
-              addOutput((c + 1 != packInfo.size) ? ", " : "");
+              addOutput(c + 1 != packInfo.size ? ", " : "");
             }
             cards.delete();
           }
@@ -498,7 +556,7 @@
             var cards = inst.nextSpectralPack(packInfo.size, a);
             for (let c = 0; c < packInfo.size; c++) {
               addOutput(cards.get(c));
-              addOutput((c + 1 != packInfo.size) ? ", " : "");
+              addOutput(c + 1 != packInfo.size ? ", " : "");
             }
             cards.delete();
           }
@@ -511,7 +569,7 @@
               if (joker.stickers.rental) addOutput("Rental ");
               if (joker.edition != "No Edition") addOutput(joker.edition + " ");
               addOutput(joker.joker);
-              addOutput((c + 1 != packInfo.size) ? ", " : "");
+              addOutput(c + 1 != packInfo.size ? ", " : "");
               joker.delete();
             }
             cards.delete();
@@ -522,7 +580,8 @@
               var card = cards.get(c);
               if (card.seal != "No Seal") addOutput(card.seal + " ");
               if (card.edition != "No Edition") addOutput(card.edition + " ");
-              if (card.enhancement != "No Enhancement") addOutput(card.enhancement + " ");
+              if (card.enhancement != "No Enhancement")
+                addOutput(card.enhancement + " ");
               var rank = card.base[2];
               if (rank == "T") addOutput("10");
               else if (rank == "J") addOutput("Jack");
@@ -536,7 +595,7 @@
               else if (suit == "S") addOutput("Spades");
               else if (suit == "D") addOutput("Diamonds");
               else if (suit == "H") addOutput("Hearts");
-              addOutput((c + 1 != packInfo.size) ? ", " : "");
+              addOutput(c + 1 != packInfo.size ? ", " : "");
               card.delete();
             }
             cards.delete();
@@ -545,7 +604,7 @@
         }
 
         addOutput("\n");
-      };
+      }
 
       inst.delete();
 
@@ -553,38 +612,41 @@
       outputBox.value = output;
     }
 
-    window.addEventListener('DOMContentLoaded', () => {
-      const seedInput = document.getElementById('seed');
-      const cardsPerAnteInput = document.getElementById('cardsPerAnte');
-      const anteInput = document.getElementById('ante');
-      const deckInput = document.getElementById('deck');
-      const stakeInput = document.getElementById('stake');
-      const versionInput = document.getElementById('version');
+    window.addEventListener("DOMContentLoaded", () => {
+      const seedInput = document.getElementById("seed");
+      const cardsPerAnteInput = document.getElementById("cardsPerAnte");
+      const anteInput = document.getElementById("ante");
+      const deckInput = document.getElementById("deck");
+      const stakeInput = document.getElementById("stake");
+      const versionInput = document.getElementById("version");
 
       // Get seed value from URL parameters
       const urlParams = new URLSearchParams(window.location.search);
-      const urlSeed = urlParams.get('seed');
-      const urlAnte = urlParams.get('ante');
-      const urlCardsPerAnte = urlParams.get('cardsPerAnte');
-      const urlDeck = urlParams.get('deck');
-      const urlStake = urlParams.get('stake');
-      const urlVersion = urlParams.get('version');
-      const urlOmitBeforeAnte9 = urlParams.get('omitBeforeAnte9');
-      const urlUnlocks = urlParams.get('unlocks');
+      const urlSeed = urlParams.get("seed");
+      const urlAnte = urlParams.get("ante");
+      const urlCardsPerAnte = urlParams.get("cardsPerAnte");
+      const urlDeck = urlParams.get("deck");
+      const urlStake = urlParams.get("stake");
+      const urlVersion = urlParams.get("version");
+      const urlOmitBeforeAnte9 = urlParams.get("omitBeforeAnte9");
+      const urlUnlocks = urlParams.get("unlocks");
 
       if (urlUnlocks) {
         // Decode the base64 string
         const binaryString = atob(urlUnlocks)
-          .split('')
-          .map(char => char.charCodeAt(0).toString(2).padStart(8, '0'))
-          .join('');
+          .split("")
+          .map((char) => char.charCodeAt(0).toString(2).padStart(8, "0"))
+          .join("");
 
         // Remove the padding byte (if present)
         const paddingLength = binaryString.length % 8;
-        const unpadded = paddingLength > 0 ? binaryString.slice(0, -paddingLength) : binaryString;
+        const unpadded =
+          paddingLength > 0
+            ? binaryString.slice(0, -paddingLength)
+            : binaryString;
 
         // Convert the binary string back to an array of booleans
-        const decodedUnlocks = unpadded.split('').map(bit => bit === '1');
+        const decodedUnlocks = unpadded.split("").map((bit) => bit === "1");
         selectedOptions = decodedUnlocks;
       }
 
@@ -593,10 +655,14 @@
         anteInput.value = urlAnte;
         anteInput.value = Math.min(anteInput.value, 999);
         anteInput.value = Math.max(anteInput.value, 1);
-        cardsPerAnteInput.value = Array(anteInput.value).fill(Number(urlCardsPerAnte ? urlCardsPerAnte : "100"));
+        cardsPerAnteInput.value = Array(anteInput.value).fill(
+          Number(urlCardsPerAnte ? urlCardsPerAnte : "100")
+        );
       }
       if (urlCardsPerAnte) {
-        cardsPerAnteInput.value = Array(anteInput.value).fill(Number(urlCardsPerAnte));
+        cardsPerAnteInput.value = Array(anteInput.value).fill(
+          Number(urlCardsPerAnte)
+        );
       }
       if (urlDeck) {
         deckInput.value = urlDeck;
@@ -612,27 +678,33 @@
         versionInput.value = urlVersion;
       }
       if (urlOmitBeforeAnte9 !== null) {
-        omitBeforeAnte9Checkbox.checked = urlOmitBeforeAnte9 !== 'false' && urlOmitBeforeAnte9 !== '0';
+        omitBeforeAnte9Checkbox.checked =
+          urlOmitBeforeAnte9 !== "false" && urlOmitBeforeAnte9 !== "0";
       }
 
       // Add event listener for input event
-      seedInput.addEventListener('input', () => {
+      seedInput.addEventListener("input", () => {
         seedInput.value = filterSeed(seedInput.value);
       });
 
-      anteInput.addEventListener('input', () => {
+      anteInput.addEventListener("input", () => {
         anteInput.value = Math.min(anteInput.value, 999);
         anteInput.value = Math.max(anteInput.value, 1);
       });
 
-      cardsPerAnteInput.addEventListener('input', () => {
+      cardsPerAnteInput.addEventListener("input", () => {
         cardsPerAnteInput.value = Math.min(cardsPerAnteInput.value, 100);
         cardsPerAnteInput.value = Math.max(cardsPerAnteInput.value, 0);
-        cardsPerAnteInput.value = Array(anteInput.value).fill(Number(cardsPerAnteInput.value));
+        cardsPerAnteInput.value = Array(anteInput.value).fill(
+          Number(cardsPerAnteInput.value)
+        );
       });
 
       function filterSeed(seed) {
-        const filteredSeed = seed.replace(/[^A-Za-z0-9]/g, '').toUpperCase().replace(/0/g, 'O');
+        const filteredSeed = seed
+          .replace(/[^A-Za-z0-9]/g, "")
+          .toUpperCase()
+          .replace(/0/g, "O");
 
         // Truncate the seed if it's longer than 8 characters
         return filteredSeed.slice(0, 8);
