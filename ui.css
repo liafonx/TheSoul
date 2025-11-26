@@ -43,6 +43,10 @@ h1.site-title {
 .output-section {
   background-color: #333333;
   color: #ffffff;
+} 
+
+.input-section {
+  max-width: 330px;
 }
 
 h2 {
@@ -66,6 +70,10 @@ button {
   background-color: #555555;
   color: #ffffff;
   border: none;
+}
+
+#outputBox {
+  min-height: 252px;
 }
 
 input#withEnglishToggle {
@@ -104,30 +112,44 @@ label[for="omitBeforeAnte9"] {
   gap: 8px;
 }
 .paginationButton {
-  background-color: #3d3d3d;
-  color: #f5f5f5;
-  border: 1px solid #555555;
-  border-radius: 6px;
-  padding: 4px 10px;
+  background-color: rgba(255, 224, 138, 0.12);
+  color: #ffe08a;
+  border: 1px solid rgba(255, 224, 138, 0.35);
+  border-radius: 4px;
+  padding: 3px 10px;
   cursor: pointer;
+  font-size: 13px;
+  height: 27.5px;
 }
 
 .paginationButton:disabled {
-  opacity: 0.5;
+  opacity: 0.4;
   cursor: default;
-}
-
-.paginationSelect {
-  background-color: #2c2c2c;
-  color: #f5f5f5;
-  font-size: 14px;
-  border: 1px solid #555555;
-  border-radius: 4px;
-  padding: 4px 6px;
+  filter: grayscale(0.8);
 }
 
 .paginationInfo {
+  display: flex;
+  align-items: center;
+  gap: 4px;
   font-size: 13px;
+  color: #ffe08a;
+  padding: 2px 8px;
+  border-radius: 4px;
+  border: 1px solid rgba(255, 224, 138, 0.25);
+  background-color: rgba(255, 224, 138, 0.08);
+}
+
+.paginationInfoSelect {
+  background-color: #2c2c2c;
+  color: #f5f5f5;
+  border: 1px solid #555555;
+  border-radius: 4px;
+  padding: 3px 6px;
+  font-size: 13px;
+}
+
+.paginationInfoTotal {
   color: #cccccc;
 }
 
@@ -414,7 +436,7 @@ label[for="omitBeforeAnte9"] {
 }
 
 .anteNum {
-  color: #ffe08a; /* your yellow accent */
+  color: #ffffff; /* your yellow accent */
   font-size: 1.35em; /* bigger than 'ANTE' */
   font-weight: 700;
   line-height: 1.15;
@@ -422,6 +444,9 @@ label[for="omitBeforeAnte9"] {
   display: inline-block;
 }
 
+.anteNumYellow {
+  color: #ffe08a;
+} /* dim warm orange */
 .anteNumOrange {
   color: #f48a18;
 } /* dim warm orange */

@@ -5,42 +5,19 @@ const hasNodeEnv =
 const nodeFs = hasNodeEnv ? require("fs") : null;
 const nodePath = hasNodeEnv ? require("path") : null;
 
-const JOKER_TRANSLATIONS = Object.freeze({
-  DNA: "DNA",
-  Blueprint: "蓝图",
-  Baron: "男爵",
-  Brainstorm: "头脑风暴",
-  Mime: "哑剧",
-  Showman: "🎪马戏团",
-  Burglar: "窃贼",
-  "Reserved Parking": "车位",
-  "Turtle Bean": "黑龟豆",
-  Seance: "通灵",
-  "Sixth Sense": "第六感",
-  "Diet Cola": "可乐",
-  "Invisible Joker": "隐形",
-  "Cloud 9": "9霄",
-  "Card Sharp": "老千",
-  Photograph: "照片",
-  "To the Moon": "月球",
-  Bull: "斗牛",
-  "Trading Card": "交易卡",
-  "Golden Ticket": "门票",
-  "Mr. Bones": "骷髅",
-  Acrobat: "杂技",
-  Certificate: "证书",
-  "Hanging Chad": "选票",
-  "The Duo": "二重奏",
-  Satellite: "卫星",
-  "Driver's License": "驾照",
-});
-
-const SPECTRAL_TRANSLATIONS = Object.freeze({
-  Cryptid: "神秘生物",
-  "Deja Vu": "既视感(红封）",
-  Ectoplasm: "灵质(负片)",
-  "The Soul": "灵魂",
-});
+let sharedLists = null;
+if (hasNodeEnv) {
+  try {
+    sharedLists = require("./balatro_lists.js");
+  } catch (err) {
+    sharedLists = null;
+  }
+} else if (
+  typeof globalThis !== "undefined" &&
+  globalThis.BalatroSharedLists
+) {
+  sharedLists = globalThis.BalatroSharedLists;
+}
 
 const KING_DISPLAY = Object.freeze({
   "Red Seal": "红封K",
@@ -50,16 +27,21 @@ const KING_DISPLAY = Object.freeze({
   "Red Seal Gold": "红封金K",
 });
 
-const JOKER_NAMES = Object.freeze(Object.keys(JOKER_TRANSLATIONS));
-const SPECTRAL_NAMES = Object.freeze(Object.keys(SPECTRAL_TRANSLATIONS));
+if (!sharedLists) {
+  throw new Error(
+    "BalatroSharedLists not found. Ensure balatro_lists.js is loaded."
+  );
+}
 
-const TAG_EMOJI = Object.freeze({
-  "Negative Tag": "🔘",
-  "Double Tag": "🖇️",
-  "Voucher Tag": "🎟️",
-});
-
-const ALERT_BOSSES = Object.freeze(["The Ox", "The Psychic", "The Plant"]);
+const {
+  JOKER_TRANSLATIONS,
+  SPECTRAL_TRANSLATIONS,
+  TAG_EMOJI,
+  ALERT_BOSSES,
+  JOKER_NAMES,
+  SPECTRAL_NAMES,
+  TAG_NAMES,
+} = sharedLists;
 
 const SPECTRAL_PACK_PREFIXES = [
   "Spectral Pack -",
@@ -259,7 +241,7 @@ class AnteData {
     );
   }
 
-  formatOutput(specialFlags, options = {}) {
+  formatOutput(options = {}) {
     const chineseOnly = Boolean(options.chineseOnly);
     const parts = [];
 
@@ -313,15 +295,6 @@ class AnteData {
         } else {
           // Original mixed format with English name and index in parentheses
           entry = `${chinese}${negativeSuffix}(${name} #${info.index})`;
-        }
-        if (
-          (name === "Sixth Sense" || name === "Seance") &&
-          anteNumber > 8 &&
-          specialFlags &&
-          !specialFlags[name]
-        ) {
-          entry = `💿${entry}`;
-          specialFlags[name] = true;
         }
         return entry;
       });
@@ -481,8 +454,7 @@ function collectAnteData(lines) {
 }
 
 function formatAnteDataList(anteList, options = {}) {
-  const specialFlags = { "Sixth Sense": false, Seance: false };
-  return anteList.map((ante) => ante.formatOutput(specialFlags, options));
+  return anteList.map((ante) => ante.formatOutput(options));
 }
 
 function collectAnteDetails(lines) {
@@ -516,6 +488,12 @@ const exported = {
   collectAnteDetails,
   TAG_EMOJI,
   summarizeText,
+  trackedLists: {
+    jokers: JOKER_NAMES,
+    spectrals: SPECTRAL_NAMES,
+    tags: TAG_NAMES,
+    bosses: ALERT_BOSSES,
+  },
 };
 
 if (hasNodeEnv) {

@@ -310,48 +310,45 @@
     },
   };
 
-  BalatroData.trackedJokers = [
-    "Baron",
-    "Blueprint",
-    "Brainstorm",
-    "Burglar",
-    "Diet Cola",
-    "DNA",
-    "Invisible Joker",
-    "Mime",
-    "Reserved Parking",
-    "Seance",
-    "Showman",
-    "Sixth Sense",
-    "Turtle Bean",
-    "Cloud 9",
-    "Card Sharp",
-    "Photograph",
-    "To the Moon",
-    "Bull",
-    "Trading Card",
-    "Golden Ticket",
-    "Mr. Bones",
-    "Acrobat",
-    "Certificate",
-    "Hanging Chad",
-    "The Duo",
-    "Satellite",
-    "Driver's License",
-  ].sort((a, b) => a.localeCompare(b));
+  const sharedLists = global.BalatroSharedLists;
+  if (!sharedLists) {
+    throw new Error(
+      "BalatroSharedLists not found. Ensure balatro_lists.js is loaded before ui.data.js"
+    );
+  }
 
-  BalatroData.trackedSpectrals = [
-    "Cryptid",
-    "Deja Vu",
-    "Ectoplasm",
-    "The Soul",
-  ].sort((a, b) => a.localeCompare(b));
-  BalatroData.trackedTags = ["Double Tag", "Negative Tag", "Voucher Tag"].sort(
-    (a, b) => a.localeCompare(b)
-  );
-  BalatroData.trackedBosses = ["The Ox", "The Psychic", "The Plant"].sort(
-    (a, b) => a.localeCompare(b)
-  );
+  const sortedCopy = (list) => Array.from(list).sort((a, b) => a.localeCompare(b));
+
+  const jokersSource =
+    sharedLists.JOKER_NAMES ||
+    sharedLists.jokers ||
+    Object.keys(sharedLists.JOKER_TRANSLATIONS || {});
+  const spectralsSource =
+    sharedLists.SPECTRAL_NAMES ||
+    sharedLists.spectrals ||
+    Object.keys(sharedLists.SPECTRAL_TRANSLATIONS || {});
+  const tagsSource =
+    sharedLists.TAG_NAMES ||
+    sharedLists.tags ||
+    Object.keys(sharedLists.TAG_EMOJI || {});
+  const bossesSource =
+    sharedLists.BOSSES ||
+    sharedLists.ALERT_BOSSES ||
+    [];
+
+  if (
+    !jokersSource.length ||
+    !spectralsSource.length ||
+    !tagsSource.length ||
+    !bossesSource.length
+  ) {
+    throw new Error("BalatroSharedLists is missing required entries.");
+  }
+
+  BalatroData.trackedJokers = sortedCopy(jokersSource);
+  BalatroData.trackedSpectrals = sortedCopy(spectralsSource);
+  BalatroData.trackedTags = sortedCopy(tagsSource);
+  BalatroData.trackedBosses = sortedCopy(bossesSource);
 
   global.BalatroData = BalatroData;
 })(window);

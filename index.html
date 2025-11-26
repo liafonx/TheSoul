@@ -3,7 +3,7 @@
   <script>
     var Immolate = {
       onRuntimeInitialized: function () {
-        if (instantAnalysis) {
+        if (window.instantAnalysis) {
           performAnalysis();
         }
       },
@@ -19,6 +19,7 @@
     }
   </script>
   <script src="immolate.js"></script>
+  <script src="balatro_lists.js"></script>
   <script src="UI.js" defer></script>
   <head>
     <meta charset="UTF-8" />
@@ -129,7 +130,7 @@
         <br />
         <div style="display: flex; align-items: center; gap: 8px;">
           <button id="downloadButton">Download</button>
-          <button id="exportButton">Export</button>
+          <button id="exportButton">Copy</button>
           <div class="checkbox-row export-toggle">
             <input type="checkbox" id="withEnglishToggle" checked />
             <label for="withEnglishToggle">with English</label>
@@ -300,7 +301,7 @@
     lockBtn.addEventListener("click", handleLock);
     unlockBtn.addEventListener("click", handleUnlock);
 
-    instantAnalysis = false;
+    window.instantAnalysis = false;
 
     const anteInput = document.getElementById("ante");
     const cardsPerAnteInput = document.getElementById("cardsPerAnte");
@@ -312,7 +313,7 @@
     const analyzeButton = document.getElementById("analyzeButton");
     const copyLinkButton = document.getElementById("copyButton");
     const downloadButton = document.getElementById("downloadButton");
-    const exportButton = document.getElementById("exportButton");
+    const copyButton = document.getElementById("exportButton");
     const outputBox = document.getElementById("outputBox");
     const withEnglishToggle = document.getElementById("withEnglishToggle");
     // Add event listener for the "Copy Link" button
@@ -379,7 +380,10 @@
 
     downloadButton.addEventListener("click", () => {
       const filename = seedInput.value + "_analysis.txt";
-      const content = outputBox.value;
+      const content =
+        (window.lastRawOutput && window.lastRawOutput.length
+          ? window.lastRawOutput
+          : outputBox.value);
 
       const blob = new Blob([content], { type: "text/plain" });
       const url = URL.createObjectURL(blob);
@@ -393,6 +397,7 @@
     });
 
     let balatroAnalysisPromise = null;
+    window.lastRawOutput = "";
     function ensureBalatroAnalysisLoaded() {
       if (
         window.BalatroAnalysis &&
@@ -422,31 +427,18 @@
       return balatroAnalysisPromise;
     }
 
-    exportButton.addEventListener("click", () => {
+    copyButton.addEventListener("click", () => {
       const content = outputBox.value;
       if (!content) {
-        alert("Nothing to export yet.");
+        alert("Nothing to copy yet.");
         return;
       }
-
-      // 勾上：包含英文（默认行为）；不勾：纯中文 + #序号
-      const withEnglish = withEnglishToggle ? withEnglishToggle.checked : true;
-      const options = withEnglish ? {} : { chineseOnly: true };
-
-      ensureBalatroAnalysisLoaded()
-        .then((balatro) => {
-          const summary = balatro.summarizeText(content, options);
-          if (!summary) {
-            alert("No summary generated.");
-            return;
-          }
-          return navigator.clipboard.writeText(summary).then(() => {
-            alert("Summary copied to clipboard!");
-          });
-        })
+      navigator.clipboard
+        .writeText(content)
+        .then(() => alert("Copied to clipboard!"))
         .catch((err) => {
-          alert("Export helper unavailable.");
-          console.error("Failed to prepare summary:", err);
+          alert("Failed to copy.");
+          console.error("Copy failed:", err);
         });
     });
 
@@ -610,8 +602,20 @@
 
       inst.delete();
 
-      // Update output box with analysis result
-      outputBox.value = output;
+      window.lastRawOutput = output;
+      outputBox.value = "Summarizing results...";
+      const withEnglish = withEnglishToggle ? withEnglishToggle.checked : true;
+      const summaryOptions = withEnglish ? {} : { chineseOnly: true };
+
+      ensureBalatroAnalysisLoaded()
+        .then((balatro) => {
+          const summary = balatro.summarizeText(output, summaryOptions);
+          outputBox.value = summary || output;
+        })
+        .catch((err) => {
+          console.error("Failed to run balatro_analysis:", err);
+          outputBox.value = output;
+        });
     }
 
     window.addEventListener("DOMContentLoaded", () => {
@@ -674,7 +678,7 @@
       }
       if (urlSeed) {
         seedInput.value = filterSeed(urlSeed);
-        instantAnalysis = true;
+        window.instantAnalysis = true;
       }
       if (urlVersion) {
         versionInput.value = urlVersion;

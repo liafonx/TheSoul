@@ -227,7 +227,10 @@
 
       function displayShopQueues() {
         const textarea = document.getElementById("outputBox");
-        const text = textarea.value;
+        const text =
+          (window.lastRawOutput && window.lastRawOutput.length
+            ? window.lastRawOutput
+            : textarea.value) || "";
         allShopQueues = extractShopQueues(text);
         currentPageIndex = 0;
         renderPaginationControls();
@@ -270,7 +273,9 @@
             const anteNumVal = parseInt(m[2], 10);
             let numClass = "anteNum";
             if (anteNumVal >= 32) numClass += " anteNumRed";
-            else if (anteNumVal >= 25) numClass += " anteNumOrange";
+            else if (anteNumVal >= 22) numClass += " anteNumOrange";
+            else if (anteNumVal == 24) numClass += " anteNumOrange";
+            else if (anteNumVal >= 12) numClass += " anteNumYellow";
             queueTitle.innerHTML = `${m[1]} <span class="${numClass}">${m[2]}</span>`;
           } else {
             queueTitle.textContent = cleanTitle;
@@ -951,12 +956,11 @@
           goToPage(currentPageIndex + 1)
         );
 
-        const info = document.createElement("span");
+        const info = document.createElement("div");
         info.className = "paginationInfo";
-        info.textContent = `Page ${currentPageIndex + 1} / ${totalPages}`;
 
         const pageSelect = document.createElement("select");
-        pageSelect.className = "paginationSelect";
+        pageSelect.className = "paginationInfoSelect";
         for (let i = 0; i < totalPages; i += 1) {
           const option = document.createElement("option");
           option.value = i;
@@ -970,7 +974,14 @@
           goToPage(Number(event.target.value));
         });
 
-        paginationContainer.append(prevButton, info, nextButton, pageSelect);
+        const totalSpan = document.createElement("span");
+        totalSpan.className = "paginationInfoTotal";
+        totalSpan.textContent = `/ ${totalPages}`;
+
+        info.appendChild(pageSelect);
+        info.appendChild(totalSpan);
+
+        paginationContainer.append(prevButton, info, nextButton);
       }
 
       document
