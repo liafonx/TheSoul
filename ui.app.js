@@ -1,4 +1,5 @@
 (function (global) {
+  let groupButtonsLoader = null;
   function initShopUI() {
     const data = global.BalatroData || {};
     const renderers = global.BalatroRenderers || {};
@@ -46,6 +47,7 @@
     let currentGroupSize = groupSizes[0];
     const groupButtonUpdaters = new Set();
     const cardGroupRenderers = new Set();
+    const allGroupSizeButtons = new Set();
     const ANTES_PER_PAGE = 13;
     let currentPageIndex = 0;
     let paginationContainer = null;
@@ -59,6 +61,19 @@
       groupButtonUpdaters.forEach((update) => update(size));
       cardGroupRenderers.forEach((render) => render());
     };
+
+    const setGroupButtonsLoading = (flag) => {
+      const buttons = document.querySelectorAll(".groupSizeButton");
+      buttons.forEach((btn) => {
+        btn.disabled = flag;
+        btn.classList.remove("is-loading");
+        void btn.offsetWidth; // restart animation
+        if (flag) {
+          btn.classList.add("is-loading");
+        }
+      });
+    };
+    groupButtonsLoader = setGroupButtonsLoading;
 
     function searchAndHighlight() {
       const searchInput = document.getElementById("searchInput");
@@ -262,15 +277,21 @@
           const queueContainer = document.createElement("div");
           queueContainer.className = "queueContainer";
 
+          const queueInfo = document.createElement("div");
+          queueInfo.className = "queueInfo";
+
+          const metaColumn = document.createElement("div");
+          metaColumn.className = "queueMetaColumn";
+
           const queueTitle = document.createElement("div");
-          queueTitle.className = "queueTitle";
-          queueTitle.classList.add("anteTitle");
+          queueTitle.className = "queueTitle anteTitle";
           const cleanTitle = (title.match(/ANTE\s*\d+/i) || [
             title.replace(/=+/g, "").trim(),
           ])[0];
+          let anteNumVal = null;
           const m = cleanTitle.match(/^(ANTE)\s*(\d+)/i);
           if (m) {
-            const anteNumVal = parseInt(m[2], 10);
+            anteNumVal = parseInt(m[2], 10);
             let numClass = "anteNum";
             if (anteNumVal >= 32) numClass += " anteNumRed";
             else if (anteNumVal >= 22) numClass += " anteNumOrange";
@@ -280,12 +301,13 @@
           } else {
             queueTitle.textContent = cleanTitle;
           }
-          queueContainer.appendChild(queueTitle);
+          metaColumn.appendChild(queueTitle);
 
-          const queueInfo = document.createElement("div");
-          queueInfo.className = "queueInfo";
+          const metaRow = document.createElement("div");
+          metaRow.className = "queueMetaRow";
 
           const voucherElement = document.createElement("div");
+          voucherElement.className = "metaBlock";
           voucherElement.innerHTML = "<b>Voucher</b>";
           voucherElement.style = "font-size: 16px";
           if (voucher) {
@@ -305,9 +327,10 @@
 
             voucherElement.appendChild(voucherContainer);
           }
-          queueInfo.appendChild(voucherElement);
+          metaRow.appendChild(voucherElement);
 
           const tagsElement = document.createElement("div");
+          tagsElement.className = "metaBlock";
           tagsElement.innerHTML = "<b>Tags</b>";
           tagsElement.style = "font-size: 16px";
 
@@ -333,11 +356,12 @@
           });
 
           tagsElement.appendChild(tagsContainer);
-          queueInfo.appendChild(tagsElement);
+          metaRow.appendChild(tagsElement);
 
           const bossElement = document.createElement("div");
+          bossElement.className = "metaBlock";
           bossElement.innerHTML = "<b>Boss</b>";
-          bossElement.style = "font-size: 16px;margin-left: 10px;";
+          bossElement.style = "font-size: 16px;";
 
           if (boss) {
             const bossContainer = document.createElement("div");
@@ -357,7 +381,57 @@
             bossElement.appendChild(bossContainer);
           }
 
-          queueInfo.appendChild(bossElement);
+          metaRow.appendChild(bossElement);
+
+          metaColumn.appendChild(metaRow);
+          queueInfo.appendChild(metaColumn);
+
+          if (anteNumVal !== null) {
+            const summaryLookup =
+              window.lastSummariesByAnte instanceof Map
+                ? window.lastSummariesByAnte
+                : null;
+
+            const miniWrapper = document.createElement("div");
+            miniWrapper.className = "miniSummaryWrapper";
+
+            const miniLabel = document.createElement("div");
+            miniLabel.className = "miniSummaryLabel";
+            miniLabel.textContent = "Nearby Summaries";
+            miniWrapper.appendChild(miniLabel);
+
+            const miniList = document.createElement("div");
+            miniList.className = "miniSummaryList";
+
+            for (let offset = 0; offset < 4; offset += 1) {
+              const anteKey = anteNumVal + offset;
+              const text =
+                summaryLookup && summaryLookup.get(anteKey)
+                  ? summaryLookup.get(anteKey)
+                  : `Ante ${anteKey}: No summary yet`;
+
+              const row = document.createElement("div");
+              row.className = "miniSummaryEntry";
+
+              const anteSpan = document.createElement("span");
+              anteSpan.className = "miniSummaryAnte";
+              anteSpan.textContent = `Ante ${anteKey}`;
+
+              const textSpan = document.createElement("span");
+              textSpan.className = "miniSummaryText";
+              const cleaned = text
+                .replace(/^ante\s*\d+\s*[：:]\s*/i, "")
+                .replace(/^\d+\s*[：:]\s*/, "")
+                .trim();
+              textSpan.textContent = cleaned || text;
+
+              row.append(anteSpan, textSpan);
+              miniList.appendChild(row);
+            }
+
+            miniWrapper.appendChild(miniList);
+            queueInfo.appendChild(miniWrapper);
+          }
 
           queueContainer.appendChild(queueInfo);
 
@@ -396,9 +470,11 @@
             button.className = "cardSetToggle groupSizeButton";
             button.textContent = size;
             button.addEventListener("click", () => {
+              if (button.disabled) return;
               setGlobalGroupSize(size);
             });
             localButtons.push(button);
+            allGroupSizeButtons.add(button);
             groupControls.appendChild(button);
           });
           updateLocalButtons(currentGroupSize);
@@ -916,6 +992,19 @@
           });
         });
         searchAndHighlight();
+
+        if (window.pendingScrollToResults) {
+          window.pendingScrollToResults = false;
+          requestAnimationFrame(() => {
+            const container = document.getElementById("scrollingContainer");
+            if (container) {
+              container.scrollIntoView({
+                behavior: "smooth",
+                block: "start",
+              });
+            }
+          });
+        }
       }
 
       function renderPaginationControls() {
@@ -984,14 +1073,16 @@
         paginationContainer.append(prevButton, info, nextButton);
       }
 
-      document
-        .getElementById("analyzeButton")
-        .addEventListener("click", () => displayShopQueues());
-
       displayShopQueues();
       global.refreshShopDisplay = displayShopQueues;
     })();
   }
 
   global.initShopUI = initShopUI;
+  global.setGroupButtonsLoading = (flag) => {
+    if (typeof flag !== "boolean") return;
+    if (typeof groupButtonsLoader === "function") {
+      groupButtonsLoader(flag);
+    }
+  };
 })(window);

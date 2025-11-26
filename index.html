@@ -139,12 +139,7 @@
       </div>
     </div>
     <div id="summaryFloatingWindow">
-      <h3>Summary</h3>
-      <textarea
-        id="summaryFloatingContent"
-        readonly
-        placeholder="Summary will appear here after analysis."
-      ></textarea>
+      <div id="summaryFloatingContent" aria-live="polite"></div>
     </div>
     <button id="summaryFloatingToggle" type="button">Summary</button>
   </body>
@@ -337,8 +332,92 @@
     // Add event listener for the "Copy Link" button
     copyLinkButton.addEventListener("click", copyLink);
 
-    summaryFloatingContent.value =
+    function renderSummaryList() {
+      if (!summaryFloatingContent) return;
+      const map =
+        window.lastSummariesByAnte instanceof Map
+          ? window.lastSummariesByAnte
+          : null;
+      summaryFloatingContent.innerHTML = "";
+
+      if (!map || map.size === 0) {
+        const empty = document.createElement("div");
+        empty.className = "summaryEmpty";
+        empty.textContent = "Summary will appear here after you click Analyze.";
+        summaryFloatingContent.appendChild(empty);
+        return;
+      }
+
+      const items = [...map.entries()].sort((a, b) => a[0] - b[0]);
+      items.forEach(([anteNum, rawLine], idx) => {
+        const item = document.createElement("div");
+        item.className = "summaryItem";
+        item.dataset.ante = String(anteNum);
+        item.dataset.order = String(idx);
+
+        const anteLabel = document.createElement("button");
+        anteLabel.type = "button";
+        anteLabel.className = "summaryAnteButton";
+        anteLabel.textContent = `Ante ${anteNum}`;
+
+        const cleaned = rawLine
+          .replace(/^\s*ante\s*\d+\s*[：:]\s*/i, "")
+          .replace(/^\s*\d+\s*[：:]\s*/, "")
+          .trim();
+        const text = document.createElement("span");
+        text.className = "summaryText";
+        text.textContent = cleaned || rawLine;
+
+        const reorderItems = () => {
+          const parent = item.parentElement;
+          if (!parent) return;
+          const children = Array.from(parent.children);
+          children.sort((a, b) => {
+            const aChecked = a.classList.contains("completed") ? 1 : 0;
+            const bChecked = b.classList.contains("completed") ? 1 : 0;
+            if (aChecked !== bChecked) return aChecked - bChecked;
+            const aOrder = Number(a.dataset.order || 0);
+            const bOrder = Number(b.dataset.order || 0);
+            return aOrder - bOrder;
+          });
+          children.forEach((child) => parent.appendChild(child));
+        };
+
+        anteLabel.addEventListener("click", () => {
+          const nowCompleted = item.classList.toggle("completed");
+          anteLabel.setAttribute("aria-pressed", nowCompleted ? "true" : "false");
+          reorderItems();
+        });
+
+        item.append(anteLabel, text);
+        summaryFloatingContent.appendChild(item);
+      });
+    }
+
+    summaryFloatingContent.textContent =
       "Summary will appear here after you click Analyze.";
+
+    function buildSummaryLookup(summaryText) {
+      const map = new Map();
+      if (!summaryText || !summaryText.trim()) {
+        return map;
+      }
+      summaryText.split("\n").forEach((line) => {
+        const trimmed = line.trim();
+        if (!trimmed) return;
+        // Matches formats like "ANTE 9: ...", "9: ...", or "9： ..."
+        const match =
+          trimmed.match(/^ante\s*(\d+)\s*[：:]/i) ||
+          trimmed.match(/^(\d+)\s*[：:]/);
+        if (match) {
+          const anteNum = parseInt(match[1], 10);
+          if (!Number.isNaN(anteNum) && !map.has(anteNum)) {
+            map.set(anteNum, trimmed);
+          }
+        }
+      });
+      return map;
+    }
 
     function copyLink() {
       const baseUrl = window.location.origin + window.location.pathname;
@@ -420,6 +499,8 @@
     let balatroAnalysisPromise = null;
     window.lastRawOutput = "";
     window.lastSummary = "";
+    window.lastSummariesByAnte = new Map();
+    renderSummaryList();
     function ensureBalatroAnalysisLoaded() {
       if (
         window.BalatroAnalysis &&
@@ -483,7 +564,19 @@
       output = "";
 
       // It's analysis time!
-      var inst = new Immolate.Instance(seed);
+      if (summaryFloatingContent) {
+        summaryFloatingContent.textContent = "Summarizing results...";
+      }
+      analyzeButton.disabled = true;
+      analyzeButton.classList.remove("is-loading");
+      // force reflow so repeated clicks re-trigger the animation
+      void analyzeButton.offsetWidth;
+      analyzeButton.classList.add("is-loading");
+      if (window.setGroupButtonsLoading) {
+        window.setGroupButtonsLoading(true);
+      }
+
+        var inst = new Immolate.Instance(seed);
       inst.params = new Immolate.InstParams(deck, stake, false, version);
       inst.initLocks(1, false, false);
       inst.lock("Overstock Plus");
@@ -630,22 +723,49 @@
 
       window.lastRawOutput = output;
       outputBox.value = "Summarizing results...";
+      if (summaryFloatingContent) {
+        summaryFloatingContent.textContent = "Summarizing results...";
+      }
       const withEnglish = withEnglishToggle ? withEnglishToggle.checked : true;
       const summaryOptions = withEnglish ? {} : { chineseOnly: true };
 
-      ensureBalatroAnalysisLoaded()
-        .then((balatro) => {
-          const summary = balatro.summarizeText(output, summaryOptions);
-          const finalSummary = summary || output;
-          window.lastSummary = finalSummary;
-          summaryFloatingContent.value = finalSummary;
-          outputBox.value = finalSummary;
-        })
-        .catch((err) => {
-          console.error("Failed to run balatro_analysis:", err);
-          window.lastSummary = output;
-          summaryFloatingContent.value = output;
-          outputBox.value = output;
+        ensureBalatroAnalysisLoaded()
+          .then((balatro) => {
+            const summary = balatro.summarizeText(output, summaryOptions);
+            const finalSummary = summary || output;
+            window.lastSummary = finalSummary;
+            window.lastSummariesByAnte = buildSummaryLookup(finalSummary);
+            renderSummaryList();
+            outputBox.value = finalSummary;
+            if (window.refreshShopDisplay) {
+              window.refreshShopDisplay();
+            }
+          })
+          .catch((err) => {
+            console.error("Failed to run balatro_analysis:", err);
+            window.lastSummary = output;
+            window.lastSummariesByAnte = buildSummaryLookup(output);
+            renderSummaryList();
+            outputBox.value = output;
+            if (window.refreshShopDisplay) {
+              window.refreshShopDisplay();
+            }
+          })
+        .finally(() => {
+          analyzeButton.disabled = false;
+          analyzeButton.classList.remove("is-loading");
+          if (window.setGroupButtonsLoading) {
+            window.setGroupButtonsLoading(false);
+          }
+          window.pendingScrollToResults = true;
+          if (window.refreshShopDisplay) {
+            window.refreshShopDisplay();
+          } else {
+            const container = document.getElementById("scrollingContainer");
+            if (container) {
+              container.scrollIntoView({ behavior: "smooth", block: "start" });
+            }
+          }
         });
     }
 
