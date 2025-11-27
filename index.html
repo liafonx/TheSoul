@@ -132,7 +132,7 @@
           <button id="downloadButton">Download</button>
           <button id="exportButton">Copy</button>
           <div class="checkbox-row export-toggle">
-            <input type="checkbox" id="withEnglishToggle" checked />
+            <input type="checkbox" id="withEnglishToggle"/>
             <label for="withEnglishToggle">with English</label>
           </div>
         </div>
@@ -563,171 +563,168 @@
 
       output = "";
 
-      // It's analysis time!
-      if (summaryFloatingContent) {
-        summaryFloatingContent.textContent = "Summarizing results...";
-      }
+      // show loading spinner on analyze button
       analyzeButton.disabled = true;
       analyzeButton.classList.remove("is-loading");
-      // force reflow so repeated clicks re-trigger the animation
+      analyzeButton.style.animation = "none";
       void analyzeButton.offsetWidth;
-      analyzeButton.classList.add("is-loading");
+      analyzeButton.style.animation = "";
+      requestAnimationFrame(() => analyzeButton.classList.add("is-loading"));
+
       if (window.setGroupButtonsLoading) {
         window.setGroupButtonsLoading(true);
       }
 
+      const runAnalysis = () => {
         var inst = new Immolate.Instance(seed);
-      inst.params = new Immolate.InstParams(deck, stake, false, version);
-      inst.initLocks(1, false, false);
-      inst.lock("Overstock Plus");
-      inst.lock("Liquidation");
-      inst.lock("Glow Up");
-      inst.lock("Reroll Glut");
-      inst.lock("Omen Globe");
-      inst.lock("Observatory");
-      inst.lock("Nacho Tong");
-      inst.lock("Recyclomancy");
-      inst.lock("Tarot Tycoon");
-      inst.lock("Planet Tycoon");
-      inst.lock("Money Tree");
-      inst.lock("Antimatter");
-      inst.lock("Illusion");
-      inst.lock("Petroglyph");
-      inst.lock("Retcon");
-      inst.lock("Palette");
-      for (let i = 0; i < options.length; i++) {
-        if (selectedOptions[i] == false) inst.lock(options[i]);
-      }
-      inst.setStake(stake);
-      inst.setDeck(deck);
-      var ghostDeck = deck == "Ghost Deck";
-      const omitBeforeAnte9 = omitBeforeAnte9Checkbox.checked;
-      for (let a = 1; a <= ante; a++) {
-        inst.initUnlocks(a, false);
-        const shouldOutput = !(omitBeforeAnte9 && a < 9);
-        const addOutput = shouldOutput
-          ? (text) => {
-              output += text;
-            }
-          : () => {};
-        addOutput("==ANTE " + a + "==\n");
-        addOutput("Boss: " + inst.nextBoss(a) + "\n");
-        var voucher = inst.nextVoucher(a);
-        addOutput("Voucher: " + voucher + "\n");
-        inst.lock(voucher);
-        // Unlock next level voucher
-        for (let i = 0; i < Immolate.VOUCHERS.size(); i += 2) {
-          if (Immolate.VOUCHERS.get(i) == voucher) {
-            // Only unlock it if it's unlockable
-            if (
-              selectedOptions[options.indexOf(Immolate.VOUCHERS.get(i + 1))]
-            ) {
-              inst.unlock(Immolate.VOUCHERS.get(i + 1));
-            }
-          }
+        inst.params = new Immolate.InstParams(deck, stake, false, version);
+        inst.initLocks(1, false, false);
+        inst.lock("Overstock Plus");
+        inst.lock("Liquidation");
+        inst.lock("Glow Up");
+        inst.lock("Reroll Glut");
+        inst.lock("Omen Globe");
+        inst.lock("Observatory");
+        inst.lock("Nacho Tong");
+        inst.lock("Recyclomancy");
+        inst.lock("Tarot Tycoon");
+        inst.lock("Planet Tycoon");
+        inst.lock("Money Tree");
+        inst.lock("Antimatter");
+        inst.lock("Illusion");
+        inst.lock("Petroglyph");
+        inst.lock("Retcon");
+        inst.lock("Palette");
+        for (let i = 0; i < options.length; i++) {
+          if (selectedOptions[i] == false) inst.lock(options[i]);
         }
-        addOutput("Tags: " + inst.nextTag(a) + ", " + inst.nextTag(a) + "\n");
+        inst.setStake(stake);
+        inst.setDeck(deck);
+        var ghostDeck = deck == "Ghost Deck";
+        const omitBeforeAnte9 = omitBeforeAnte9Checkbox.checked;
+        for (let a = 1; a <= ante; a++) {
+          inst.initUnlocks(a, false);
+          const shouldOutput = !(omitBeforeAnte9 && a < 9);
+          const addOutput = shouldOutput
+            ? (text) => {
+                output += text;
+              }
+            : () => {};
+          addOutput("==ANTE " + a + "==\n");
+          addOutput("Boss: " + inst.nextBoss(a) + "\n");
+          var voucher = inst.nextVoucher(a);
+          addOutput("Voucher: " + voucher + "\n");
+          inst.lock(voucher);
+          // Unlock next level voucher
+          for (let i = 0; i < Immolate.VOUCHERS.size(); i += 2) {
+            if (Immolate.VOUCHERS.get(i) == voucher) {
+              if (selectedOptions[options.indexOf(Immolate.VOUCHERS.get(i + 1))]) {
+                inst.unlock(Immolate.VOUCHERS.get(i + 1));
+              }
+            }
+          }
+          addOutput("Tags: " + inst.nextTag(a) + ", " + inst.nextTag(a) + "\n");
 
-        addOutput("Shop Queue: \n");
-        for (let q = 1; q <= cardsPerAnte[a - 1]; q++) {
-          addOutput(q + ") ");
-          var item = inst.nextShopItem(a);
-          if (item.type == "Joker") {
-            if (item.jokerData.stickers.eternal) addOutput("Eternal ");
-            if (item.jokerData.stickers.perishable) addOutput("Perishable ");
-            if (item.jokerData.stickers.rental) addOutput("Rental ");
-            if (item.jokerData.edition != "No Edition")
-              addOutput(item.jokerData.edition + " ");
+          addOutput("Shop Queue: \n");
+          for (let q = 1; q <= cardsPerAnte[a - 1]; q++) {
+            addOutput(q + ") ");
+            var item = inst.nextShopItem(a);
+            if (item.type == "Joker") {
+              if (item.jokerData.stickers.eternal) addOutput("Eternal ");
+              if (item.jokerData.stickers.perishable) addOutput("Perishable ");
+              if (item.jokerData.stickers.rental) addOutput("Rental ");
+              if (item.jokerData.edition != "No Edition")
+                addOutput(item.jokerData.edition + " ");
+            }
+            addOutput(item.item + "\n");
+            item.delete();
           }
-          addOutput(item.item + "\n");
-          item.delete();
-        }
 
-        addOutput("\nPacks: \n");
-        var numPacks = a == 1 ? 4 : 6;
-        for (let p = 1; p <= numPacks; p++) {
-          var pack = inst.nextPack(a);
-          addOutput(pack + " - ");
-          var packInfo = Immolate.packInfo(pack);
-          if (packInfo.type == "Celestial Pack") {
-            var cards = inst.nextCelestialPack(packInfo.size, a);
-            for (let c = 0; c < packInfo.size; c++) {
-              addOutput(cards.get(c));
-              addOutput(c + 1 != packInfo.size ? ", " : "");
+          addOutput("\nPacks: \n");
+          var numPacks = a == 1 ? 4 : 6;
+          for (let p = 1; p <= numPacks; p++) {
+            var pack = inst.nextPack(a);
+            addOutput(pack + " - ");
+            var packInfo = Immolate.packInfo(pack);
+            if (packInfo.type == "Celestial Pack") {
+              var cards = inst.nextCelestialPack(packInfo.size, a);
+              for (let c = 0; c < packInfo.size; c++) {
+                addOutput(cards.get(c));
+                addOutput(c + 1 != packInfo.size ? ", " : "");
+              }
+              cards.delete();
             }
-            cards.delete();
-          }
-          if (packInfo.type == "Arcana Pack") {
-            var cards = inst.nextArcanaPack(packInfo.size, a);
-            for (let c = 0; c < packInfo.size; c++) {
-              addOutput(cards.get(c));
-              addOutput(c + 1 != packInfo.size ? ", " : "");
+            if (packInfo.type == "Arcana Pack") {
+              var cards = inst.nextArcanaPack(packInfo.size, a);
+              for (let c = 0; c < packInfo.size; c++) {
+                addOutput(cards.get(c));
+                addOutput(c + 1 != packInfo.size ? ", " : "");
+              }
+              cards.delete();
             }
-            cards.delete();
-          }
-          if (packInfo.type == "Spectral Pack") {
-            var cards = inst.nextSpectralPack(packInfo.size, a);
-            for (let c = 0; c < packInfo.size; c++) {
-              addOutput(cards.get(c));
-              addOutput(c + 1 != packInfo.size ? ", " : "");
+            if (packInfo.type == "Spectral Pack") {
+              var cards = inst.nextSpectralPack(packInfo.size, a);
+              for (let c = 0; c < packInfo.size; c++) {
+                addOutput(cards.get(c));
+                addOutput(c + 1 != packInfo.size ? ", " : "");
+              }
+              cards.delete();
             }
-            cards.delete();
-          }
-          if (packInfo.type == "Buffoon Pack") {
-            var cards = inst.nextBuffoonPack(packInfo.size, a);
-            for (let c = 0; c < packInfo.size; c++) {
-              var joker = cards.get(c);
-              if (joker.stickers.eternal) addOutput("Eternal ");
-              if (joker.stickers.perishable) addOutput("Perishable ");
-              if (joker.stickers.rental) addOutput("Rental ");
-              if (joker.edition != "No Edition") addOutput(joker.edition + " ");
-              addOutput(joker.joker);
-              addOutput(c + 1 != packInfo.size ? ", " : "");
-              joker.delete();
+            if (packInfo.type == "Buffoon Pack") {
+              var cards = inst.nextBuffoonPack(packInfo.size, a);
+              for (let c = 0; c < packInfo.size; c++) {
+                var joker = cards.get(c);
+                if (joker.stickers.eternal) addOutput("Eternal ");
+                if (joker.stickers.perishable) addOutput("Perishable ");
+                if (joker.stickers.rental) addOutput("Rental ");
+                if (joker.edition != "No Edition") addOutput(joker.edition + " ");
+                addOutput(joker.joker);
+                addOutput(c + 1 != packInfo.size ? ", " : "");
+                joker.delete();
+              }
+              cards.delete();
             }
-            cards.delete();
-          }
-          if (packInfo.type == "Standard Pack") {
-            var cards = inst.nextStandardPack(packInfo.size, a);
-            for (let c = 0; c < packInfo.size; c++) {
-              var card = cards.get(c);
-              if (card.seal != "No Seal") addOutput(card.seal + " ");
-              if (card.edition != "No Edition") addOutput(card.edition + " ");
-              if (card.enhancement != "No Enhancement")
-                addOutput(card.enhancement + " ");
-              var rank = card.base[2];
-              if (rank == "T") addOutput("10");
-              else if (rank == "J") addOutput("Jack");
-              else if (rank == "Q") addOutput("Queen");
-              else if (rank == "K") addOutput("King");
-              else if (rank == "A") addOutput("Ace");
-              else addOutput(rank);
-              addOutput(" of ");
-              var suit = card.base[0];
-              if (suit == "C") addOutput("Clubs");
-              else if (suit == "S") addOutput("Spades");
-              else if (suit == "D") addOutput("Diamonds");
-              else if (suit == "H") addOutput("Hearts");
-              addOutput(c + 1 != packInfo.size ? ", " : "");
-              card.delete();
+            if (packInfo.type == "Standard Pack") {
+              var cards = inst.nextStandardPack(packInfo.size, a);
+              for (let c = 0; c < packInfo.size; c++) {
+                var card = cards.get(c);
+                if (card.seal != "No Seal") addOutput(card.seal + " ");
+                if (card.edition != "No Edition") addOutput(card.edition + " ");
+                if (card.enhancement != "No Enhancement")
+                  addOutput(card.enhancement + " ");
+                var rank = card.base[2];
+                if (rank == "T") addOutput("10");
+                else if (rank == "J") addOutput("Jack");
+                else if (rank == "Q") addOutput("Queen");
+                else if (rank == "K") addOutput("King");
+                else if (rank == "A") addOutput("Ace");
+                else addOutput(rank);
+                addOutput(" of ");
+                var suit = card.base[0];
+                if (suit == "C") addOutput("Clubs");
+                else if (suit == "S") addOutput("Spades");
+                else if (suit == "D") addOutput("Diamonds");
+                else if (suit == "H") addOutput("Hearts");
+                addOutput(c + 1 != packInfo.size ? ", " : "");
+                card.delete();
+              }
+              cards.delete();
             }
-            cards.delete();
+            addOutput("\n");
           }
+
           addOutput("\n");
         }
 
-        addOutput("\n");
-      }
+        inst.delete();
 
-      inst.delete();
-
-      window.lastRawOutput = output;
-      outputBox.value = "Summarizing results...";
-      if (summaryFloatingContent) {
-        summaryFloatingContent.textContent = "Summarizing results...";
-      }
-      const withEnglish = withEnglishToggle ? withEnglishToggle.checked : true;
-      const summaryOptions = withEnglish ? {} : { chineseOnly: true };
+        window.lastRawOutput = output;
+        outputBox.value = "Summarizing results...";
+        if (summaryFloatingContent) {
+          summaryFloatingContent.textContent = "Summarizing results...";
+        }
+        const withEnglish = withEnglishToggle ? withEnglishToggle.checked : true;
+        const summaryOptions = withEnglish ? {} : { chineseOnly: true };
 
         ensureBalatroAnalysisLoaded()
           .then((balatro) => {
@@ -750,10 +747,10 @@
             if (window.refreshShopDisplay) {
               window.refreshShopDisplay();
             }
-          })
+        })
         .finally(() => {
           analyzeButton.disabled = false;
-          analyzeButton.classList.remove("is-loading");
+          analyzeButton.classList.remove("is-loading", "is-loading-alt");
           if (window.setGroupButtonsLoading) {
             window.setGroupButtonsLoading(false);
           }
@@ -762,11 +759,17 @@
             window.refreshShopDisplay();
           } else {
             const container = document.getElementById("scrollingContainer");
-            if (container) {
-              container.scrollIntoView({ behavior: "smooth", block: "start" });
+              if (container) {
+                container.scrollIntoView({
+                  behavior: "smooth",
+                  block: "start",
+                });
+              }
             }
-          }
-        });
+          });
+      };
+
+      runAnalysis();
     }
 
     window.addEventListener("DOMContentLoaded", () => {

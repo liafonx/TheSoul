@@ -64,12 +64,17 @@
 
     const setGroupButtonsLoading = (flag) => {
       const buttons = document.querySelectorAll(".groupSizeButton");
+      console.log("[GroupButtons] Loading", flag, "count", buttons.length);
       buttons.forEach((btn) => {
         btn.disabled = flag;
-        btn.classList.remove("is-loading");
+        btn.classList.remove("is-loading", "is-loading-alt");
+        btn.style.animation = "none";
         void btn.offsetWidth; // restart animation
         if (flag) {
-          btn.classList.add("is-loading");
+          btn.style.animation = "";
+          requestAnimationFrame(() => btn.classList.add("is-loading"));
+        } else {
+          btn.style.animation = "";
         }
       });
     };
@@ -471,7 +476,20 @@
             button.textContent = size;
             button.addEventListener("click", () => {
               if (button.disabled) return;
-              setGlobalGroupSize(size);
+              console.log("[GroupSize] click", size);
+              button.disabled = true;
+              button.classList.remove("is-loading");
+              button.style.animation = "none";
+              void button.offsetWidth;
+              button.style.animation = "";
+              button.classList.add("is-loading");
+
+              requestAnimationFrame(() => {
+                console.log("[GroupSize] apply", size);
+                setGlobalGroupSize(size);
+                button.disabled = false;
+                button.classList.remove("is-loading");
+              });
             });
             localButtons.push(button);
             allGroupSizeButtons.add(button);
@@ -500,8 +518,20 @@
           };
 
           layoutToggle.addEventListener("click", () => {
-            applyLayoutMode(layoutMode === "scroll" ? "grid" : "scroll");
-            renderCardGroups();
+            if (layoutToggle.disabled) return;
+            layoutToggle.disabled = true;
+            layoutToggle.classList.remove("is-loading");
+            layoutToggle.style.animation = "none";
+            void layoutToggle.offsetWidth;
+            layoutToggle.style.animation = "";
+            layoutToggle.classList.add("is-loading");
+
+            setTimeout(() => {
+              applyLayoutMode(layoutMode === "scroll" ? "grid" : "scroll");
+              renderCardGroups();
+              layoutToggle.disabled = false;
+              layoutToggle.classList.remove("is-loading");
+            }, 600);
           });
 
           applyLayoutMode(layoutMode);

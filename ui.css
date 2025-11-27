@@ -155,15 +155,15 @@ label[for="omitBeforeAnte9"] {
 
 #summaryFloatingToggle {
   position: fixed;
-  right: 18px;
-  top: 18px;
+  right: 10px;
+  top: 10px;
   background-color: rgba(255, 224, 138, 0.15);
   backdrop-filter: blur(8px);
   -webkit-backdrop-filter: blur(8px);
   color: #ffe08a;
   border: 1px solid rgba(255, 224, 138, 0.4);
   border-radius: 999px;
-  padding: 10px 18px;
+  padding: 6px 14px;
   cursor: pointer;
   font-size: 13px;
   z-index: 1200;
@@ -172,7 +172,11 @@ label[for="omitBeforeAnte9"] {
 
 button.is-loading,
 .groupSizeButton.is-loading,
-#analyzeButton.is-loading {
+.groupSizeButton.is-loading-alt,
+#analyzeButton.is-loading,
+.groupSizeButton.is-loading-alt,
+.cardSetToggle.is-loading,
+#analyzeButton.is-loading-alt {
   position: relative;
   pointer-events: none;
   opacity: 0.7;
@@ -180,7 +184,10 @@ button.is-loading,
 
 button.is-loading::after,
 .groupSizeButton.is-loading::after,
-#analyzeButton.is-loading::after {
+.groupSizeButton.is-loading-alt::after,
+#analyzeButton.is-loading::after,
+#analyzeButton.is-loading-alt::after,
+.cardSetToggle.is-loading::after {
   content: "";
   position: absolute;
   width: 10px;
@@ -205,19 +212,19 @@ button.is-loading::after,
 
 #summaryFloatingWindow {
   position: fixed;
-  left: 10px;
-  right: 10px;
-  top: 66px;
+  left: 4px;
+  right: 4px;
+  top: 46px;
   bottom: 10px;
   width: auto;
   max-height: none;
   background-color: rgba(20, 20, 20, 0.96);
   border: 1px solid rgba(255, 224, 138, 0.25);
   border-radius: 10px;
-  padding: 12px;
+  padding: 6px;
   box-shadow: 0 6px 18px rgba(0, 0, 0, 0.6);
   display: none;
-  flex-direction: column;
+  flex-direction: row;
   gap: 8px;
   z-index: 1100;
 }
@@ -267,8 +274,6 @@ button.is-loading::after,
 
 .summaryItem + .summaryItem {
   border-top: 1px solid #474747;
-  padding-top: 8px;
-  /* margin-top: 8px; */
 }
 
 .summaryItem.completed {
@@ -289,9 +294,9 @@ button.is-loading::after,
   flex: 0 0 auto;
 }
 
-.summaryAnteButton:hover {
+/* .summaryAnteButton:hover {
   background-color: #464646;
-}
+} */
 
 .summaryText {
   flex: 1 1 auto;
@@ -535,9 +540,9 @@ button.is-loading::after,
 }
 
 .groupSizeButton {
-  width: 34px;
-  font-size: 13px;
-  height: 26px;
+  /* width: 34px; */
+  font-size: 12px;
+  /* height: 26px; */
   text-align: center;
   position: relative;
   color: #cccccc
@@ -704,14 +709,14 @@ button.is-loading::after,
   display: flex;
   flex-direction: column;
   gap: 8px;
-  min-width: 200px;
-  flex: 1 1 300px;
+  min-width: 165px;
+  flex: 1 1 185px;
   align-items: flex-start;
   text-align: left;
 }
 
 .queueMetaRow {
-  --meta-gap: 30px;
+  --meta-gap: 20px;
   display: flex;
   flex-wrap: nowrap;
   width: 100%;
