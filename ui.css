@@ -244,11 +244,11 @@ button.is-loading::after,
   color: #f5f5f5;
   border: 1px solid #555;
   border-radius: 6px;
-  padding: 8px;
+  padding: 2px 8px;
   font-size: 12px;
   display: flex;
   flex-direction: column;
-  gap: 5px;
+  /* gap: 5px; */
   scrollbar-width: none;
 }
 
