@@ -329,6 +329,13 @@
     );
     const outputBox = document.getElementById("outputBox");
     const withEnglishToggle = document.getElementById("withEnglishToggle");
+    const setButtonLoadingState = (btn, flag) => {
+      if (!btn) return;
+      const isLoading = Boolean(flag);
+      btn.disabled = isLoading;
+      btn.classList.toggle("is-loading", isLoading);
+    };
+
     // Add event listener for the "Copy Link" button
     copyLinkButton.addEventListener("click", copyLink);
 
@@ -564,12 +571,7 @@
       output = "";
 
       // show loading spinner on analyze button
-      analyzeButton.disabled = true;
-      analyzeButton.classList.remove("is-loading");
-      analyzeButton.style.animation = "none";
-      void analyzeButton.offsetWidth;
-      analyzeButton.style.animation = "";
-      requestAnimationFrame(() => analyzeButton.classList.add("is-loading"));
+      setButtonLoadingState(analyzeButton, true);
 
       if (window.setGroupButtonsLoading) {
         window.setGroupButtonsLoading(true);
@@ -737,11 +739,11 @@
             if (window.refreshShopDisplay) {
               window.refreshShopDisplay();
             }
-          })
-          .catch((err) => {
-            console.error("Failed to run balatro_analysis:", err);
-            window.lastSummary = output;
-            window.lastSummariesByAnte = buildSummaryLookup(output);
+        })
+        .catch((err) => {
+          console.error("Failed to run balatro_analysis:", err);
+          window.lastSummary = output;
+          window.lastSummariesByAnte = buildSummaryLookup(output);
             renderSummaryList();
             outputBox.value = output;
             if (window.refreshShopDisplay) {
@@ -749,8 +751,7 @@
             }
         })
         .finally(() => {
-          analyzeButton.disabled = false;
-          analyzeButton.classList.remove("is-loading", "is-loading-alt");
+          setButtonLoadingState(analyzeButton, false);
           if (window.setGroupButtonsLoading) {
             window.setGroupButtonsLoading(false);
           }
@@ -759,14 +760,14 @@
             window.refreshShopDisplay();
           } else {
             const container = document.getElementById("scrollingContainer");
-              if (container) {
-                container.scrollIntoView({
-                  behavior: "smooth",
-                  block: "start",
-                });
-              }
+            if (container) {
+              container.scrollIntoView({
+                behavior: "smooth",
+                block: "start",
+              });
             }
-          });
+          }
+        });
       };
 
       runAnalysis();

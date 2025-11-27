@@ -62,21 +62,17 @@
       cardGroupRenderers.forEach((render) => render());
     };
 
+    const setButtonLoadingState = (btn, flag) => {
+      if (!btn) return;
+      const isLoading = Boolean(flag);
+      btn.disabled = isLoading;
+      btn.classList.toggle("is-loading", isLoading);
+    };
+
     const setGroupButtonsLoading = (flag) => {
       const buttons = document.querySelectorAll(".groupSizeButton");
       console.log("[GroupButtons] Loading", flag, "count", buttons.length);
-      buttons.forEach((btn) => {
-        btn.disabled = flag;
-        btn.classList.remove("is-loading", "is-loading-alt");
-        btn.style.animation = "none";
-        void btn.offsetWidth; // restart animation
-        if (flag) {
-          btn.style.animation = "";
-          requestAnimationFrame(() => btn.classList.add("is-loading"));
-        } else {
-          btn.style.animation = "";
-        }
-      });
+      buttons.forEach((btn) => setButtonLoadingState(btn, flag));
     };
     groupButtonsLoader = setGroupButtonsLoading;
 
@@ -477,18 +473,12 @@
             button.addEventListener("click", () => {
               if (button.disabled) return;
               console.log("[GroupSize] click", size);
-              button.disabled = true;
-              button.classList.remove("is-loading");
-              button.style.animation = "none";
-              void button.offsetWidth;
-              button.style.animation = "";
-              button.classList.add("is-loading");
+              setButtonLoadingState(button, true);
 
               requestAnimationFrame(() => {
                 console.log("[GroupSize] apply", size);
                 setGlobalGroupSize(size);
-                button.disabled = false;
-                button.classList.remove("is-loading");
+                setTimeout(() => setButtonLoadingState(button, false), 200);
               });
             });
             localButtons.push(button);

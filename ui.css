@@ -172,11 +172,8 @@ label[for="omitBeforeAnte9"] {
 
 button.is-loading,
 .groupSizeButton.is-loading,
-.groupSizeButton.is-loading-alt,
-#analyzeButton.is-loading,
-.groupSizeButton.is-loading-alt,
 .cardSetToggle.is-loading,
-#analyzeButton.is-loading-alt {
+#analyzeButton.is-loading {
   position: relative;
   pointer-events: none;
   opacity: 0.7;
@@ -184,10 +181,8 @@ button.is-loading,
 
 button.is-loading::after,
 .groupSizeButton.is-loading::after,
-.groupSizeButton.is-loading-alt::after,
-#analyzeButton.is-loading::after,
-#analyzeButton.is-loading-alt::after,
-.cardSetToggle.is-loading::after {
+.cardSetToggle.is-loading::after,
+#analyzeButton.is-loading::after {
   content: "";
   position: absolute;
   width: 10px;
@@ -283,7 +278,7 @@ button.is-loading::after,
 
 .summaryAnteButton {
   font-weight: 700;
-  color: #ffe08a;
+  color: #e0c579;
   background-color: #2f2f2f;
   border: 1px solid #555;
   border-radius: 5px;
@@ -690,7 +685,7 @@ button.is-loading::after,
 .miniSummaryAnte {
   font-weight: 700;
   font-size: 11px;
-  color: #ffe08a;
+  color: #e0c579;
   flex: 0 0 auto;
 }
 
