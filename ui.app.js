@@ -66,7 +66,13 @@
       if (!btn) return;
       const isLoading = Boolean(flag);
       btn.disabled = isLoading;
-      btn.classList.toggle("is-loading", isLoading);
+      if (isLoading) {
+        btn.classList.remove("is-loading");
+        void btn.offsetWidth;
+        btn.classList.add("is-loading");
+      } else {
+        btn.classList.remove("is-loading");
+      }
     };
 
     const setGroupButtonsLoading = (flag) => {
@@ -475,11 +481,12 @@
               console.log("[GroupSize] click", size);
               setButtonLoadingState(button, true);
 
-              requestAnimationFrame(() => {
+              // defer heavy re-render so the spinner appears immediately
+              setTimeout(() => {
                 console.log("[GroupSize] apply", size);
                 setGlobalGroupSize(size);
-                setTimeout(() => setButtonLoadingState(button, false), 200);
-              });
+                setButtonLoadingState(button, false);
+              }, 0);
             });
             localButtons.push(button);
             allGroupSizeButtons.add(button);

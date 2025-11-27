@@ -333,7 +333,15 @@
       if (!btn) return;
       const isLoading = Boolean(flag);
       btn.disabled = isLoading;
-      btn.classList.toggle("is-loading", isLoading);
+      if (isLoading) {
+        // restart CSS spinner animation reliably
+        btn.classList.remove("is-loading");
+        // force reflow so ::after animation resets
+        void btn.offsetWidth;
+        btn.classList.add("is-loading");
+      } else {
+        btn.classList.remove("is-loading");
+      }
     };
 
     // Add event listener for the "Copy Link" button
@@ -770,7 +778,8 @@
         });
       };
 
-      runAnalysis();
+      // defer heavy work so the spinner can paint first
+      setTimeout(runAnalysis, 0);
     }
 
     window.addEventListener("DOMContentLoaded", () => {
