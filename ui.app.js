@@ -120,7 +120,14 @@
           const baseChinese = jokerTranslations[enName];
           const hasNegative = nameEl.dataset.negativeTag === "1";
           const displayText = hasNegative ? `‼️ ${baseChinese}` : baseChinese;
-          nameEl.textContent = shouldHighlight ? displayText : nameEl.dataset.originalText || nameEl.textContent;
+          if (shouldHighlight) {
+            nameEl.textContent = displayText;
+            nameEl.classList.add("cardName-cn");
+          } else {
+            nameEl.textContent =
+              nameEl.dataset.originalText || nameEl.textContent;
+            nameEl.classList.remove("cardName-cn");
+          }
         }
       });
     }
