@@ -38,9 +38,11 @@ const {
   SPECTRAL_TRANSLATIONS,
   TAG_EMOJI,
   ALERT_BOSSES,
+  VOUCHER_EMOJI,
   JOKER_NAMES,
   SPECTRAL_NAMES,
   TAG_NAMES,
+  VOUCHER_NAMES,
 } = sharedLists;
 
 const SPECTRAL_PACK_PREFIXES = [
@@ -123,7 +125,7 @@ function normalizeKingVariants(cardText) {
 class AnteData {
   constructor(number) {
     this.number = number;
-    this.jesterCards = new Map();
+    this.jesterCards = [];
     this.orderCounter = 0;
     this.buffoonJesters = [];
     this.buffoonSeen = new Set();
@@ -140,25 +142,12 @@ class AnteData {
     if (!Object.prototype.hasOwnProperty.call(JOKER_TRANSLATIONS, name)) {
       return;
     }
-    const current = this.jesterCards.get(name);
-    if (!current) {
-      this.jesterCards.set(name, {
-        negative,
-        index,
-        order: this.orderCounter++,
-      });
-      return;
-    }
-    if (current.negative) {
-      return;
-    }
-    if (negative) {
-      this.jesterCards.set(name, {
-        negative: true,
-        index,
-        order: this.orderCounter++,
-      });
-    }
+    this.jesterCards.push({
+      name,
+      negative: Boolean(negative),
+      index,
+      order: this.orderCounter++,
+    });
   }
 
   addBuffoonJester(name) {
@@ -234,7 +223,7 @@ class AnteData {
     const tagOutput = this.getTagOutput();
     return Boolean(
       tagOutput.display.length ||
-        this.jesterCards.size ||
+        this.jesterCards.length ||
         this.spectralCards.length ||
         this.kingCards.length ||
         this.buffoonJesters.length
@@ -246,12 +235,23 @@ class AnteData {
     const parts = [];
 
     const { display: tagDisplay } = this.getTagOutput();
+    const voucherEmoji =
+      this.voucher && VOUCHER_EMOJI && VOUCHER_EMOJI[this.voucher]
+        ? VOUCHER_EMOJI[this.voucher]
+        : "";
+
+    let bossVoucherSegment = "";
+    if (ALERT_BOSSES.includes(this.boss)) {
+      bossVoucherSegment += "‼️☠️";
+    }
+    if (voucherEmoji) {
+      bossVoucherSegment += voucherEmoji;
+    }
+    if (bossVoucherSegment) {
+      parts.push(bossVoucherSegment);
+    }
     if (tagDisplay.length) {
       parts.push(tagDisplay.join(""));
-    }
-
-    if (ALERT_BOSSES.includes(this.boss)) {
-      parts.unshift("☠️");
     }
 
     if (this.spectralCards.length) {
@@ -280,21 +280,20 @@ class AnteData {
       parts.push(buffoon.join("、"));
     }
 
-    if (this.jesterCards.size) {
-      const entries = [...this.jesterCards.entries()].sort(
-        (a, b) => a[1].order - b[1].order
-      );
-      const anteNumber = Number.parseInt(this.number, 10) || 0;
-      const jesterParts = entries.map(([name, info]) => {
-        const chinese = JOKER_TRANSLATIONS[name] || name;
+    if (this.jesterCards.length) {
+      const entries = this.jesterCards
+        .slice()
+        .sort((a, b) => a.order - b.order);
+      const jesterParts = entries.map((info) => {
+        const chinese = JOKER_TRANSLATIONS[info.name] || info.name;
         const negativeSuffix = info.negative ? "🔘" : "";
         let entry;
         if (chineseOnly) {
-          // Chinese-only: name + negative marker + #index, no English name
+          // Chinese-only: name + per-occurrence negative marker + #index
           entry = `${chinese}${negativeSuffix}#${info.index}`;
         } else {
-          // Original mixed format with English name and index in parentheses
-          entry = `${chinese}${negativeSuffix}(${name} #${info.index})`;
+          // Mixed format with English name and index in parentheses
+          entry = `${chinese}${negativeSuffix}(${info.name} #${info.index})`;
         }
         return entry;
       });
@@ -314,8 +313,8 @@ class AnteData {
       spectralCards: [...this.spectralCards],
       kingCards: [...this.kingCards],
       buffoonJesters: [...this.buffoonJesters],
-      jesterCards: [...this.jesterCards.entries()].map(([name, info]) => ({
-        name,
+      jesterCards: this.jesterCards.map((info) => ({
+        name: info.name,
         negative: info.negative,
         index: info.index,
         order: info.order,
@@ -493,6 +492,7 @@ const exported = {
     spectrals: SPECTRAL_NAMES,
     tags: TAG_NAMES,
     bosses: ALERT_BOSSES,
+    vouchers: VOUCHER_NAMES,
   },
 };
 

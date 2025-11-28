@@ -466,7 +466,7 @@
 
       // Add non-default input values as URL parameters
       if (anteInput.value !== "39") params.append("ante", anteInput.value);
-      if (cardsPerAnteInput.value !== "100")
+      if (cardsPerAnteInput.value !== "200")
         params.append("cardsPerAnte", cardsPerAnteInput.value);
       if (deckSelect.value !== "Red Deck")
         params.append("deck", deckSelect.value);
@@ -567,6 +567,34 @@
     // Add event listener to the "Analysis" button
     analyzeButton.addEventListener("click", performAnalysis);
 
+    function createImmolateInstance(seed, deck, stake, version) {
+      const inst = new Immolate.Instance(seed);
+      inst.params = new Immolate.InstParams(deck, stake, false, version);
+      inst.initLocks(1, false, false);
+      inst.lock("Overstock Plus");
+      inst.lock("Liquidation");
+      inst.lock("Glow Up");
+      inst.lock("Reroll Glut");
+      inst.lock("Omen Globe");
+      inst.lock("Observatory");
+      inst.lock("Nacho Tong");
+      inst.lock("Recyclomancy");
+      inst.lock("Tarot Tycoon");
+      inst.lock("Planet Tycoon");
+      inst.lock("Money Tree");
+      inst.lock("Antimatter");
+      inst.lock("Illusion");
+      inst.lock("Petroglyph");
+      inst.lock("Retcon");
+      inst.lock("Palette");
+      for (let i = 0; i < options.length; i++) {
+        if (selectedOptions[i] == false) inst.lock(options[i]);
+      }
+      inst.setStake(stake);
+      inst.setDeck(deck);
+      return inst;
+    }
+
     function performAnalysis() {
       // Get input values
       const ante = parseInt(anteInput.value, 10);
@@ -586,31 +614,7 @@
       }
 
       const runAnalysis = () => {
-        var inst = new Immolate.Instance(seed);
-        inst.params = new Immolate.InstParams(deck, stake, false, version);
-        inst.initLocks(1, false, false);
-        inst.lock("Overstock Plus");
-        inst.lock("Liquidation");
-        inst.lock("Glow Up");
-        inst.lock("Reroll Glut");
-        inst.lock("Omen Globe");
-        inst.lock("Observatory");
-        inst.lock("Nacho Tong");
-        inst.lock("Recyclomancy");
-        inst.lock("Tarot Tycoon");
-        inst.lock("Planet Tycoon");
-        inst.lock("Money Tree");
-        inst.lock("Antimatter");
-        inst.lock("Illusion");
-        inst.lock("Petroglyph");
-        inst.lock("Retcon");
-        inst.lock("Palette");
-        for (let i = 0; i < options.length; i++) {
-          if (selectedOptions[i] == false) inst.lock(options[i]);
-        }
-        inst.setStake(stake);
-        inst.setDeck(deck);
-        var ghostDeck = deck == "Ghost Deck";
+        const inst = createImmolateInstance(seed, deck, stake, version);
         const omitBeforeAnte9 = omitBeforeAnte9Checkbox.checked;
         for (let a = 1; a <= ante; a++) {
           inst.initUnlocks(a, false);
@@ -781,6 +785,54 @@
       // defer heavy work so the spinner can paint first
       setTimeout(runAnalysis, 0);
     }
+
+    function computeSingleAnteQueue(targetAnte, cardsLimit) {
+      const deck = deckSelect.value;
+      const stake = stakeSelect.value;
+      const version = parseInt(versionSelect.value);
+      const seed = seedInput.value.toUpperCase().replace(/0/g, "O");
+      const anteNum = Number(targetAnte);
+      const limit = Math.max(0, Number(cardsLimit) || 0);
+      if (!Number.isFinite(anteNum) || anteNum < 1 || !limit) {
+        return [];
+      }
+      if (typeof Immolate === "undefined" || !Immolate.Instance) {
+        console.error("Immolate wasm not ready for single-ante compute.");
+        return [];
+      }
+
+      const inst = createImmolateInstance(seed, deck, stake, version);
+      inst.initUnlocks(anteNum, false);
+
+      const lines = [];
+      for (let q = 1; q <= limit; q++) {
+        const item = inst.nextShopItem(anteNum);
+
+        let line = `${q}) `;
+        if (item.type === "Joker" && item.jokerData) {
+          // keep sticker labels
+          if (item.jokerData.stickers.eternal) line += "Eternal ";
+          if (item.jokerData.stickers.perishable) line += "Perishable ";
+          if (item.jokerData.stickers.rental) line += "Rental ";
+
+          // In this per-ante view only show a Negative "tag" marker and
+          // do not display other editions like Foil/Holographic/Polychrome.
+          const isNegativeEdition = item.jokerData.edition === "Negative";
+          const namePrefix = isNegativeEdition ? "‼️ " : "";
+          line += namePrefix + item.item;
+        } else {
+          line += item.item;
+        }
+
+        lines.push(line);
+        item.delete();
+      }
+
+      inst.delete();
+      return lines;
+    }
+
+    window.computeSingleAnteQueue = computeSingleAnteQueue;
 
     window.addEventListener("DOMContentLoaded", () => {
       const seedInput = document.getElementById("seed");

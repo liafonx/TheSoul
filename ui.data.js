@@ -331,6 +331,10 @@
     sharedLists.TAG_NAMES ||
     sharedLists.tags ||
     Object.keys(sharedLists.TAG_EMOJI || {});
+  const vouchersSource =
+    sharedLists.VOUCHER_NAMES ||
+    sharedLists.vouchers ||
+    Object.keys(sharedLists.VOUCHER_EMOJI || {});
   const bossesSource =
     sharedLists.BOSSES ||
     sharedLists.ALERT_BOSSES ||
@@ -349,6 +353,7 @@
   BalatroData.trackedSpectrals = sortedCopy(spectralsSource);
   BalatroData.trackedTags = sortedCopy(tagsSource);
   BalatroData.trackedBosses = sortedCopy(bossesSource);
+  BalatroData.trackedVouchers = sortedCopy(vouchersSource);
 
   global.BalatroData = BalatroData;
 })(window);

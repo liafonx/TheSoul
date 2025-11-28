@@ -9,6 +9,7 @@
       trackedSpectrals = [],
       trackedTags = [],
       trackedBosses = [],
+      trackedVouchers = [],
     } = data;
     const {
       maskToCanvas,
@@ -41,6 +42,7 @@
         ...trackedSpectrals,
         ...trackedTags,
         ...trackedBosses,
+        ...trackedVouchers,
       ].map((term) => term.toLowerCase())
     );
     const groupSizes = [2, 3, 4];
@@ -91,6 +93,11 @@
 
       const searchTerms = [...manualTerms, ...activeToggleTerms];
 
+      const jokerTranslations =
+        (global.BalatroSharedLists &&
+          global.BalatroSharedLists.JOKER_TRANSLATIONS) ||
+        null;
+
       const queueItems = document.querySelectorAll(
         ".queueItem, .packItem > div, .voucherContainer, .tagContainer, .bossContainer"
       );
@@ -101,6 +108,20 @@
           searchTerms.length > 0 &&
           searchTerms.some((term) => itemText.includes(term));
         item.classList.toggle("highlight", shouldHighlight);
+
+        // In text-only per-ante view, swap card name to Chinese when highlighted
+        if (item.classList.contains("queueItemTextOnly")) {
+          const nameEl = item.querySelector(".cardName");
+          if (!nameEl) return;
+          const enName = nameEl.dataset.enName || nameEl.textContent || "";
+          if (!jokerTranslations || !jokerTranslations[enName]) {
+            return;
+          }
+          const baseChinese = jokerTranslations[enName];
+          const hasNegative = nameEl.dataset.negativeTag === "1";
+          const displayText = hasNegative ? `‼️ ${baseChinese}` : baseChinese;
+          nameEl.textContent = shouldHighlight ? displayText : nameEl.dataset.originalText || nameEl.textContent;
+        }
       });
     }
 
@@ -126,6 +147,7 @@
       const toggleGroups = [
         { title: "Jokers:", items: trackedJokers },
         { title: "Spectrals:", items: trackedSpectrals },
+        { title: "Vouchers:", items: trackedVouchers },
         { title: "Tags:", items: trackedTags },
         { title: "Bosses:", items: trackedBosses },
       ];
@@ -495,6 +517,31 @@
           updateLocalButtons(currentGroupSize);
 
           cardSetHeader.appendChild(groupControls);
+
+          // per-ante re-run controls
+          const anteRecalcControls = document.createElement("div");
+          anteRecalcControls.className = "groupSizeControls";
+
+          const anteInputLabel = document.createElement("span");
+          anteInputLabel.className = "groupSizeLabel";
+          anteInputLabel.textContent = "Cards (this Ante):";
+          anteRecalcControls.appendChild(anteInputLabel);
+
+          const anteCardsInput = document.createElement("input");
+          anteCardsInput.type = "number";
+          anteCardsInput.min = "1";
+          anteCardsInput.max = "1000";
+          anteCardsInput.value = "300";
+          anteCardsInput.className = "anteCardsInput";
+          anteRecalcControls.appendChild(anteCardsInput);
+
+          const anteRecalcButton = document.createElement("button");
+          anteRecalcButton.type = "button";
+          anteRecalcButton.className = "cardSetToggle anteRecalcButton";
+          anteRecalcButton.textContent = "Re-run";
+          anteRecalcControls.appendChild(anteRecalcButton);
+
+          cardSetHeader.appendChild(anteRecalcControls);
           cardSet.appendChild(cardSetHeader);
 
           const cardList = document.createElement("div");
@@ -532,74 +579,96 @@
           });
 
           applyLayoutMode(layoutMode);
+          let queueNodes = [];
+          const buildQueueNodes = (items, options = {}) => {
+            const textOnly = Boolean(options.textOnly);
+            queueNodes = items.map((item) => {
+              const { cardName, itemModifiers, itemStickers } =
+                parseCardItem(item);
 
-          const queueNodes = queue.map((item) => {
-            const { cardName, itemModifiers, itemStickers } =
-              parseCardItem(item);
+              const negMatch = /^(‼️|🔘)\s*/.exec(cardName);
+              const hasNegativeTagPrefix = !!negMatch;
+              const baseName = hasNegativeTagPrefix
+                ? cardName.slice(negMatch[0].length)
+                : cardName;
 
-            const queueItem = document.createElement("div");
-            queueItem.className = "queueItem";
-
-            // Wrapper so we can anchor overlays to the image area itself
-            const canvasWrapper = document.createElement("div");
-            canvasWrapper.className = "cardCanvasWrapper";
-
-            const canvas = document.createElement("canvas");
-            canvas.width = 80;
-            canvas.height = 107;
-
-            const itemType = determineItemType(cardName);
-            if (itemType !== "unknown") {
-              maskToCanvas(
-                canvas,
-                cardName,
-                itemType,
-                itemModifiers,
-                itemStickers
-              );
-            }
-
-            canvasWrapper.appendChild(canvas);
-            queueItem.appendChild(canvasWrapper);
-
-            const itemText = document.createElement("div");
-            itemText.textContent = cardName;
-            queueItem.appendChild(itemText);
-
-            // Create a single overlaid modifier label for edition-like modifiers
-            const overlayMod = itemModifiers.find((mod) =>
-              ["Foil", "Holographic", "Polychrome", "Negative"].includes(mod)
-            );
-
-            if (overlayMod) {
-              const modifierText = document.createElement("div");
-              modifierText.classList.add("modifier");
-
-              const lower = overlayMod.toLowerCase();
-              if (lower === "polychrome") {
-                modifierText.classList.add("polychrome");
-              } else if (lower === "foil") {
-                modifierText.classList.add("foil");
-              } else if (lower === "negative") {
-                // use the custom class name spelling used in CSS
-                modifierText.classList.add("negAtive");
-              } else if (lower === "holographic") {
-                modifierText.classList.add("holographic");
+              const queueItem = document.createElement("div");
+              queueItem.className = "queueItem";
+              if (textOnly) {
+                queueItem.classList.add("queueItemTextOnly");
               }
 
-              // keep the label text as the original modifier
-              modifierText.textContent = overlayMod;
-              canvasWrapper.appendChild(modifierText);
-            }
+              if (!textOnly) {
+                const canvasWrapper = document.createElement("div");
+                canvasWrapper.className = "cardCanvasWrapper";
 
-            itemStickers.forEach((stick) => {
-              const stickerText = document.createElement("div");
-              stickerText.className = "sticker";
-              stickerText.textContent = stick;
-              queueItem.appendChild(stickerText);
+                const canvas = document.createElement("canvas");
+                canvas.width = 80;
+                canvas.height = 107;
+
+                const itemType = determineItemType(cardName);
+                if (itemType !== "unknown") {
+                  maskToCanvas(
+                    canvas,
+                    cardName,
+                    itemType,
+                    itemModifiers,
+                    itemStickers
+                  );
+                }
+
+                canvasWrapper.appendChild(canvas);
+
+                const overlayMod = itemModifiers.find((mod) =>
+                  ["Foil", "Holographic", "Polychrome", "Negative"].includes(
+                    mod
+                  )
+                );
+
+                if (overlayMod) {
+                  const modifierText = document.createElement("div");
+                  modifierText.classList.add("modifier");
+
+                  const lower = overlayMod.toLowerCase();
+                  if (lower === "polychrome") {
+                    modifierText.classList.add("polychrome");
+                  } else if (lower === "foil") {
+                    modifierText.classList.add("foil");
+                  } else if (lower === "negative") {
+                    modifierText.classList.add("negAtive");
+                  } else if (lower === "holographic") {
+                    modifierText.classList.add("holographic");
+                  }
+
+                  modifierText.textContent = overlayMod;
+                  canvasWrapper.appendChild(modifierText);
+                }
+
+                queueItem.appendChild(canvasWrapper);
+
+                itemStickers.forEach((stick) => {
+                  const stickerText = document.createElement("div");
+                  stickerText.className = "sticker";
+                  stickerText.textContent = stick;
+                  queueItem.appendChild(stickerText);
+                });
+              }
+
+              const itemText = document.createElement("div");
+              itemText.textContent = cardName;
+              itemText.className = "cardName";
+              itemText.dataset.enName = baseName;
+              itemText.dataset.originalText = cardName;
+              if (hasNegativeTagPrefix) {
+                itemText.dataset.negativeTag = "1";
+              }
+              queueItem.appendChild(itemText);
+
+              return queueItem;
             });
-            return queueItem;
-          });
+          };
+
+          buildQueueNodes(queue, { textOnly: false });
 
           const buildCardEntry = (
             node,
@@ -673,6 +742,34 @@
           cardGroupRenderers.add(renderCardGroups);
 
           renderCardGroups();
+
+          anteRecalcButton.addEventListener("click", () => {
+            if (anteRecalcButton.disabled) return;
+            const limit = Math.max(
+              0,
+              Number(anteCardsInput.value) || 0
+            );
+            if (!limit || !anteNumVal) {
+              return;
+            }
+            if (typeof window.computeSingleAnteQueue !== "function") {
+              console.error("computeSingleAnteQueue not available.");
+              return;
+            }
+            setButtonLoadingState(anteRecalcButton, true);
+            setTimeout(() => {
+              try {
+                const items =
+                  window.computeSingleAnteQueue(anteNumVal, limit) || [];
+                buildQueueNodes(items, { textOnly: true });
+                applyLayoutMode("grid"); // auto-switch to grid for re-run view
+                renderCardGroups();
+                searchAndHighlight();
+              } finally {
+                setButtonLoadingState(anteRecalcButton, false);
+              }
+            }, 0);
+          });
 
           if (packs.length > 0) {
             // 只允许一个 pack 过滤器激活：
@@ -1059,18 +1156,26 @@
         prevButton.className = "paginationButton";
         prevButton.textContent = "Prev";
         prevButton.disabled = currentPageIndex === 0;
-        prevButton.addEventListener("click", () =>
-          goToPage(currentPageIndex - 1)
-        );
+        prevButton.addEventListener("click", () => {
+          if (prevButton.disabled) return;
+          setButtonLoadingState(prevButton, true);
+          setTimeout(() => {
+            goToPage(currentPageIndex - 1);
+          }, 0);
+        });
 
         const nextButton = document.createElement("button");
         nextButton.type = "button";
         nextButton.className = "paginationButton";
         nextButton.textContent = "Next";
         nextButton.disabled = currentPageIndex >= totalPages - 1;
-        nextButton.addEventListener("click", () =>
-          goToPage(currentPageIndex + 1)
-        );
+        nextButton.addEventListener("click", () => {
+          if (nextButton.disabled) return;
+          setButtonLoadingState(nextButton, true);
+          setTimeout(() => {
+            goToPage(currentPageIndex + 1);
+          }, 0);
+        });
 
         const info = document.createElement("div");
         info.className = "paginationInfo";
