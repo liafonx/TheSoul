@@ -43,7 +43,7 @@ h1.site-title {
 .output-section {
   background-color: #333333;
   color: #d9d9d9;
-} 
+}
 
 .input-section {
   max-width: 330px;
@@ -162,7 +162,7 @@ label[for="omitBeforeAnte9"] {
   -webkit-backdrop-filter: blur(8px);
   color: #ffe08a;
   border: 1px solid rgba(255, 224, 138, 0.4);
-  border-radius: 999px;
+  border-radius: 10px;
   padding: 6px 14px;
   cursor: pointer;
   font-size: 13px;
@@ -295,7 +295,7 @@ button.is-loading::after,
 .summaryText {
   flex: 1 1 auto;
   overflow-wrap: anywhere;
-  color: #d9d9d9
+  color: #d9d9d9;
 }
 
 .summaryEmpty {
@@ -326,7 +326,7 @@ button.is-loading::after,
   /* width: 200px; */
   margin-left: 4px;
   padding-left: 2px;
-  color: #d9d9d9
+  color: #d9d9d9;
 }
 
 .filter-summary::-webkit-details-marker {
@@ -539,7 +539,7 @@ button.is-loading::after,
   /* height: 26px; */
   text-align: center;
   position: relative;
-  color: #cccccc
+  color: #cccccc;
 }
 
 .groupSizeButton.active {
@@ -1149,6 +1149,11 @@ button.is-loading::after,
 .highlight .bossName {
   color: #ff5a5a;
   font-weight: 600;
+  /* letter-spacing: 0.05em; */
+}
+
+.highlight .cardName,
+.highlight .voucherName {
   font-size: 1.05em;
   word-spacing: 0.15em;
   /* letter-spacing: 0.05em; */
