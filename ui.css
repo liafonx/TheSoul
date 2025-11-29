@@ -139,7 +139,6 @@ label[for="omitBeforeAnte9"] {
   border: 1px solid rgba(255, 224, 138, 0.25);
   background-color: rgba(255, 224, 138, 0.08);
 }
-
 .paginationInfoSelect {
   background-color: #2c2c2c;
   color: #f5f5f5;
@@ -655,7 +654,7 @@ button.is-loading::after,
   border: 1px solid #555555;
   border-radius: 8px;
   padding: 8px;
-  order: -1;
+  /* order: -1; */
   flex: 1 1 420px;
   min-width: 0;
   max-width: 100%;
@@ -715,7 +714,7 @@ button.is-loading::after,
   display: flex;
   flex-direction: column;
   gap: 8px;
-  min-width: 340px;
+  min-width: 320px;
   flex: 1 1 360px;
   align-items: flex-start;
   text-align: left;
