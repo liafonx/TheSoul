@@ -643,7 +643,7 @@ button.is-loading::after,
   font-size: 12px;
   margin-bottom: 10px;
   color: #cccccc;
-  text-align: center;
+  text-align: left;
   align-items: flex-start;
 }
 
@@ -655,8 +655,10 @@ button.is-loading::after,
   border: 1px solid #555555;
   border-radius: 8px;
   padding: 8px;
-  min-width: 420px;
-  flex: 1 1 550px;
+  order: -1;
+  flex: 1 1 420px;
+  min-width: 0;
+  max-width: 100%;
 }
 
 .miniSummaryLabel {
