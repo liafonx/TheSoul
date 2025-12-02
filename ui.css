@@ -7,6 +7,7 @@
   --card-padding: 12px;
   --group-line-extra: 4px;
   --group-first-offset: 25px;
+  --negative-face-color: #f00;
 }
 
 html {
@@ -404,6 +405,13 @@ button.is-loading::after,
 
 .summaryFaceSegment {
   font-weight: 400;
+  display: inline-block;
+  white-space: nowrap; /* do not wrap inside each face segment */
+}
+
+.summaryFaceSegment.negativeFace {
+  color: var(--negative-face-color) !important;
+  font-weight: 600;
 }
 
 .summaryPipe {
@@ -424,7 +432,7 @@ button.is-loading::after,
 .summaryAnteButton {
   font-weight: 700;
   color: #e0c579;
-  background-color: #2f2f2f;
+  background-color: #2b2b2b00;
   border: 1px solid #555;
   border-radius: 5px;
   padding: 5px 6px 4px 6px;
@@ -816,6 +824,7 @@ button.is-loading::after,
   font-weight: 600;
   color: #cccccc;
   text-align: left;
+  line-height: 2;
 }
 
 .miniSummaryList {
@@ -827,12 +836,14 @@ button.is-loading::after,
 .miniSummaryEntry {
   display: flex;
   align-items: flex-start;
-  gap: 8px;
-  padding: 6px 8px;
+  gap: 10px;
+  padding: 8px 10px;
   border: 1px solid #4e4e4e;
   border-radius: 6px;
   background-color: #242424;
   text-align: left;
+  position: relative;
+  overflow: visible;
 }
 
 .miniSummaryAnte {
@@ -848,10 +859,11 @@ button.is-loading::after,
   flex: 1 1 auto;
   text-align: left;
   line-height: 1.4;
-  max-height: calc(1.4em * 4);
-  min-height: calc(1.4em * 4);
-  overflow-y: auto;
-  overflow-x: hidden;
+  max-height: 1.4em; /* single-line stripe */
+  min-height: 1.4em;
+  white-space: nowrap;
+  overflow-x: auto;
+  overflow-y: hidden;
   scrollbar-width: none; /* Firefox */
 }
 
@@ -865,6 +877,54 @@ button.is-loading::after,
 
 .miniSummaryPipe {
   color: #d9d9d9;
+}
+
+.miniSummaryItem.negativeFace {
+  color: var(--negative-face-color) !important;
+  font-weight: 600;
+}
+
+.miniSummaryPopup {
+  position: absolute;
+  left: 0;
+  right: 0;
+  top: 0;
+  z-index: 20;
+  display: none;
+  background-color: #303030;
+  border-radius: 6px;
+  border: 1px solid #777777;
+  padding: 6px 8px;
+  box-shadow: 0 8px 20px rgba(0, 0, 0, 0.7);
+}
+
+.miniSummaryPopup.visible {
+  display: block;
+}
+
+.miniSummaryPopup .miniSummaryTextFull {
+  color: #cccccc;
+  font-size: 12px;
+  line-height: 1.4;
+  max-height: 220px;
+  overflow-y: auto;
+  overflow-x: hidden;
+  white-space: normal;       /* allow wrapping inside popup */
+  overflow-wrap: anywhere;   /* break long segments instead of overflowing */
+}
+
+.miniSummaryPopup .miniSummaryTextFull::-webkit-scrollbar {
+  width: 6px;
+}
+
+.miniSummaryPopup .miniSummaryTextFull::-webkit-scrollbar-thumb {
+  background-color: #555555;
+  border-radius: 3px;
+}
+
+.miniSummaryPopupAnte {
+  display: block;
+  margin-bottom: 4px;
 }
 
 
@@ -1333,6 +1393,17 @@ button.is-loading::after,
   border-radius: 4px;
   display: block;
   box-sizing: border-box;
+}
+
+/* Force negative-effect face cards to use the unified negative color */
+.highlight[data-negative-face="1"] .cardName {
+  color: var(--negative-face-color) !important;
+  font-weight: 600;
+}
+
+.highlight[data-negative-face="1"] canvas,
+.highlight[data-negative-face="1"] img {
+  border-color: var(--negative-face-color) !important;
 }
 
 /* Keep voucher/boss/tag highlight borders in the original red */

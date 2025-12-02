@@ -10,7 +10,7 @@
   // color may be empty to use default text color.
   const SUMMARY_FACE_EMOJI = Object.freeze({
     "👥": {
-      color: "#3b7cd7ff", // blue (darker, unified)
+      color: "#76b1ff", // soft bright blue
       cards: {
         Blueprint: "蓝图",
         Brainstorm: "头脑",
@@ -18,39 +18,39 @@
       },
     },
     "🎪": {
-      color: "#c94545", // red (darker, unified)
+      color: "#ff7a7a", // warm coral red
       cards: {
         Showman: "马戏团",
       },
     },
     "💿": {
-      color: "#379293ff", // teal (darker, unified)
+      color: "#5fd4d4", // bright aqua teal
       cards: {
         Seance: "通灵",
         "Sixth Sense": "第六感",
       },
     },
     "👑": {
-      color: "#cfa93a", // yellow/gold (darker, unified)
+      color: "#ffd36a", // rich gold
       cards: {
         Baron: "男爵",
         Mime: "哑剧",
       },
     },
     "🥤": {
-      color: "#c94545", // red (darker, unified)
+      color: "#ff7a8a", // soft pink-red
       cards: {
         "Diet Cola": "可乐",
       },
     },
     "🥊": {
-      color: "#c94545", // red (darker, unified)
+      color: "#ff7a8a", // soft pink-red
       cards: {
         Luchador: "摔角手",
       },
     },
     "5️⃣": {
-      color: "#cfa93a", // green (darker, unified)
+      color: "#e867b2ff", // mint green, distinct from red/yellow
       cards: {
         Dusk: "黄昏",
         "Sock and Buskin": "喜与悲",
@@ -58,7 +58,7 @@
       },
     },
     "🧬": {
-      color: "#8b49b0", // violet (darker, unified)
+      color: "#c689ff", // bright lavender
       cards: {
         DNA: "DNA",
       },
@@ -73,7 +73,7 @@
       },
     },
     "💴": {
-      color: "#489248ff", // money green (darker, unified)
+      color: "#79c15aff", // money green
       cards: {
         "Reserved Parking": "车位",
         "Golden Ticket": "门票",

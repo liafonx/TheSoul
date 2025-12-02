@@ -165,10 +165,14 @@
         const shouldHighlight =
           searchTerms.length > 0 &&
           searchTerms.some((term) => itemText.includes(term));
+
         if (shouldHighlight) {
           const faceEmoji = item.dataset.faceEmoji || "";
+          const isNegativeFace = item.dataset.negativeFace === "1";
           let color = "";
-          if (
+          if (isNegativeFace) {
+            color = "#f5a5a5";
+          } else if (
             faceEmoji &&
             summaryFaceEmojiMap &&
             summaryFaceEmojiMap[faceEmoji]
@@ -225,54 +229,6 @@
           }
         }
 
-        // Add/remove emoji prefix on highlighted card names in the main cardset
-        if (item.classList.contains("queueItem")) {
-          const nameEl = item.querySelector(".cardName");
-          if (nameEl) {
-            const enName =
-              nameEl.dataset.enName ||
-              nameEl.dataset.originalText ||
-              nameEl.textContent ||
-              "";
-            const faceInfo =
-              summaryFaceCardMap && summaryFaceCardMap[enName]
-                ? summaryFaceCardMap[enName]
-                : null;
-            const faceEmoji =
-              faceInfo && faceInfo.emoji ? faceInfo.emoji : "";
-            if (faceEmoji) {
-              const rePrefix = new RegExp(`^${faceEmoji}\\s*`);
-              if (shouldHighlight) {
-                const baseText = nameEl.textContent.replace(rePrefix, "");
-                nameEl.textContent = `${faceEmoji}${baseText}`;
-              } else {
-                nameEl.textContent = nameEl.textContent.replace(rePrefix, "");
-              }
-            }
-          }
-        }
-
-        // Add/remove emoji for highlighted pack jokers
-        if (
-          item.parentElement &&
-          item.parentElement.classList.contains("packItem")
-        ) {
-          const nameEl = item.querySelector(".cardName");
-          if (nameEl) {
-            const segText = nameEl.textContent || "";
-            const info = getMiniFaceInfoForSegment(segText);
-            const faceEmoji = info && info.emoji ? info.emoji : "";
-            if (faceEmoji) {
-              const rePrefix = new RegExp(`^${faceEmoji}\\s*`);
-              if (shouldHighlight) {
-                const baseText = nameEl.textContent.replace(rePrefix, "");
-                nameEl.textContent = `${faceEmoji}${baseText}`;
-              } else {
-                nameEl.textContent = nameEl.textContent.replace(rePrefix, "");
-              }
-            }
-          }
-        }
       });
 
       // After highlight changes, re-apply per-card-set group filters
@@ -592,8 +548,8 @@
             const miniList = document.createElement("div");
             miniList.className = "miniSummaryList";
 
-            // current ante + next 1 ante
-            for (let offset = 0; offset < 2; offset += 1) {
+            // current ante + next 3 antes (total 4)
+            for (let offset = 0; offset < 4; offset += 1) {
               const anteKey = anteNumVal + offset;
               const text =
                 summaryLookup && summaryLookup.get(anteKey)
@@ -639,7 +595,10 @@
                     const info = getMiniFaceInfoForSegment(chunk);
                     if (info) {
                       part.dataset.faceEmoji = info.emoji;
-                      if (info.color) {
+                      const isNegativeChunk = chunk.includes("‼️");
+                      if (isNegativeChunk) {
+                        part.classList.add("negativeFace");
+                      } else if (info.color) {
                         part.style.color = info.color;
                       }
                     }
@@ -658,6 +617,32 @@
               });
 
               row.append(anteSpan, textSpan);
+              // full-content popup for this mini summary row
+              const popup = document.createElement("div");
+              popup.className = "miniSummaryPopup";
+              const popupAnte = anteSpan.cloneNode(true);
+              popupAnte.classList.add("miniSummaryPopupAnte");
+              const popupText = textSpan.cloneNode(true);
+              popupText.classList.add("miniSummaryTextFull");
+              popup.append(popupAnte, popupText);
+              row.appendChild(popup);
+
+              row.addEventListener("click", (event) => {
+                event.stopPropagation();
+                const isOpen = popup.classList.contains("visible");
+                document
+                  .querySelectorAll(".miniSummaryPopup.visible")
+                  .forEach((el) => el.classList.remove("visible"));
+                if (!isOpen) {
+                  popup.classList.add("visible");
+                }
+              });
+
+              popup.addEventListener("click", (event) => {
+                event.stopPropagation();
+                popup.classList.remove("visible");
+              });
+
               miniList.appendChild(row);
             }
 
@@ -826,6 +811,12 @@
                 if (faceInfo.color) {
                   queueItem.dataset.faceColor = faceInfo.color;
                 }
+              }
+              const isNegativeFace =
+                faceInfo &&
+                (itemModifiers.includes("Negative") || hasNegativeTagPrefix);
+              if (isNegativeFace) {
+                queueItem.dataset.negativeFace = "1";
               }
 
               if (!textOnly) {
@@ -1230,14 +1221,19 @@
                   } = parseCardItem(cardName);
                   const itemType = determineItemType(parsedCardName);
 
-                  const cardContainer = document.createElement("div");
-                  const faceInfo = getMiniFaceInfoForSegment(parsedCardName);
-                  if (faceInfo) {
-                    cardContainer.dataset.faceEmoji = faceInfo.emoji;
-                    if (faceInfo.color) {
-                      cardContainer.dataset.faceColor = faceInfo.color;
-                    }
+                const cardContainer = document.createElement("div");
+                const faceInfo = getMiniFaceInfoForSegment(parsedCardName);
+                if (faceInfo) {
+                  cardContainer.dataset.faceEmoji = faceInfo.emoji;
+                  if (faceInfo.color) {
+                    cardContainer.dataset.faceColor = faceInfo.color;
                   }
+                }
+                const isNegativeFace =
+                  faceInfo && itemModifiers.includes("Negative");
+                if (isNegativeFace) {
+                  cardContainer.dataset.negativeFace = "1";
+                }
 
                   if (itemType !== "unknown") {
                     // For Buffoon Pack cards (jokers, etc.), use the same overlaid
@@ -1540,6 +1536,13 @@
 
       displayShopQueues();
       global.refreshShopDisplay = displayShopQueues;
+
+      // clicking anywhere outside a mini summary row closes any open popup
+      document.addEventListener("click", () => {
+        document
+          .querySelectorAll(".miniSummaryPopup.visible")
+          .forEach((el) => el.classList.remove("visible"));
+      });
 
       // Sync emoji filters (from SUMMARY_FACE_EMOJI) into search filters
       global.syncEmojiFilterToSearch = () => {

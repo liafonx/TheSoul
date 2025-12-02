@@ -502,7 +502,10 @@
                 const span = document.createElement("span");
                 span.className = "summaryFaceSegment";
                 span.dataset.faceEmoji = info.emoji;
-                if (info.color) {
+                const isNegativeChunk = chunk.includes("‼️");
+                if (isNegativeChunk) {
+                  span.classList.add("negativeFace");
+                } else if (info.color) {
                   span.style.color = info.color;
                 }
                 span.textContent = chunk;
