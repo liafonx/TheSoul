@@ -354,6 +354,14 @@ button.is-loading::after,
   font-size: 18px;
 }
 
+/* Make the first filter button (color mode toggle) span full width and fit text */
+#summaryFilterContent .summaryFilterButton:first-child {
+  grid-column: 1 / -1;
+  padding-inline: 10px;
+  justify-content: center;
+  font-size: 13px;
+}
+
 #summaryFloatingContent {
   width: 98%;
   min-height: 220px;
@@ -407,6 +415,12 @@ button.is-loading::after,
   filter: grayscale(0.6);
 }
 
+/* Optional mode: force summary text to default color */
+.summary-color-off .summaryText .summaryFaceSegment,
+.summary-color-off .miniSummaryText .miniSummaryItem[data-face-emoji] {
+  color: #cccccc !important;
+}
+
 .summaryAnteButton {
   font-weight: 700;
   color: #e0c579;
@@ -427,7 +441,7 @@ button.is-loading::after,
 .summaryText {
   flex: 1 1 auto;
   overflow-wrap: anywhere;
-  color: #d9d9d9;
+  color: #cccccc;
 }
 
 .summaryEmpty {
@@ -829,7 +843,7 @@ button.is-loading::after,
 }
 
 .miniSummaryText {
-  color: #d9d9d9;
+  color: #cccccc;
   font-size: 12px;
   flex: 1 1 auto;
   text-align: left;

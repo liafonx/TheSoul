@@ -416,6 +416,12 @@
       }
     });
 
+    // global toggle for summary text colors
+    window.summaryColorOff = Boolean(window.summaryColorOff);
+    if (window.summaryColorOff && document.body) {
+      document.body.classList.add("summary-color-off");
+    }
+
     function getFaceInfoForSegment(seg) {
       const text = seg || "";
       for (const [cardName, info] of Object.entries(summaryFaceCardMap)) {
@@ -723,6 +729,26 @@
     function buildSummaryFilterUI() {
       if (!summaryFilterContent) return;
       summaryFilterContent.innerHTML = "";
+
+      // Color toggle button
+      const colorBtn = document.createElement("button");
+      colorBtn.type = "button";
+      colorBtn.className = "summaryFilterButton";
+      const updateColorBtn = () => {
+        colorBtn.classList.toggle("active", window.summaryColorOff);
+        colorBtn.textContent = window.summaryColorOff
+          ? "Colors: default"
+          : "Colors: emoji";
+      };
+      updateColorBtn();
+      colorBtn.addEventListener("click", () => {
+        window.summaryColorOff = !window.summaryColorOff;
+        if (document.body) {
+          document.body.classList.toggle("summary-color-off", window.summaryColorOff);
+        }
+        updateColorBtn();
+      });
+      summaryFilterContent.appendChild(colorBtn);
 
       Object.entries(summaryFaceEmojiMap).forEach(([emoji, color]) => {
         const btn = document.createElement("button");
