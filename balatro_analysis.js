@@ -43,6 +43,7 @@ const {
   SPECTRAL_NAMES,
   TAG_NAMES,
   VOUCHER_NAMES,
+  SUMMARY_FACE_EMOJI,
 } = sharedLists;
 
 const SPECTRAL_PACK_PREFIXES = [
@@ -59,6 +60,28 @@ const BUFFOON_PACK_PREFIXES = [
 ];
 
 const RE_ANTE_HEADER = /^\s*(?:==)?\s*ANTE\s+(\d+)(?:==)?/i;
+
+// Build a lookup from joker name to its "face" emoji (if any) for summaries.
+let JOKER_FACE_EMOJI_MAP = null;
+function getFaceEmojiForJoker(name) {
+  if (!SUMMARY_FACE_EMOJI) {
+    return "";
+  }
+  if (!JOKER_FACE_EMOJI_MAP) {
+    JOKER_FACE_EMOJI_MAP = {};
+    Object.entries(SUMMARY_FACE_EMOJI).forEach(([emoji, cfg]) => {
+      if (!cfg || typeof cfg !== "object" || !Array.isArray(cfg.cards)) {
+        return;
+      }
+      cfg.cards.forEach((cardName) => {
+        if (!JOKER_FACE_EMOJI_MAP[cardName]) {
+          JOKER_FACE_EMOJI_MAP[cardName] = emoji;
+        }
+      });
+    });
+  }
+  return JOKER_FACE_EMOJI_MAP[name] || "";
+}
 
 function escapeRegExp(str) {
   return str.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
@@ -270,8 +293,10 @@ class AnteData {
     if (this.buffoonJesters.length) {
       const buffoon = this.buffoonJesters.map((name, idx) => {
         const chinese = JOKER_TRANSLATIONS[name] || name;
+        const face = getFaceEmojiForJoker(name);
         const base = chineseOnly ? chinese : `${chinese}(${name})`;
-        return idx === 0 ? `👝${base}` : base;
+        const decorated = `${face || ""}${base}`;
+        return idx === 0 ? `👝${decorated}` : decorated;
       });
       parts.push(buffoon.join("、"));
     }
@@ -283,13 +308,16 @@ class AnteData {
       const jesterParts = entries.map((info) => {
         const chinese = JOKER_TRANSLATIONS[info.name] || info.name;
         const negativeSuffix = info.negative ? "‼️" : "";
+        const face = getFaceEmojiForJoker(info.name);
         let entry;
         if (chineseOnly) {
           // Chinese-only: name + per-occurrence negative marker + #index
-          entry = `${chinese}${negativeSuffix}#${info.index}`;
+          entry = `${face || ""}${chinese}${negativeSuffix}#${info.index}`;
         } else {
           // Mixed format with English name and index in parentheses
-          entry = `${chinese}${negativeSuffix}(${info.name} #${info.index})`;
+          entry = `${face || ""}${chinese}${negativeSuffix}(${info.name} #${
+            info.index
+          })`;
         }
         return entry;
       });

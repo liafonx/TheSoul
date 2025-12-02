@@ -163,7 +163,11 @@
     <div id="summaryFloatingWindow">
       <div id="summaryFloatingContent" aria-live="polite"></div>
     </div>
+    <div id="summaryFilterWindow">
+      <div id="summaryFilterContent"></div>
+    </div>
     <button id="summaryFloatingToggle" type="button">Summary</button>
+    <button id="summaryFilterToggle" type="button">Filter</button>
   </body>
   <script>
     // Unlocks stuff
@@ -343,11 +347,16 @@
     const summaryToggleButton = document.getElementById(
       "summaryFloatingToggle"
     );
+    const summaryFilterToggle = document.getElementById("summaryFilterToggle");
     const summaryFloatingWindow = document.getElementById(
       "summaryFloatingWindow"
     );
     const summaryFloatingContent = document.getElementById(
       "summaryFloatingContent"
+    );
+    const summaryFilterWindow = document.getElementById("summaryFilterWindow");
+    const summaryFilterContent = document.getElementById(
+      "summaryFilterContent"
     );
     const withEnglishToggle = document.getElementById("withEnglishToggle");
     const setButtonLoadingState = (btn, flag) => {
@@ -367,6 +376,53 @@
 
     // Add event listener for the "Copy Link" button
     copyLinkButton.addEventListener("click", copyLink);
+
+    const summaryFaceEmojiMapRaw =
+      (window.BalatroSharedLists &&
+        window.BalatroSharedLists.SUMMARY_FACE_EMOJI) ||
+      {};
+
+    const jokerTranslations =
+      (window.BalatroSharedLists &&
+        window.BalatroSharedLists.JOKER_TRANSLATIONS) ||
+      {};
+
+    // Build a normalized map: emoji -> { color, cards }
+    const summaryFaceEmojiMap = {};
+    const summaryFaceCardMap = {};
+    Object.entries(summaryFaceEmojiMapRaw).forEach(([emoji, value]) => {
+      const color =
+        value && typeof value === "object" ? value.color || "" : value || "";
+      const cards =
+        value && typeof value === "object" && Array.isArray(value.cards)
+          ? value.cards
+          : [];
+      summaryFaceEmojiMap[emoji] = { color, cards };
+      cards.forEach((name) => {
+        summaryFaceCardMap[name] = { emoji, color };
+      });
+    });
+
+    window.summaryEmojiFilter = window.summaryEmojiFilter || {};
+    Object.keys(summaryFaceEmojiMap).forEach((emoji) => {
+      if (!(emoji in window.summaryEmojiFilter)) {
+        window.summaryEmojiFilter[emoji] = true;
+      }
+    });
+
+    function getFaceInfoForSegment(seg) {
+      const text = seg || "";
+      for (const [cardName, info] of Object.entries(summaryFaceCardMap)) {
+        const cnName = jokerTranslations[cardName];
+        if (cnName && text.includes(cnName)) {
+          return info;
+        }
+        if (text.includes(cardName)) {
+          return info;
+        }
+      }
+      return null;
+    }
 
     function renderSummaryList() {
       if (!summaryFloatingContent) return;
@@ -396,13 +452,45 @@
         anteLabel.className = "summaryAnteButton";
         anteLabel.textContent = `Ante ${anteNum}`;
 
+        const text = document.createElement("span");
+        text.className = "summaryText";
         const cleaned = rawLine
           .replace(/^\s*ante\s*\d+\s*[：:]\s*/i, "")
           .replace(/^\s*\d+\s*[：:]\s*/, "")
           .trim();
-        const text = document.createElement("span");
-        text.className = "summaryText";
-        text.textContent = cleaned || rawLine;
+        const baseText = cleaned || rawLine;
+
+        // Split summary into segments so we can color only joker items
+        const segments = baseText.split(/(、|,)/);
+        segments.forEach((seg) => {
+          if (!seg) return;
+          if (seg === "、" || seg === ",") {
+            // delimiter (wrap so we can hide "extra" ones when items are filtered)
+            const delimSpan = document.createElement("span");
+            delimSpan.className = "summaryDelimiter";
+            delimSpan.textContent = seg;
+            text.appendChild(delimSpan);
+            if (seg === ",") {
+              text.appendChild(document.createTextNode(" "));
+            }
+            return;
+          }
+          const info = getFaceInfoForSegment(seg);
+          if (info) {
+            const span = document.createElement("span");
+            span.className = "summaryFaceSegment";
+            span.dataset.faceEmoji = info.emoji;
+            if (info.color) {
+              span.style.color = info.color;
+            }
+            span.textContent = seg;
+            text.appendChild(span);
+          } else {
+            const span = document.createElement("span");
+            span.textContent = seg;
+            text.appendChild(span);
+          }
+        });
 
         const reorderItems = () => {
           const parent = item.parentElement;
@@ -584,6 +672,7 @@
     window.lastSummary = "";
     window.lastSummariesByAnte = new Map();
     renderSummaryList();
+    applySummaryEmojiFilter();
     function ensureBalatroAnalysisLoaded() {
       if (
         window.BalatroAnalysis &&
@@ -613,9 +702,156 @@
       return balatroAnalysisPromise;
     }
 
+    function buildSummaryFilterUI() {
+      if (!summaryFilterContent) return;
+      summaryFilterContent.innerHTML = "";
+
+      Object.entries(summaryFaceEmojiMap).forEach(([emoji, color]) => {
+        const btn = document.createElement("button");
+        btn.type = "button";
+        btn.className = "summaryFilterButton";
+        const isOn = window.summaryEmojiFilter[emoji] !== false;
+        btn.classList.toggle("active", isOn);
+
+        btn.addEventListener("click", () => {
+          const nowOn = !btn.classList.contains("active");
+          btn.classList.toggle("active", nowOn);
+          window.summaryEmojiFilter[emoji] = nowOn;
+          applySummaryEmojiFilter();
+        });
+
+        const emojiSpan = document.createElement("span");
+        emojiSpan.className = "summaryFilterEmoji";
+        emojiSpan.textContent = emoji;
+        if (color) {
+          emojiSpan.style.color = color;
+        }
+
+        btn.appendChild(emojiSpan);
+        summaryFilterContent.appendChild(btn);
+      });
+    }
+
     summaryToggleButton.addEventListener("click", () => {
       summaryFloatingWindow.classList.toggle("visible");
     });
+
+    if (summaryFilterToggle) {
+      summaryFilterToggle.addEventListener("click", (event) => {
+        event.stopPropagation();
+        if (!summaryFilterWindow) return;
+        const nowVisible = !summaryFilterWindow.classList.contains("visible");
+        summaryFilterWindow.classList.toggle("visible", nowVisible);
+        if (nowVisible) {
+          buildSummaryFilterUI();
+        }
+      });
+    }
+
+    // clicking outside filter window closes it
+    window.addEventListener("click", (event) => {
+      if (!summaryFilterWindow) return;
+      if (!summaryFilterWindow.classList.contains("visible")) return;
+      const target = event.target;
+      if (
+        target === summaryFilterWindow ||
+        summaryFilterWindow.contains(target) ||
+        target === summaryFilterToggle
+      ) {
+        return;
+      }
+      summaryFilterWindow.classList.remove("visible");
+    });
+
+    function applySummaryEmojiFilter() {
+      const emojiMap = summaryFaceEmojiMap || {};
+      const filter = window.summaryEmojiFilter || {};
+      const isVisible = (emoji) => {
+        if (!emoji || !Object.prototype.hasOwnProperty.call(emojiMap, emoji)) {
+          return true;
+        }
+        if (Object.prototype.hasOwnProperty.call(filter, emoji)) {
+          return !!filter[emoji];
+        }
+        return true;
+      };
+
+      // Main summary segments
+      document
+        .querySelectorAll(".summaryText .summaryFaceSegment")
+        .forEach((span) => {
+          const emoji = span.dataset.faceEmoji || "";
+          span.style.display = isVisible(emoji) ? "" : "none";
+        });
+
+      // Mini summary items
+      document.querySelectorAll(".miniSummaryItem").forEach((span) => {
+        const emoji = span.dataset.faceEmoji || "";
+        span.style.display = isVisible(emoji) ? "" : "none";
+      });
+
+      // Queue / pack items (card set area)
+      document
+        .querySelectorAll(
+          ".queueItem[data-face-emoji], .packItem > div[data-face-emoji]"
+        )
+        .forEach((el) => {
+          const emoji = el.dataset.faceEmoji || "";
+          const visible = isVisible(emoji);
+          el.classList.toggle("emojiFilterOff", !visible);
+        });
+
+      // Hide mini summary rows with no visible items
+      document.querySelectorAll(".miniSummaryEntry").forEach((row) => {
+        const items = row.querySelectorAll(".miniSummaryItem");
+        if (!items.length) {
+          row.style.display = "";
+          return;
+        }
+        const hasVisible = Array.from(items).some(
+          (item) => item.style.display !== "none"
+        );
+        row.style.display = hasVisible ? "" : "none";
+      });
+
+      // Hide "extra" delimiters in main summary (leading/trailing or around hidden items)
+      document
+        .querySelectorAll(".summaryText .summaryDelimiter")
+        .forEach((delim) => {
+          const prev = delim.previousElementSibling;
+          const next = delim.nextElementSibling;
+          const prevVisible =
+            prev &&
+            prev !== delim &&
+            prev.style.display !== "none" &&
+            !prev.classList.contains("summaryDelimiter");
+          const nextVisible =
+            next &&
+            next !== delim &&
+            next.style.display !== "none" &&
+            !next.classList.contains("summaryDelimiter");
+          delim.style.display = prevVisible && nextVisible ? "" : "none";
+        });
+
+      // Hide "extra" delimiters in mini summaries (leading/trailing or around hidden items)
+      document
+        .querySelectorAll(".miniSummaryText .miniSummaryDelimiter")
+        .forEach((delim) => {
+          const prev = delim.previousElementSibling;
+          const next = delim.nextElementSibling;
+          const prevVisible =
+            prev &&
+            prev.classList.contains("miniSummaryItem") &&
+            prev.style.display !== "none";
+          const nextVisible =
+            next &&
+            next.classList.contains("miniSummaryItem") &&
+            next.style.display !== "none";
+          delim.style.display = prevVisible && nextVisible ? "" : "none";
+        });
+    }
+
+    window.applySummaryEmojiFilter = applySummaryEmojiFilter;
 
     function summarizeOutput(sourceButton) {
       const rawText =
@@ -646,12 +882,14 @@
           window.lastSummary = finalSummary;
           window.lastSummariesByAnte = buildSummaryLookup(finalSummary);
           renderSummaryList();
+          applySummaryEmojiFilter();
         })
         .catch((err) => {
           console.error("Failed to run balatro_analysis:", err);
           window.lastSummary = rawText;
           window.lastSummariesByAnte = buildSummaryLookup(rawText);
           renderSummaryList();
+          applySummaryEmojiFilter();
         })
         .finally(() => {
           if (sourceButton) {

@@ -52,6 +52,45 @@
     const cardGroupFilterUpdaters = new Set();
     const allGroupSizeButtons = new Set();
     const ANTES_PER_PAGE = 4;
+    const summaryFaceEmojiMapRaw =
+      (global.BalatroSharedLists &&
+        global.BalatroSharedLists.SUMMARY_FACE_EMOJI) ||
+      null;
+    const jokerTranslations =
+      (global.BalatroSharedLists &&
+        global.BalatroSharedLists.JOKER_TRANSLATIONS) ||
+      {};
+
+    const summaryFaceEmojiMap = {};
+    const summaryFaceCardMap = {};
+    if (summaryFaceEmojiMapRaw) {
+      Object.entries(summaryFaceEmojiMapRaw).forEach(([emoji, value]) => {
+        const color =
+          value && typeof value === "object" ? value.color || "" : value || "";
+        const cards =
+          value && typeof value === "object" && Array.isArray(value.cards)
+            ? value.cards
+            : [];
+        summaryFaceEmojiMap[emoji] = { color, cards };
+        cards.forEach((name) => {
+          summaryFaceCardMap[name] = { emoji, color };
+        });
+      });
+    }
+
+    const getMiniFaceInfoForSegment = (seg) => {
+      const text = seg || "";
+      for (const [cardName, info] of Object.entries(summaryFaceCardMap)) {
+        const cnName = jokerTranslations[cardName];
+        if (cnName && text.includes(cnName)) {
+          return info;
+        }
+        if (text.includes(cardName)) {
+          return info;
+        }
+      }
+      return null;
+    };
     let currentPageIndex = 0;
     let paginationContainer = null;
     let allShopQueues = [];
@@ -125,7 +164,26 @@
         const shouldHighlight =
           searchTerms.length > 0 &&
           searchTerms.some((term) => itemText.includes(term));
-        item.classList.toggle("highlight", shouldHighlight);
+        if (shouldHighlight) {
+          const faceEmoji = item.dataset.faceEmoji || "";
+          let color = "";
+          if (
+            faceEmoji &&
+            summaryFaceEmojiMap &&
+            summaryFaceEmojiMap[faceEmoji]
+          ) {
+            color = summaryFaceEmojiMap[faceEmoji].color || "";
+          }
+          if (color) {
+            item.style.setProperty("--highlight-color", color);
+          } else {
+            item.style.removeProperty("--highlight-color");
+          }
+          item.classList.add("highlight");
+        } else {
+          item.classList.remove("highlight");
+          item.style.removeProperty("--highlight-color");
+        }
 
         // In text-only per-ante view, swap card name to Chinese when highlighted
         if (isTextOnlyQueueItem) {
@@ -146,8 +204,15 @@
             return;
           }
           const baseChinese = jokerTranslations[enName];
+          const faceInfo =
+            summaryFaceCardMap && summaryFaceCardMap[enName]
+              ? summaryFaceCardMap[enName]
+              : null;
+          const faceEmoji = faceInfo && faceInfo.emoji ? faceInfo.emoji : "";
           const hasNegative = nameEl.dataset.negativeTag === "1";
-          const displayText = hasNegative ? `‼️ ${baseChinese}` : baseChinese;
+          const displayText = `${faceEmoji}${
+            hasNegative ? "‼️" : ""
+          }${baseChinese}`;
           if (shouldHighlight) {
             nameEl.textContent = displayText;
             nameEl.classList.add("cardName-cn");
@@ -155,6 +220,55 @@
             nameEl.textContent =
               nameEl.dataset.originalText || nameEl.textContent;
             nameEl.classList.remove("cardName-cn");
+          }
+        }
+
+        // Add/remove emoji prefix on highlighted card names in the main cardset
+        if (item.classList.contains("queueItem")) {
+          const nameEl = item.querySelector(".cardName");
+          if (nameEl) {
+            const enName =
+              nameEl.dataset.enName ||
+              nameEl.dataset.originalText ||
+              nameEl.textContent ||
+              "";
+            const faceInfo =
+              summaryFaceCardMap && summaryFaceCardMap[enName]
+                ? summaryFaceCardMap[enName]
+                : null;
+            const faceEmoji =
+              faceInfo && faceInfo.emoji ? faceInfo.emoji : "";
+            if (faceEmoji) {
+              const rePrefix = new RegExp(`^${faceEmoji}\\s*`);
+              if (shouldHighlight) {
+                const baseText = nameEl.textContent.replace(rePrefix, "");
+                nameEl.textContent = `${faceEmoji}${baseText}`;
+              } else {
+                nameEl.textContent = nameEl.textContent.replace(rePrefix, "");
+              }
+            }
+          }
+        }
+
+        // Add/remove emoji for highlighted pack jokers
+        if (
+          item.parentElement &&
+          item.parentElement.classList.contains("packItem")
+        ) {
+          const nameEl = item.querySelector(".cardName");
+          if (nameEl) {
+            const segText = nameEl.textContent || "";
+            const info = getMiniFaceInfoForSegment(segText);
+            const faceEmoji = info && info.emoji ? info.emoji : "";
+            if (faceEmoji) {
+              const rePrefix = new RegExp(`^${faceEmoji}\\s*`);
+              if (shouldHighlight) {
+                const baseText = nameEl.textContent.replace(rePrefix, "");
+                nameEl.textContent = `${faceEmoji}${baseText}`;
+              } else {
+                nameEl.textContent = nameEl.textContent.replace(rePrefix, "");
+              }
+            }
           }
         }
       });
@@ -471,7 +585,8 @@
             const miniList = document.createElement("div");
             miniList.className = "miniSummaryList";
 
-            for (let offset = 0; offset < 4; offset += 1) {
+            // current ante + next 1 ante
+            for (let offset = 0; offset < 2; offset += 1) {
               const anteKey = anteNumVal + offset;
               const text =
                 summaryLookup && summaryLookup.get(anteKey)
@@ -491,7 +606,35 @@
                 .replace(/^ante\s*\d+\s*[：:]\s*/i, "")
                 .replace(/^\d+\s*[：:]\s*/, "")
                 .trim();
-              textSpan.textContent = cleaned || text;
+              const baseLine = cleaned || text;
+
+              // Split into logical items separated by "、"
+              const segments = baseLine.split("、");
+              textSpan.textContent = "";
+              segments.forEach((seg, idx) => {
+                const part = document.createElement("span");
+                part.className = "miniSummaryItem";
+                const trimmedSeg = seg.trim();
+                part.textContent = trimmedSeg;
+
+                const info = getMiniFaceInfoForSegment(trimmedSeg);
+                if (info) {
+                  part.dataset.faceEmoji = info.emoji;
+                  if (info.color) {
+                    part.style.color = info.color;
+                  }
+                }
+                textSpan.appendChild(part);
+
+                // Re-add the delimiter between items so wrapping can occur there
+                if (idx < segments.length - 1) {
+                  const delim = document.createElement("span");
+                  delim.className = "miniSummaryDelimiter";
+                  delim.textContent = "、";
+                  textSpan.appendChild(delim);
+                  textSpan.appendChild(document.createTextNode(" "));
+                }
+              });
 
               row.append(anteSpan, textSpan);
               miniList.appendChild(row);
@@ -580,6 +723,12 @@
           anteRecalcButton.textContent = "Re-run";
           anteRecalcControls.appendChild(anteRecalcButton);
 
+          const anteRestoreButton = document.createElement("button");
+          anteRestoreButton.type = "button";
+          anteRestoreButton.className = "cardSetToggle anteRestoreButton";
+          anteRestoreButton.textContent = "Restore";
+          anteRecalcControls.appendChild(anteRestoreButton);
+
           // toggle to hide/show groups without highlighted items
           let hideNonHighlightGroups = false;
           const hideGroupsToggle = document.createElement("button");
@@ -648,6 +797,14 @@
               queueItem.className = "queueItem";
               if (textOnly) {
                 queueItem.classList.add("queueItemTextOnly");
+              }
+
+              const faceInfo = getMiniFaceInfoForSegment(baseName);
+              if (faceInfo) {
+                queueItem.dataset.faceEmoji = faceInfo.emoji;
+                if (faceInfo.color) {
+                  queueItem.dataset.faceColor = faceInfo.color;
+                }
               }
 
               if (!textOnly) {
@@ -816,6 +973,39 @@
             hideNonHighlightGroups = !hideNonHighlightGroups;
             updateHideToggleLabel();
             applyGroupHighlightFilter();
+          });
+
+          anteRestoreButton.addEventListener("click", () => {
+            if (anteRestoreButton.disabled) return;
+            if (!anteNumVal) {
+              return;
+            }
+            if (typeof window.computeSingleAnteQueue !== "function") {
+              console.error("computeSingleAnteQueue not available.");
+              return;
+            }
+            const globalCardsInput =
+              document.getElementById("cardsPerAnte");
+            const globalLimit = Math.max(
+              0,
+              Number(globalCardsInput && globalCardsInput.value) || 0
+            );
+            if (!globalLimit) {
+              return;
+            }
+            setButtonLoadingState(anteRestoreButton, true);
+            setTimeout(() => {
+              try {
+                const items =
+                  window.computeSingleAnteQueue(anteNumVal, globalLimit) || [];
+                buildQueueNodes(items, { textOnly: false });
+                applyLayoutMode("scroll"); // restore image carousel view
+                renderCardGroups();
+                searchAndHighlight();
+              } finally {
+                setButtonLoadingState(anteRestoreButton, false);
+              }
+            }, 0);
           });
 
           anteRecalcButton.addEventListener("click", () => {
@@ -1020,6 +1210,13 @@
                   const itemType = determineItemType(parsedCardName);
 
                   const cardContainer = document.createElement("div");
+                  const faceInfo = getMiniFaceInfoForSegment(parsedCardName);
+                  if (faceInfo) {
+                    cardContainer.dataset.faceEmoji = faceInfo.emoji;
+                    if (faceInfo.color) {
+                      cardContainer.dataset.faceColor = faceInfo.color;
+                    }
+                  }
 
                   if (itemType !== "unknown") {
                     // For Buffoon Pack cards (jokers, etc.), use the same overlaid
@@ -1030,23 +1227,24 @@
                     const canvasWrapper = document.createElement("div");
                     canvasWrapper.className = "cardCanvasWrapper";
 
-                    const canvas = document.createElement("canvas");
-                    canvas.width = 80;
-                    canvas.height = 107;
-                    maskToCanvas(
-                      canvas,
-                      parsedCardName,
-                      itemType,
-                      itemModifiers,
-                      itemStickers
-                    );
-                    canvasWrapper.appendChild(canvas);
-                    cardContainer.appendChild(canvasWrapper);
+                const canvas = document.createElement("canvas");
+                canvas.width = 80;
+                canvas.height = 107;
+                maskToCanvas(
+                  canvas,
+                  parsedCardName,
+                  itemType,
+                  itemModifiers,
+                  itemStickers
+                );
+                canvasWrapper.appendChild(canvas);
+                cardContainer.appendChild(canvasWrapper);
 
-                    const itemText = document.createElement("div");
-                    itemText.textContent = parsedCardName;
-                    itemText.classList.add("cardName");
-                    cardContainer.appendChild(itemText);
+                const itemText = document.createElement("div");
+                itemText.textContent = parsedCardName;
+                itemText.classList.add("cardName");
+                itemText.dataset.originalText = parsedCardName;
+                cardContainer.appendChild(itemText);
 
                     if (packType === "Buffoon Pack") {
                       // Edition-like modifiers become an overlaid label on the image
@@ -1209,6 +1407,10 @@
           });
         });
         searchAndHighlight();
+
+        if (typeof window.applySummaryEmojiFilter === "function") {
+          window.applySummaryEmojiFilter();
+        }
 
         if (window.pendingScrollToResults) {
           window.pendingScrollToResults = false;
