@@ -2,12 +2,14 @@
 
 The Soul is a web-based seed analyzer for **Balatro**. It runs entirely in the browser and bundles a WebAssembly port of the native analyzer, letting players inspect seeds, unlocked content, and ante-by-ante shop data without installing anything.
 
-## Features
+## Extra features in this fork
 
-- Analyze Balatro seeds directly in the browser using the built-in WebAssembly module.
-- Toggle decks, stakes, Balatro versions, and unlocked jokers/vouchers/tags to match your save file.
-- Export summaries or copy sharable links so other players can inspect the same seed.
-- Ship a Node + Python CLI for validating raw game outputs and regression tests.
+This fork keeps the original The Soul behavior, and adds:
+
+- Emoji-aware joker categories with color-coded highlights that link summaries, card lists, and search filters.
+- A floating summary window plus per-ante “Nearby Summaries” with emoji-based filtering and a color-on/off toggle.
+- Per-ante re-run controls that support text-only and image views, including a “Restore” button that returns to the global cards-per-ante image layout.
+- A “with English” option that switches summaries and nearby mini summaries between Chinese-only and mixed Chinese/English output.
 
 ## Repository layout
 
