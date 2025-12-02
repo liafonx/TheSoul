@@ -514,7 +514,23 @@ function normalizeText(text) {
 }
 
 function summarizeText(text, options = {}) {
-  return parseLines(normalizeText(text).split("\n"), options).join("\n");
+  const lines = normalizeText(text).split("\n");
+  return formatAnteDataList(collectAnteData(lines), options).join("\n");
+}
+
+// Helper for UI: return Map<anteNumber, summaryLine>
+function summarizeToAnteMap(text, options = {}) {
+  const lines = normalizeText(text).split("\n");
+  const anteList = collectAnteData(lines);
+  const summaries = formatAnteDataList(anteList, options);
+  const map = new Map();
+  anteList.forEach((ante, idx) => {
+    const num = Number(ante.number);
+    if (!Number.isNaN(num) && !map.has(num)) {
+      map.set(num, summaries[idx]);
+    }
+  });
+  return map;
 }
 
 function parseFile(filePath) {
@@ -532,6 +548,7 @@ const exported = {
   collectAnteDetails,
   TAG_EMOJI,
   summarizeText,
+  summarizeToAnteMap,
   trackedLists: {
     jokers: JOKER_NAMES,
     spectrals: SPECTRAL_NAMES,

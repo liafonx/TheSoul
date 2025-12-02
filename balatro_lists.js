@@ -10,7 +10,7 @@
   // color may be empty to use default text color.
   const SUMMARY_FACE_EMOJI = Object.freeze({
     "👥": {
-      color: "#2864b8", // blue (darker, unified)
+      color: "#3b7cd7ff", // blue (darker, unified)
       cards: {
         Blueprint: "蓝图",
         Brainstorm: "头脑",
@@ -24,7 +24,7 @@
       },
     },
     "💿": {
-      color: "#2f7f8f", // teal (darker, unified)
+      color: "#379293ff", // teal (darker, unified)
       cards: {
         Seance: "通灵",
         "Sixth Sense": "第六感",
@@ -73,7 +73,7 @@
       },
     },
     "💴": {
-      color: "#3f7f3f", // money green (darker, unified)
+      color: "#489248ff", // money green (darker, unified)
       cards: {
         "Reserved Parking": "车位",
         "Golden Ticket": "门票",

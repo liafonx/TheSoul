@@ -483,14 +483,26 @@
           }
           const info = getFaceInfoForSegment(seg);
           if (info) {
-            const span = document.createElement("span");
-            span.className = "summaryFaceSegment";
-            span.dataset.faceEmoji = info.emoji;
-            if (info.color) {
-              span.style.color = info.color;
-            }
-            span.textContent = seg;
-            text.appendChild(span);
+            // Color joker segments, but keep '|' separators in default color
+            const chunks = seg.split(/(\|)/);
+            chunks.forEach((chunk) => {
+              if (!chunk) return;
+              if (chunk === "|") {
+                const pipeSpan = document.createElement("span");
+                pipeSpan.className = "summaryPipe";
+                pipeSpan.textContent = "|";
+                text.appendChild(pipeSpan);
+              } else {
+                const span = document.createElement("span");
+                span.className = "summaryFaceSegment";
+                span.dataset.faceEmoji = info.emoji;
+                if (info.color) {
+                  span.style.color = info.color;
+                }
+                span.textContent = chunk;
+                text.appendChild(span);
+              }
+            });
           } else {
             const span = document.createElement("span");
             span.textContent = seg;
@@ -820,41 +832,171 @@
         row.style.display = hasVisible ? "" : "none";
       });
 
-      // Hide "extra" delimiters in main summary (leading/trailing or around hidden items)
+      // Hide redundant delimiters in main summary (leading/trailing or around hidden items)
       document
         .querySelectorAll(".summaryText .summaryDelimiter")
         .forEach((delim) => {
-          const prev = delim.previousElementSibling;
-          const next = delim.nextElementSibling;
-          const prevVisible =
+          const isVisibleSegment = (node) =>
+            node &&
+            node.nodeType === 1 &&
+            !node.classList.contains("summaryDelimiter") &&
+            !node.classList.contains("summaryPipe") &&
+            node.style.display !== "none";
+
+          let prev = delim.previousElementSibling;
+          while (
             prev &&
-            prev !== delim &&
-            prev.style.display !== "none" &&
-            !prev.classList.contains("summaryDelimiter");
-          const nextVisible =
+            (prev.classList.contains("summaryDelimiter") ||
+              prev.classList.contains("summaryPipe"))
+          ) {
+            prev = prev.previousElementSibling;
+          }
+          let next = delim.nextElementSibling;
+          while (
             next &&
-            next !== delim &&
-            next.style.display !== "none" &&
-            !next.classList.contains("summaryDelimiter");
+            (next.classList.contains("summaryDelimiter") ||
+              next.classList.contains("summaryPipe"))
+          ) {
+            next = next.nextElementSibling;
+          }
+
+          const prevVisible = isVisibleSegment(prev);
+          const nextVisible = isVisibleSegment(next);
           delim.style.display = prevVisible && nextVisible ? "" : "none";
         });
 
-      // Hide "extra" delimiters in mini summaries (leading/trailing or around hidden items)
+      // Hide redundant delimiters in mini summaries
       document
         .querySelectorAll(".miniSummaryText .miniSummaryDelimiter")
         .forEach((delim) => {
-          const prev = delim.previousElementSibling;
-          const next = delim.nextElementSibling;
-          const prevVisible =
-            prev &&
-            prev.classList.contains("miniSummaryItem") &&
-            prev.style.display !== "none";
-          const nextVisible =
-            next &&
-            next.classList.contains("miniSummaryItem") &&
-            next.style.display !== "none";
+          const isVisibleItem = (node) =>
+            node &&
+            node.nodeType === 1 &&
+            node.classList.contains("miniSummaryItem") &&
+            node.style.display !== "none";
+
+          let prev = delim.previousElementSibling;
+          while (prev && !prev.classList.contains("miniSummaryItem")) {
+            prev = prev.previousElementSibling;
+          }
+          let next = delim.nextElementSibling;
+          while (next && !next.classList.contains("miniSummaryItem")) {
+            next = next.nextElementSibling;
+          }
+
+          const prevVisible = isVisibleItem(prev);
+          const nextVisible = isVisibleItem(next);
           delim.style.display = prevVisible && nextVisible ? "" : "none";
         });
+
+      // Hide redundant delimiters in main summary (leading/trailing or with no visible neighbors)
+      document.querySelectorAll(".summaryText").forEach((container) => {
+        const children = Array.from(container.children);
+        const isSegment = (node) =>
+          node &&
+          node.nodeType === 1 &&
+          !node.classList.contains("summaryDelimiter") &&
+          !node.classList.contains("summaryPipe");
+
+        const isVisibleSegment = (node) =>
+          isSegment(node) && node.style.display !== "none";
+
+        let lastVisibleIndex = -1;
+        let firstVisibleIndex = -1;
+
+        children.forEach((node, idx) => {
+          if (isVisibleSegment(node)) {
+            if (firstVisibleIndex === -1) {
+              firstVisibleIndex = idx;
+            }
+            if (lastVisibleIndex !== -1) {
+              // ensure at most one visible delimiter between lastVisibleIndex and idx
+              let firstDelim = true;
+              for (let j = lastVisibleIndex + 1; j < idx; j += 1) {
+                const d = children[j];
+                if (
+                  d.classList &&
+                  d.classList.contains("summaryDelimiter")
+                ) {
+                  d.style.display = firstDelim ? "" : "none";
+                  firstDelim = false;
+                }
+              }
+            }
+            lastVisibleIndex = idx;
+          }
+        });
+
+        // hide delimiters before first or after last visible segment
+        children.forEach((node, idx) => {
+          if (
+            !node.classList ||
+            !node.classList.contains("summaryDelimiter")
+          ) {
+            return;
+          }
+          if (
+            firstVisibleIndex === -1 ||
+            idx < firstVisibleIndex ||
+            idx > lastVisibleIndex
+          ) {
+            node.style.display = "none";
+          }
+        });
+      });
+
+      // Hide redundant delimiters in mini summaries
+      document.querySelectorAll(".miniSummaryText").forEach((container) => {
+        const children = Array.from(container.children);
+        const isItem = (node) =>
+          node &&
+          node.nodeType === 1 &&
+          node.classList.contains("miniSummaryItem");
+
+        const isVisibleItem = (node) =>
+          isItem(node) && node.style.display !== "none";
+
+        let lastVisibleIndex = -1;
+        let firstVisibleIndex = -1;
+
+        children.forEach((node, idx) => {
+          if (isVisibleItem(node)) {
+            if (firstVisibleIndex === -1) {
+              firstVisibleIndex = idx;
+            }
+            if (lastVisibleIndex !== -1) {
+              let firstDelim = true;
+              for (let j = lastVisibleIndex + 1; j < idx; j += 1) {
+                const d = children[j];
+                if (
+                  d.classList &&
+                  d.classList.contains("miniSummaryDelimiter")
+                ) {
+                  d.style.display = firstDelim ? "" : "none";
+                  firstDelim = false;
+                }
+              }
+            }
+            lastVisibleIndex = idx;
+          }
+        });
+
+        children.forEach((node, idx) => {
+          if (
+            !node.classList ||
+            !node.classList.contains("miniSummaryDelimiter")
+          ) {
+            return;
+          }
+          if (
+            firstVisibleIndex === -1 ||
+            idx < firstVisibleIndex ||
+            idx > lastVisibleIndex
+          ) {
+            node.style.display = "none";
+          }
+        });
+      });
 
       // Keep search filters in sync with emoji filters
       if (window.syncEmojiFilterToSearch) {
@@ -891,10 +1033,19 @@
 
       return ensureBalatroAnalysisLoaded()
         .then((balatro) => {
-          const summary = balatro.summarizeText(rawText, summaryOptions);
-          const finalSummary = summary || rawText;
-          window.lastSummary = finalSummary;
-          window.lastSummariesByAnte = buildSummaryLookup(finalSummary);
+          const anteMap =
+            typeof balatro.summarizeToAnteMap === "function"
+              ? balatro.summarizeToAnteMap(rawText, summaryOptions)
+              : null;
+          if (anteMap && anteMap.size) {
+            window.lastSummariesByAnte = anteMap;
+            window.lastSummary = Array.from(anteMap.values()).join("\n");
+          } else {
+            const summary = balatro.summarizeText(rawText, summaryOptions);
+            const finalSummary = summary || rawText;
+            window.lastSummary = finalSummary;
+            window.lastSummariesByAnte = buildSummaryLookup(finalSummary);
+          }
           renderSummaryList();
           applySummaryEmojiFilter();
           if (window.refreshShopDisplay) {
@@ -903,8 +1054,9 @@
         })
         .catch((err) => {
           console.error("Failed to run balatro_analysis:", err);
+          const fallbackMap = buildSummaryLookup(rawText);
           window.lastSummary = rawText;
-          window.lastSummariesByAnte = buildSummaryLookup(rawText);
+          window.lastSummariesByAnte = fallbackMap;
           renderSummaryList();
           applySummaryEmojiFilter();
           if (window.refreshShopDisplay) {

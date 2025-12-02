@@ -619,19 +619,33 @@
               const segments = baseLine.split("、");
               textSpan.textContent = "";
               segments.forEach((seg, idx) => {
-                const part = document.createElement("span");
-                part.className = "miniSummaryItem";
                 const trimmedSeg = seg.trim();
-                part.textContent = trimmedSeg;
+                if (!trimmedSeg) return;
 
-                const info = getMiniFaceInfoForSegment(trimmedSeg);
-                if (info) {
-                  part.dataset.faceEmoji = info.emoji;
-                  if (info.color) {
-                    part.style.color = info.color;
+                // Further split on '|' so the divider can keep default color
+                const chunks = trimmedSeg.split(/(\|)/);
+                chunks.forEach((chunk) => {
+                  if (!chunk) return;
+                  if (chunk === "|") {
+                    const pipeSpan = document.createElement("span");
+                    pipeSpan.className = "miniSummaryPipe";
+                    pipeSpan.textContent = "|";
+                    textSpan.appendChild(pipeSpan);
+                  } else {
+                    const part = document.createElement("span");
+                    part.className = "miniSummaryItem";
+                    part.textContent = chunk;
+
+                    const info = getMiniFaceInfoForSegment(chunk);
+                    if (info) {
+                      part.dataset.faceEmoji = info.emoji;
+                      if (info.color) {
+                        part.style.color = info.color;
+                      }
+                    }
+                    textSpan.appendChild(part);
                   }
-                }
-                textSpan.appendChild(part);
+                });
 
                 // Re-add the delimiter between items so wrapping can occur there
                 if (idx < segments.length - 1) {
