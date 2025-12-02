@@ -50,30 +50,36 @@
     const groupButtonUpdaters = new Set();
     const cardGroupRenderers = new Set();
     const cardGroupFilterUpdaters = new Set();
+    const jokerFilterButtons = new Map();
     const allGroupSizeButtons = new Set();
     const ANTES_PER_PAGE = 4;
     const summaryFaceEmojiMapRaw =
       (global.BalatroSharedLists &&
         global.BalatroSharedLists.SUMMARY_FACE_EMOJI) ||
       null;
-    const jokerTranslations =
-      (global.BalatroSharedLists &&
-        global.BalatroSharedLists.JOKER_TRANSLATIONS) ||
-      {};
 
+    // summaryFaceEmojiMap: emoji -> { color, cards: [eng], cardsMap: { eng: cn } }
+    // summaryFaceCardMap: eng -> { emoji, color, cn }
     const summaryFaceEmojiMap = {};
     const summaryFaceCardMap = {};
     if (summaryFaceEmojiMapRaw) {
       Object.entries(summaryFaceEmojiMapRaw).forEach(([emoji, value]) => {
         const color =
           value && typeof value === "object" ? value.color || "" : value || "";
-        const cards =
-          value && typeof value === "object" && Array.isArray(value.cards)
-            ? value.cards
-            : [];
-        summaryFaceEmojiMap[emoji] = { color, cards };
+        let cards = [];
+        let cardsMap = {};
+        if (value && typeof value === "object" && value.cards) {
+          if (Array.isArray(value.cards)) {
+            cards = value.cards;
+          } else if (typeof value.cards === "object") {
+            cards = Object.keys(value.cards);
+            cardsMap = value.cards;
+          }
+        }
+        summaryFaceEmojiMap[emoji] = { color, cards, cardsMap };
         cards.forEach((name) => {
-          summaryFaceCardMap[name] = { emoji, color };
+          const cn = cardsMap[name] || name;
+          summaryFaceCardMap[name] = { emoji, color, cn };
         });
       });
     }
@@ -81,7 +87,7 @@
     const getMiniFaceInfoForSegment = (seg) => {
       const text = seg || "";
       for (const [cardName, info] of Object.entries(summaryFaceCardMap)) {
-        const cnName = jokerTranslations[cardName];
+        const cnName = info.cn;
         if (cnName && text.includes(cnName)) {
           return info;
         }
@@ -132,11 +138,6 @@
         .filter((term) => term.length >= 3);
 
       const searchTerms = [...manualTerms, ...activeToggleTerms];
-
-      const jokerTranslations =
-        (global.BalatroSharedLists &&
-          global.BalatroSharedLists.JOKER_TRANSLATIONS) ||
-        null;
 
       const queueItems = document.querySelectorAll(
         ".queueItem, .packItem > div, .voucherContainer, .tagContainer, .bossContainer"
@@ -200,10 +201,11 @@
               "";
           }
 
-          if (!enName || !jokerTranslations || !jokerTranslations[enName]) {
+          if (!enName || !summaryFaceCardMap || !summaryFaceCardMap[enName]) {
             return;
           }
-          const baseChinese = jokerTranslations[enName];
+          const faceInfoForName = summaryFaceCardMap[enName];
+          const baseChinese = faceInfoForName.cn || enName;
           const faceInfo =
             summaryFaceCardMap && summaryFaceCardMap[enName]
               ? summaryFaceCardMap[enName]
@@ -319,6 +321,11 @@
           button.className = "toggle-button active";
           button.textContent = term;
           const lower = term.toLowerCase();
+          if (group.title === "Jokers:") {
+            button.dataset.filterCategory = "joker";
+            button.dataset.cardName = term;
+            jokerFilterButtons.set(term, button);
+          }
           button.addEventListener("click", () => {
             if (button.classList.contains("active")) {
               button.classList.remove("active");
@@ -1519,6 +1526,35 @@
 
       displayShopQueues();
       global.refreshShopDisplay = displayShopQueues;
+
+      // Sync emoji filters (from SUMMARY_FACE_EMOJI) into search filters
+      global.syncEmojiFilterToSearch = () => {
+        const filter = global.summaryEmojiFilter || {};
+        if (!Object.keys(summaryFaceCardMap).length) {
+          return;
+        }
+        Object.entries(summaryFaceCardMap).forEach(([engName, info]) => {
+          const emoji = info.emoji;
+          if (!emoji || !(emoji in filter)) {
+            return;
+          }
+          const shouldBeOn = filter[emoji] !== false;
+          const btn = jokerFilterButtons.get(engName);
+          if (!btn) {
+            return;
+          }
+          const lower = engName.toLowerCase();
+          const currentlyActive = btn.classList.contains("active");
+          if (shouldBeOn && !currentlyActive) {
+            btn.classList.add("active");
+            activeToggleTerms.add(lower);
+          } else if (!shouldBeOn && currentlyActive) {
+            btn.classList.remove("active");
+            activeToggleTerms.delete(lower);
+          }
+        });
+        searchAndHighlight();
+      };
     })();
   }
 

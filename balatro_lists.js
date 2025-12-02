@@ -5,6 +5,124 @@
     root.BalatroSharedLists = factory();
   }
 })(typeof globalThis !== "undefined" ? globalThis : this, function () {
+  // Emoji categories for jokers used in summaries.
+  // Each entry: emoji -> { color, cards }
+  // color may be empty to use default text color.
+  const SUMMARY_FACE_EMOJI = Object.freeze({
+    "👥": {
+      color: "#2864b8", // blue (darker, unified)
+      cards: {
+        Blueprint: "蓝图",
+        Brainstorm: "头脑",
+        "Invisible Joker": "隐形",
+      },
+    },
+    "🎪": {
+      color: "#c94545", // red (darker, unified)
+      cards: {
+        Showman: "马戏团",
+      },
+    },
+    "💿": {
+      color: "#2f7f8f", // teal (darker, unified)
+      cards: {
+        Seance: "通灵",
+        "Sixth Sense": "第六感",
+      },
+    },
+    "👑": {
+      color: "#cfa93a", // yellow/gold (darker, unified)
+      cards: {
+        Baron: "男爵",
+        Mime: "哑剧",
+      },
+    },
+    "🥤": {
+      color: "#c94545", // red (darker, unified)
+      cards: {
+        "Diet Cola": "可乐",
+      },
+    },
+    "🥊": {
+      color: "#c94545", // red (darker, unified)
+      cards: {
+        Luchador: "摔角手",
+      },
+    },
+    "5️⃣": {
+      color: "#cfa93a", // green (darker, unified)
+      cards: {
+        Dusk: "黄昏",
+        "Sock and Buskin": "喜与悲",
+        "The Idol": "偶像",
+      },
+    },
+    "🧬": {
+      color: "#8b49b0", // violet (darker, unified)
+      cards: {
+        DNA: "DNA",
+      },
+    },
+    "🃏": {
+      color: "", // shared violet
+      cards: {
+        Burglar: "窃贼",
+        "Turtle Bean": "黑龟豆",
+        Juggler: "杂耍",
+        Troubadour: "吟游诗人",
+      },
+    },
+    "💴": {
+      color: "#3f7f3f", // money green (darker, unified)
+      cards: {
+        "Reserved Parking": "车位",
+        "Golden Ticket": "门票",
+      },
+    },
+    "🧱": {
+      color: "", // default color
+      cards: {
+        Photograph: "照片",
+        "Hanging Chad": "选票",
+      },
+    },
+    "🪙": {
+      color: "", // default color
+      cards: {
+        Certificate: "证书",
+      },
+    },
+  });
+
+  const SPECTRAL_TRANSLATIONS = Object.freeze({
+    Cryptid: "神秘生物",
+    "Deja Vu": "既视感(红封）",
+    Ectoplasm: "灵质(负片)",
+    "The Soul": "灵魂",
+  });
+
+  const TAG_EMOJI = Object.freeze({
+    "Negative Tag": "🎞️",
+    "Double Tag": "🖇️",
+    "Voucher Tag": "🎟️",
+  });
+
+  // special vouchers we want to surface in summaries/search
+  const VOUCHER_EMOJI = Object.freeze({
+    "Director's Cut": "🔄",
+    Retcon: "🔄",
+  });
+
+  const ALERT_BOSSES = Object.freeze([
+    "The Ox",
+    "The Psychic",
+    "The Plant",
+    "The Hook",
+    "The Needle",
+    "Crimson Heart",
+    "Verdant Leaf",
+  ]);
+
   const JOKER_TRANSLATIONS = Object.freeze({
     DNA: "DNA",
     Blueprint: "蓝图",
@@ -40,89 +158,6 @@
     Juggler: "杂耍",
     Troubadour: "吟游诗人",
   });
-
-  const SPECTRAL_TRANSLATIONS = Object.freeze({
-    Cryptid: "神秘生物",
-    "Deja Vu": "既视感(红封）",
-    Ectoplasm: "灵质(负片)",
-    "The Soul": "灵魂",
-  });
-
-  const TAG_EMOJI = Object.freeze({
-    "Negative Tag": "🎞️",
-    "Double Tag": "🖇️",
-    "Voucher Tag": "🎟️", 
-  });
-
-  // special vouchers we want to surface in summaries/search
-  const VOUCHER_EMOJI = Object.freeze({
-    "Director's Cut": "🔄",
-    Retcon: "🔄",
-  });
-
-  // Emoji categories for jokers used in summaries.
-  // Each entry: emoji -> { color, cards }
-  // color may be empty to use default text color.
-  const SUMMARY_FACE_EMOJI = Object.freeze({
-    "👥": {
-      color: "#4fa3ff", // blue
-      cards: ["Blueprint", "Brainstorm", "Invisible Joker"],
-    },
-    "🎪": {
-      color: "#ff5a5a", // red
-      cards: ["Showman"],
-    },
-    "💿": {
-      color: "#6bd1e3ff", // purple
-      cards: ["Seance", "Sixth Sense"],
-    },
-    "👑": {
-      color: "#ffd966", // yellow
-      cards: ["Baron", "Mime"],
-    },
-    "🥤": {
-      color: "#ff5a5a", // red
-      cards: ["Diet Cola"],
-    },
-    "🥊": {
-      color: "#ff5a5a", // red
-      cards: ["Luchador"],
-    },
-    "5️⃣": {
-      color: "#ffd966", // green
-      cards: ["Dusk", "Sock and Buskin", "The Idol"],
-    },
-    "🧬": {
-      color: "#cf6bd4", // default violet
-      cards: ["DNA"],
-    },
-    "➕": {
-      color: "#cf6bd4", // shared violet
-      cards: ["Burglar", "Turtle Bean", "Juggler", "Troubadour"],
-    },
-    "💴": {
-      color: "#5eb95eff", // default color
-      cards: ["Reserved Parking", "Golden Ticket"],
-    },
-    "🧱": {
-      color: "", // default color
-      cards: ["Photograph", "Hanging Chad"],
-    },
-    "🪙": {
-      color: "", // default color
-      cards: ["Certificate"],
-    },
-  });
-
-  const ALERT_BOSSES = Object.freeze([
-    "The Ox",
-    "The Psychic",
-    "The Plant",
-    "The Hook",
-    "The Needle",
-    "Crimson Heart",
-    "Verdant Leaf",
-  ]);
 
   const shared = {
     JOKER_TRANSLATIONS,

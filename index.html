@@ -166,8 +166,10 @@
     <div id="summaryFilterWindow">
       <div id="summaryFilterContent"></div>
     </div>
-    <button id="summaryFloatingToggle" type="button">Summary</button>
-    <button id="summaryFilterToggle" type="button">Filter</button>
+    <div id="summaryButtons">
+      <button id="summaryFloatingToggle" type="button">Summary</button>
+      <button id="summaryFilterToggle" type="button">Filter</button>
+    </div>
   </body>
   <script>
     // Unlocks stuff
@@ -382,24 +384,28 @@
         window.BalatroSharedLists.SUMMARY_FACE_EMOJI) ||
       {};
 
-    const jokerTranslations =
-      (window.BalatroSharedLists &&
-        window.BalatroSharedLists.JOKER_TRANSLATIONS) ||
-      {};
-
-    // Build a normalized map: emoji -> { color, cards }
+    // Build a normalized map:
+    // summaryFaceEmojiMap: emoji -> { color, cards: [eng], cardsMap: { eng: cn } }
+    // summaryFaceCardMap: eng -> { emoji, color, cn }
     const summaryFaceEmojiMap = {};
     const summaryFaceCardMap = {};
     Object.entries(summaryFaceEmojiMapRaw).forEach(([emoji, value]) => {
       const color =
         value && typeof value === "object" ? value.color || "" : value || "";
-      const cards =
-        value && typeof value === "object" && Array.isArray(value.cards)
-          ? value.cards
-          : [];
-      summaryFaceEmojiMap[emoji] = { color, cards };
+      let cards = [];
+      let cardsMap = {};
+      if (value && typeof value === "object" && value.cards) {
+        if (Array.isArray(value.cards)) {
+          cards = value.cards;
+        } else if (typeof value.cards === "object") {
+          cards = Object.keys(value.cards);
+          cardsMap = value.cards;
+        }
+      }
+      summaryFaceEmojiMap[emoji] = { color, cards, cardsMap };
       cards.forEach((name) => {
-        summaryFaceCardMap[name] = { emoji, color };
+        const cn = cardsMap[name] || name;
+        summaryFaceCardMap[name] = { emoji, color, cn };
       });
     });
 
@@ -413,7 +419,7 @@
     function getFaceInfoForSegment(seg) {
       const text = seg || "";
       for (const [cardName, info] of Object.entries(summaryFaceCardMap)) {
-        const cnName = jokerTranslations[cardName];
+        const cnName = info.cn;
         if (cnName && text.includes(cnName)) {
           return info;
         }
@@ -849,6 +855,11 @@
             next.style.display !== "none";
           delim.style.display = prevVisible && nextVisible ? "" : "none";
         });
+
+      // Keep search filters in sync with emoji filters
+      if (window.syncEmojiFilterToSearch) {
+        window.syncEmojiFilterToSearch();
+      }
     }
 
     window.applySummaryEmojiFilter = applySummaryEmojiFilter;
@@ -874,6 +885,9 @@
       if (sourceButton) {
         setButtonLoadingState(sourceButton, true);
       }
+      if (summaryToggleButton) {
+        setButtonLoadingState(summaryToggleButton, true);
+      }
 
       return ensureBalatroAnalysisLoaded()
         .then((balatro) => {
@@ -883,6 +897,9 @@
           window.lastSummariesByAnte = buildSummaryLookup(finalSummary);
           renderSummaryList();
           applySummaryEmojiFilter();
+          if (window.refreshShopDisplay) {
+            window.refreshShopDisplay();
+          }
         })
         .catch((err) => {
           console.error("Failed to run balatro_analysis:", err);
@@ -890,10 +907,16 @@
           window.lastSummariesByAnte = buildSummaryLookup(rawText);
           renderSummaryList();
           applySummaryEmojiFilter();
+          if (window.refreshShopDisplay) {
+            window.refreshShopDisplay();
+          }
         })
         .finally(() => {
           if (sourceButton) {
             setButtonLoadingState(sourceButton, false);
+          }
+          if (summaryToggleButton) {
+            setButtonLoadingState(summaryToggleButton, false);
           }
         });
     }

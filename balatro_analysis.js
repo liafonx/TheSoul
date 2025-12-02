@@ -34,7 +34,6 @@ if (!sharedLists) {
 }
 
 const {
-  JOKER_TRANSLATIONS,
   SPECTRAL_TRANSLATIONS,
   TAG_EMOJI,
   ALERT_BOSSES,
@@ -61,6 +60,25 @@ const BUFFOON_PACK_PREFIXES = [
 
 const RE_ANTE_HEADER = /^\s*(?:==)?\s*ANTE\s+(\d+)(?:==)?/i;
 
+// Build a translation map from SUMMARY_FACE_EMOJI: eng -> cn
+const JOKER_TRANSLATIONS = (() => {
+  const map = {};
+  if (SUMMARY_FACE_EMOJI) {
+    Object.values(SUMMARY_FACE_EMOJI).forEach((cfg) => {
+      if (!cfg || typeof cfg !== "object" || !cfg.cards) return;
+      const cardsMap = Array.isArray(cfg.cards)
+        ? Object.fromEntries(cfg.cards.map((name) => [name, name]))
+        : cfg.cards;
+      Object.entries(cardsMap).forEach(([eng, cn]) => {
+        if (!map[eng]) {
+          map[eng] = cn;
+        }
+      });
+    });
+  }
+  return Object.freeze(map);
+})();
+
 // Build a lookup from joker name to its "face" emoji (if any) for summaries.
 let JOKER_FACE_EMOJI_MAP = null;
 function getFaceEmojiForJoker(name) {
@@ -70,10 +88,13 @@ function getFaceEmojiForJoker(name) {
   if (!JOKER_FACE_EMOJI_MAP) {
     JOKER_FACE_EMOJI_MAP = {};
     Object.entries(SUMMARY_FACE_EMOJI).forEach(([emoji, cfg]) => {
-      if (!cfg || typeof cfg !== "object" || !Array.isArray(cfg.cards)) {
+      if (!cfg || typeof cfg !== "object" || !cfg.cards) {
         return;
       }
-      cfg.cards.forEach((cardName) => {
+      const cards = Array.isArray(cfg.cards)
+        ? cfg.cards
+        : Object.keys(cfg.cards);
+      cards.forEach((cardName) => {
         if (!JOKER_FACE_EMOJI_MAP[cardName]) {
           JOKER_FACE_EMOJI_MAP[cardName] = emoji;
         }

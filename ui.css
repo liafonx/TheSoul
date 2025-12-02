@@ -211,38 +211,36 @@ label[for="omitBeforeAnte9"] {
   color: #cccccc;
 }
 
-#summaryFloatingToggle {
+#summaryButtons {
   position: fixed;
   right: 10px;
   top: 10px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  z-index: 1200;
+}
+
+#summaryFloatingToggle,
+#summaryFilterToggle {
   background-color: rgba(255, 224, 138, 0.15);
   backdrop-filter: blur(8px);
   -webkit-backdrop-filter: blur(8px);
   color: #ffe08a;
   border: 1px solid rgba(255, 224, 138, 0.4);
   border-radius: 10px;
-  padding: 6px 14px;
+  padding: 6px 12px;
   cursor: pointer;
-  font-size: 13px;
-  z-index: 1200;
+  font-size: 12px;
   box-shadow: 0 4px 12px rgba(0, 0, 0, 0.4);
 }
 
+#summaryFloatingToggle {
+  order: 1;
+}
+
 #summaryFilterToggle {
-  position: fixed;
-  right: 110px;
-  top: 10px;
-  background-color: rgba(255, 224, 138, 0.12);
-  backdrop-filter: blur(8px);
-  -webkit-backdrop-filter: blur(8px);
-  color: #ffe08a;
-  border: 1px solid rgba(255, 224, 138, 0.4);
-  border-radius: 10px;
-  padding: 6px 10px;
-  cursor: pointer;
-  font-size: 12px;
-  z-index: 1200;
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.4);
+  order: 0;
 }
 
 button.is-loading,
