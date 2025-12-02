@@ -50,9 +50,9 @@
   });
 
   const TAG_EMOJI = Object.freeze({
-    "Negative Tag": "🔘",
+    "Negative Tag": "🎞️",
     "Double Tag": "🖇️",
-    "Voucher Tag": "🎟️",
+    "Voucher Tag": "🎟️", 
   });
 
   // special vouchers we want to surface in summaries/search

@@ -43,76 +43,112 @@
     <div class="container">
       <div class="input-section">
         <h2>Settings</h2>
-        <label for="seed">Seed:</label>
-        <input
-          type="text"
-          id="seed"
-          maxlength="8"
-          pattern="[A-Z1-9]{1,8}"
-          required
-        />
-        <br />
-        <label for="ante">Max Ante:</label>
-        <input type="number" id="ante" min="1" max="999" value="39" required />
-        <br />
-        <label for="cardsPerAnte">Cards per Ante:</label>
-        <input
-          type="number"
-          id="cardsPerAnte"
-          min="0"
-          max="999"
-          value="200"
-          required
-        />
-        <br />
-        <label for="deck">Deck:</label>
-        <select id="deck" required>
-          <option value="Red Deck">Red Deck</option>
-          <option value="Blue Deck">Blue Deck</option>
-          <option value="Yellow Deck">Yellow Deck</option>
-          <option value="Green Deck">Green Deck</option>
-          <option value="Black Deck">Black Deck</option>
-          <option value="Magic Deck">Magic Deck</option>
-          <option value="Nebula Deck">Nebula Deck</option>
-          <option value="Ghost Deck">Ghost Deck</option>
-          <option value="Abandoned Deck">Abandoned Deck</option>
-          <option value="Checkered Deck">Checkered Deck</option>
-          <option value="Zodiac Deck">Zodiac Deck</option>
-          <option value="Painted Deck">Painted Deck</option>
-          <option value="Anaglyph Deck">Anaglyph Deck</option>
-          <option value="Plasma Deck">Plasma Deck</option>
-          <option value="Erratic Deck">Erratic Deck</option>
-          <!-- Add deck options here -->
-        </select>
-        <br />
-        <label for="stake">Stake:</label>
-        <select id="stake" required>
-          <option value="White Stake">White Stake</option>
-          <option value="Red Stake">Red Stake</option>
-          <option value="Green Stake">Green Stake</option>
-          <option value="Black Stake">Black Stake</option>
-          <option value="Blue Stake">Blue Stake</option>
-          <option value="Purple Stake">Purple Stake</option>
-          <option value="Orange Stake">Orange Stake</option>
-          <option value="Gold Stake">Gold Stake</option>
-          <!-- Add stake options here -->
-        </select>
-        <br />
-        <label for="version">Version:</label>
-        <select id="version" required>
-          <option value="10115">1.0.1o-full</option>
-          <option value="10014">1.0.0n</option>
-          <option value="10106">1.0.1f</option>
-          <option value="10103">1.0.1c</option>
-          <!-- Add version options here -->
-        </select>
-        <br />
+
+        <div class="settings-grid">
+          <div class="settings-field">
+            <label for="seed">Seed:</label>
+            <input
+              type="text"
+              id="seed"
+              maxlength="8"
+              pattern="[A-Z1-9]{1,8}"
+              class="settings-core-input"
+              required
+            />
+          </div>
+
+          <div class="settings-field">
+            <label for="ante">Max Ante:</label>
+            <input
+              type="number"
+              id="ante"
+              min="1"
+              max="999"
+              class="settings-core-input"
+              value="39"
+              required
+            />
+          </div>
+
+          <div class="settings-field">
+            <label for="cardsPerAnte">Cards per Ante:</label>
+            <input
+              type="number"
+              id="cardsPerAnte"
+              min="0"
+              max="999"
+              value="300"
+              class="settings-core-input"
+              required
+            />
+          </div>
+
+          <div class="settings-field">
+            <label for="deck">Deck:</label>
+            <select id="deck" required>
+              <option value="Red Deck">Red Deck</option>
+              <option value="Blue Deck">Blue Deck</option>
+              <option value="Yellow Deck">Yellow Deck</option>
+              <option value="Green Deck">Green Deck</option>
+              <option value="Black Deck">Black Deck</option>
+              <option value="Magic Deck">Magic Deck</option>
+              <option value="Nebula Deck">Nebula Deck</option>
+              <option value="Ghost Deck">Ghost Deck</option>
+              <option value="Abandoned Deck">Abandoned Deck</option>
+              <option value="Checkered Deck">Checkered Deck</option>
+              <option value="Zodiac Deck">Zodiac Deck</option>
+              <option value="Painted Deck">Painted Deck</option>
+              <option value="Anaglyph Deck">Anaglyph Deck</option>
+              <option value="Plasma Deck" selected>Plasma Deck</option>
+              <option value="Erratic Deck">Erratic Deck</option>
+              <!-- Add deck options here -->
+            </select>
+          </div>
+
+          <div class="settings-field">
+            <label for="stake">Stake:</label>
+            <select id="stake" required>
+              <option value="White Stake">White Stake</option>
+              <option value="Red Stake">Red Stake</option>
+              <option value="Green Stake">Green Stake</option>
+              <option value="Black Stake">Black Stake</option>
+              <option value="Blue Stake">Blue Stake</option>
+              <option value="Purple Stake">Purple Stake</option>
+              <option value="Orange Stake">Orange Stake</option>
+              <option value="Gold Stake">Gold Stake</option>
+              <!-- Add stake options here -->
+            </select>
+          </div>
+
+          <div class="settings-field">
+            <label for="version">Version:</label>
+            <select id="version" required>
+              <option value="10115">1.0.1o-full</option>
+              <option value="10014">1.0.0n</option>
+              <option value="10106">1.0.1f</option>
+              <option value="10103">1.0.1c</option>
+              <!-- Add version options here -->
+            </select>
+          </div>
+        </div>
+
         <div class="checkbox-row">
           <input type="checkbox" id="omitBeforeAnte9" checked />
           <label for="omitBeforeAnte9">Omit results before Ante 9</label>
         </div>
-        <button id="analyzeButton">Analyze</button>
-        <button id="openCheckboxesBtn">Modify Unlocks</button>
+
+        <div class="settings-actions">
+          <button id="analyzeButton">Analyze</button>
+          <button id="openCheckboxesBtn">Modify Unlocks</button>
+          <button id="copyButton">Copy Link</button>
+          <button id="downloadButton">Download output</button>
+          <button id="exportButton">Summarize</button>
+          <div class="checkbox-row export-toggle">
+            <input type="checkbox" id="withEnglishToggle" />
+            <label for="withEnglishToggle">with English</label>
+          </div>
+        </div>
+
         <div id="checkboxesOverlay">
           <div id="checkboxesPopup">
             <h2>Unlocked Items</h2>
@@ -120,20 +156,6 @@
             <button id="submitBtn">Submit</button>
             <button id="unlockBtn">Unlock All</button>
             <button id="lockBtn">Lock All</button>
-          </div>
-        </div>
-        <button id="copyButton">Copy Link</button>
-      </div>
-      <div class="output-section">
-        <h2>Output</h2>
-        <textarea id="outputBox" rows="14" readonly></textarea>
-        <br />
-        <div style="display: flex; align-items: center; gap: 8px;">
-          <button id="downloadButton">Download</button>
-          <button id="exportButton">Copy</button>
-          <div class="checkbox-row export-toggle">
-            <input type="checkbox" id="withEnglishToggle"/>
-            <label for="withEnglishToggle">with English</label>
           </div>
         </div>
       </div>
@@ -327,7 +349,6 @@
     const summaryFloatingContent = document.getElementById(
       "summaryFloatingContent"
     );
-    const outputBox = document.getElementById("outputBox");
     const withEnglishToggle = document.getElementById("withEnglishToggle");
     const setButtonLoadingState = (btn, flag) => {
       if (!btn) return;
@@ -399,8 +420,50 @@
         };
 
         anteLabel.addEventListener("click", () => {
+          const anteTarget = Number(item.dataset.ante || anteNum);
+          const container = document.getElementById("scrollingContainer");
+          const pagination = document.getElementById("paginationContainer");
+
+          // If pagination exists, try to switch to the page containing this ante
+          if (pagination && typeof window.goToAntePage === "function") {
+            window.goToAntePage(anteTarget);
+          }
+
+          // Close the summary window
+          const summaryWindow = document.getElementById("summaryFloatingWindow");
+          if (summaryWindow) {
+            summaryWindow.classList.remove("visible");
+          }
+
+          // Scroll to the first queue container whose ante title matches
+          requestAnimationFrame(() => {
+            const containers = container
+              ? container.querySelectorAll(".queueContainer")
+              : [];
+            let targetNode = null;
+            containers.forEach((qc) => {
+              if (targetNode) return;
+              const titleEl = qc.querySelector(".queueTitle.anteTitle");
+              if (!titleEl) return;
+              const match =
+                titleEl.textContent &&
+                titleEl.textContent.match(/ANTE\s*(\d+)/i);
+              if (match && Number(match[1]) === anteTarget) {
+                targetNode = qc;
+              }
+            });
+            if (targetNode) {
+              targetNode.scrollIntoView({
+                behavior: "smooth",
+                block: "start",
+              });
+            }
+          });
+        });
+
+        text.addEventListener("click", () => {
           const nowCompleted = item.classList.toggle("completed");
-          anteLabel.setAttribute("aria-pressed", nowCompleted ? "true" : "false");
+          text.setAttribute("aria-pressed", nowCompleted ? "true" : "false");
           reorderItems();
         });
 
@@ -466,9 +529,9 @@
 
       // Add non-default input values as URL parameters
       if (anteInput.value !== "39") params.append("ante", anteInput.value);
-      if (cardsPerAnteInput.value !== "200")
+      if (cardsPerAnteInput.value !== "300")
         params.append("cardsPerAnte", cardsPerAnteInput.value);
-      if (deckSelect.value !== "Red Deck")
+      if (deckSelect.value !== "Plasma Deck")
         params.append("deck", deckSelect.value);
       if (stakeSelect.value !== "White Stake")
         params.append("stake", stakeSelect.value);
@@ -498,7 +561,12 @@
       const content =
         (window.lastRawOutput && window.lastRawOutput.length
           ? window.lastRawOutput
-          : outputBox.value);
+          : "");
+
+      if (!content) {
+        alert("Nothing to download yet.");
+        return;
+      }
 
       const blob = new Blob([content], { type: "text/plain" });
       const url = URL.createObjectURL(blob);
@@ -549,19 +617,51 @@
       summaryFloatingWindow.classList.toggle("visible");
     });
 
-    copyButton.addEventListener("click", () => {
-      const content = outputBox.value;
-      if (!content) {
-        alert("Nothing to copy yet.");
-        return;
+    function summarizeOutput(sourceButton) {
+      const rawText =
+        (window.lastRawOutput && window.lastRawOutput.length
+          ? window.lastRawOutput
+          : "") || "";
+
+      if (!rawText) {
+        alert("Nothing to summarize yet.");
+        return Promise.resolve();
       }
-      navigator.clipboard
-        .writeText(content)
-        .then(() => alert("Copied to clipboard!"))
+
+      if (summaryFloatingContent) {
+        summaryFloatingContent.textContent = "Summarizing results...";
+      }
+
+      const withEnglish = withEnglishToggle ? withEnglishToggle.checked : true;
+      const summaryOptions = withEnglish ? {} : { chineseOnly: true };
+
+      if (sourceButton) {
+        setButtonLoadingState(sourceButton, true);
+      }
+
+      return ensureBalatroAnalysisLoaded()
+        .then((balatro) => {
+          const summary = balatro.summarizeText(rawText, summaryOptions);
+          const finalSummary = summary || rawText;
+          window.lastSummary = finalSummary;
+          window.lastSummariesByAnte = buildSummaryLookup(finalSummary);
+          renderSummaryList();
+        })
         .catch((err) => {
-          alert("Failed to copy.");
-          console.error("Copy failed:", err);
+          console.error("Failed to run balatro_analysis:", err);
+          window.lastSummary = rawText;
+          window.lastSummariesByAnte = buildSummaryLookup(rawText);
+          renderSummaryList();
+        })
+        .finally(() => {
+          if (sourceButton) {
+            setButtonLoadingState(sourceButton, false);
+          }
         });
+    }
+
+    copyButton.addEventListener("click", () => {
+      summarizeOutput(copyButton);
     });
 
     // Add event listener to the "Analysis" button
@@ -733,53 +833,26 @@
         inst.delete();
 
         window.lastRawOutput = output;
-        outputBox.value = "Summarizing results...";
-        if (summaryFloatingContent) {
-          summaryFloatingContent.textContent = "Summarizing results...";
-        }
-        const withEnglish = withEnglishToggle ? withEnglishToggle.checked : true;
-        const summaryOptions = withEnglish ? {} : { chineseOnly: true };
 
-        ensureBalatroAnalysisLoaded()
-          .then((balatro) => {
-            const summary = balatro.summarizeText(output, summaryOptions);
-            const finalSummary = summary || output;
-            window.lastSummary = finalSummary;
-            window.lastSummariesByAnte = buildSummaryLookup(finalSummary);
-            renderSummaryList();
-            outputBox.value = finalSummary;
+        summarizeOutput()
+          .finally(() => {
+            setButtonLoadingState(analyzeButton, false);
+            if (window.setGroupButtonsLoading) {
+              window.setGroupButtonsLoading(false);
+            }
+            window.pendingScrollToResults = true;
             if (window.refreshShopDisplay) {
               window.refreshShopDisplay();
+            } else {
+              const container = document.getElementById("scrollingContainer");
+              if (container) {
+                container.scrollIntoView({
+                  behavior: "smooth",
+                  block: "start",
+                });
+              }
             }
-        })
-        .catch((err) => {
-          console.error("Failed to run balatro_analysis:", err);
-          window.lastSummary = output;
-          window.lastSummariesByAnte = buildSummaryLookup(output);
-            renderSummaryList();
-            outputBox.value = output;
-            if (window.refreshShopDisplay) {
-              window.refreshShopDisplay();
-            }
-        })
-        .finally(() => {
-          setButtonLoadingState(analyzeButton, false);
-          if (window.setGroupButtonsLoading) {
-            window.setGroupButtonsLoading(false);
-          }
-          window.pendingScrollToResults = true;
-          if (window.refreshShopDisplay) {
-            window.refreshShopDisplay();
-          } else {
-            const container = document.getElementById("scrollingContainer");
-            if (container) {
-              container.scrollIntoView({
-                behavior: "smooth",
-                block: "start",
-              });
-            }
-          }
-        });
+          });
       };
 
       // defer heavy work so the spinner can paint first
@@ -878,7 +951,7 @@
         anteInput.value = Math.min(anteInput.value, 999);
         anteInput.value = Math.max(anteInput.value, 1);
         cardsPerAnteInput.value = Array(anteInput.value).fill(
-          Number(urlCardsPerAnte ? urlCardsPerAnte : "200")
+          Number(urlCardsPerAnte ? urlCardsPerAnte : "300")
         );
       }
       if (urlCardsPerAnte) {

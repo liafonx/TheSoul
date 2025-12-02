@@ -49,8 +49,9 @@
     let currentGroupSize = groupSizes[0];
     const groupButtonUpdaters = new Set();
     const cardGroupRenderers = new Set();
+    const cardGroupFilterUpdaters = new Set();
     const allGroupSizeButtons = new Set();
-    const ANTES_PER_PAGE = 13;
+    const ANTES_PER_PAGE = 4;
     let currentPageIndex = 0;
     let paginationContainer = null;
     let allShopQueues = [];
@@ -103,18 +104,45 @@
       );
 
       queueItems.forEach((item) => {
-        const itemText = item.textContent.toLowerCase();
+        const isTextOnlyQueueItem = item.classList.contains("queueItemTextOnly");
+
+        let itemText = item.textContent.toLowerCase();
+        let nameEl = null;
+        let enName = null;
+
+        if (isTextOnlyQueueItem) {
+          nameEl = item.querySelector(".cardName");
+          if (nameEl) {
+            enName =
+              nameEl.dataset.enName ||
+              nameEl.dataset.originalText ||
+              nameEl.textContent ||
+              "";
+            itemText = enName.toLowerCase();
+          }
+        }
+
         const shouldHighlight =
           searchTerms.length > 0 &&
           searchTerms.some((term) => itemText.includes(term));
         item.classList.toggle("highlight", shouldHighlight);
 
         // In text-only per-ante view, swap card name to Chinese when highlighted
-        if (item.classList.contains("queueItemTextOnly")) {
-          const nameEl = item.querySelector(".cardName");
+        if (isTextOnlyQueueItem) {
+          if (!nameEl) {
+            nameEl = item.querySelector(".cardName");
+          }
           if (!nameEl) return;
-          const enName = nameEl.dataset.enName || nameEl.textContent || "";
-          if (!jokerTranslations || !jokerTranslations[enName]) {
+
+          if (!enName) {
+            enName =
+              nameEl.dataset.enName ||
+              nameEl.dataset.originalText ||
+              nameEl.textContent ||
+              "";
+          }
+
+          if (!enName || !jokerTranslations || !jokerTranslations[enName]) {
             return;
           }
           const baseChinese = jokerTranslations[enName];
@@ -130,6 +158,9 @@
           }
         }
       });
+
+      // After highlight changes, re-apply per-card-set group filters
+      cardGroupFilterUpdaters.forEach((update) => update());
     }
 
     (function () {
@@ -277,11 +308,10 @@
       }
 
       function displayShopQueues() {
-        const textarea = document.getElementById("outputBox");
         const text =
           (window.lastRawOutput && window.lastRawOutput.length
             ? window.lastRawOutput
-            : textarea.value) || "";
+            : "") || "";
         allShopQueues = extractShopQueues(text);
         currentPageIndex = 0;
         renderPaginationControls();
@@ -297,6 +327,7 @@
           paginationContainer.style.display = "none";
           groupButtonUpdaters.clear();
           cardGroupRenderers.clear();
+          cardGroupFilterUpdaters.clear();
           return;
         }
 
@@ -304,6 +335,7 @@
           totalPages <= 1 ? "none" : "flex";
         groupButtonUpdaters.clear();
         cardGroupRenderers.clear();
+        cardGroupFilterUpdaters.clear();
 
         const start = currentPageIndex * ANTES_PER_PAGE;
         const end = start + ANTES_PER_PAGE;
@@ -537,8 +569,8 @@
           const anteCardsInput = document.createElement("input");
           anteCardsInput.type = "number";
           anteCardsInput.min = "1";
-          anteCardsInput.max = "1000";
-          anteCardsInput.value = "300";
+          anteCardsInput.max = "9999";
+          anteCardsInput.value = "1000";
           anteCardsInput.className = "anteCardsInput";
           anteRecalcControls.appendChild(anteCardsInput);
 
@@ -547,6 +579,19 @@
           anteRecalcButton.className = "cardSetToggle anteRecalcButton";
           anteRecalcButton.textContent = "Re-run";
           anteRecalcControls.appendChild(anteRecalcButton);
+
+          // toggle to hide/show groups without highlighted items
+          let hideNonHighlightGroups = false;
+          const hideGroupsToggle = document.createElement("button");
+          hideGroupsToggle.type = "button";
+          hideGroupsToggle.className = "cardSetToggle";
+          const updateHideToggleLabel = () => {
+            hideGroupsToggle.textContent = hideNonHighlightGroups
+              ? "Show all groups"
+              : "Only groups with hits";
+          };
+          updateHideToggleLabel();
+          anteRecalcControls.appendChild(hideGroupsToggle);
 
           cardSetHeader.appendChild(anteRecalcControls);
           cardSet.appendChild(cardSetHeader);
@@ -697,7 +742,7 @@
             if (positionInGroup === 0) {
               const badge = document.createElement("span");
               badge.className = "group-badge";
-              badge.textContent = groupIndex + 1;
+              badge.textContent = groupIndex;
               indicator.appendChild(badge);
             }
             const line = document.createElement("span");
@@ -710,6 +755,20 @@
             entry.appendChild(indicator);
             entry.appendChild(node);
             return entry;
+          };
+
+          const applyGroupHighlightFilter = () => {
+            const groups = cardList.querySelectorAll(".cardGroup");
+            groups.forEach((group) => {
+              const hasHighlight = !!group.querySelector(
+                ".queueItem.highlight"
+              );
+              if (hideNonHighlightGroups && !hasHighlight) {
+                group.style.display = "none";
+              } else {
+                group.style.display = "";
+              }
+            });
           };
 
           const renderCardGroups = () => {
@@ -745,10 +804,19 @@
               wrapper.appendChild(groupItems);
               cardList.appendChild(wrapper);
             }
+
+            applyGroupHighlightFilter();
           };
           cardGroupRenderers.add(renderCardGroups);
+          cardGroupFilterUpdaters.add(applyGroupHighlightFilter);
 
           renderCardGroups();
+
+          hideGroupsToggle.addEventListener("click", () => {
+            hideNonHighlightGroups = !hideNonHighlightGroups;
+            updateHideToggleLabel();
+            applyGroupHighlightFilter();
+          });
 
           anteRecalcButton.addEventListener("click", () => {
             if (anteRecalcButton.disabled) return;
@@ -922,6 +990,8 @@
               return true;
             }
 
+            let packsRendered = false;
+
             function renderPacks() {
               packsContainer.innerHTML = "";
               packs.forEach((pack) => {
@@ -1068,8 +1138,24 @@
               // Re-apply highlight state to newly rendered pack cards
               searchAndHighlight();
             }
-        renderPacks();
-      }
+            // collapse / expand pack area by clicking header (default: hidden)
+            let packsCollapsed = true;
+            const updatePackVisibility = () => {
+              const displayStyle = packsCollapsed ? "none" : "";
+              packToggles.style.display = displayStyle;
+              packsContainer.style.display = displayStyle;
+            };
+            updatePackVisibility();
+
+            packHeaderRow.addEventListener("click", () => {
+              packsCollapsed = !packsCollapsed;
+              updatePackVisibility();
+              if (!packsCollapsed && !packsRendered) {
+                renderPacks();
+                packsRendered = true;
+              }
+            });
+          }
 
           scrollingContainer.appendChild(queueContainer);
         });
@@ -1154,6 +1240,23 @@
             return;
           }
           currentPageIndex = clamped;
+          renderPaginationControls();
+          renderCurrentPage();
+        };
+
+        // Expose a helper so summary list can jump to the page for a given ante number
+        window.goToAntePage = (anteNumber) => {
+          if (!Number.isFinite(anteNumber)) return;
+          if (!allShopQueues.length) return;
+
+          const index = allShopQueues.findIndex(({ title }) =>
+            new RegExp(`ANTE\\s+${anteNumber}\\b`, "i").test(title || "")
+          );
+          if (index === -1) return;
+
+          const page = Math.floor(index / ANTES_PER_PAGE);
+          if (page === currentPageIndex) return;
+          currentPageIndex = page;
           renderPaginationControls();
           renderCurrentPage();
         };

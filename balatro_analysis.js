@@ -198,18 +198,14 @@ class AnteData {
     const names = [];
     const hasNegative = this.tagNames.includes("Negative Tag");
     const firstIsNegative = hasNegative && this.tagNames[0] === "Negative Tag";
-    const specialVoucher =
-      this.voucher === "Hieroglyph" || this.voucher === "Petroglyph";
-    const showNegative = hasNegative && (firstIsNegative || specialVoucher);
-    const voucherTriggered = showNegative && !firstIsNegative && specialVoucher;
 
     for (const tagName of this.tagNames) {
       const emoji = TAG_EMOJI[tagName];
       if (!emoji) continue;
 
       if (tagName === "Negative Tag") {
-        if (!showNegative) continue;
-        display.push(voucherTriggered ? `‼️${emoji}` : emoji);
+        const needsBang = firstIsNegative;
+        display.push(needsBang ? `‼️${emoji}` : emoji);
       } else {
         display.push(emoji);
       }
@@ -286,7 +282,7 @@ class AnteData {
         .sort((a, b) => a.order - b.order);
       const jesterParts = entries.map((info) => {
         const chinese = JOKER_TRANSLATIONS[info.name] || info.name;
-        const negativeSuffix = info.negative ? "🔘" : "";
+        const negativeSuffix = info.negative ? "‼️" : "";
         let entry;
         if (chineseOnly) {
           // Chinese-only: name + per-occurrence negative marker + #index

@@ -42,6 +42,11 @@ h1.site-title {
 .container {
   background-color: #2b2b2b;
   color: #d9d9d9;
+  display: block;
+  width: 100%;
+  margin-top: 20px;
+  padding: 0 16px 24px;
+  box-sizing: border-box;
 }
 
 .input-section,
@@ -51,7 +56,48 @@ h1.site-title {
 }
 
 .input-section {
-  max-width: 330px;
+  max-width: none;
+  width: 100%;
+  box-sizing: border-box;
+}
+
+.settings-grid {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 8px 16px;
+  margin-top: 8px;
+}
+
+.settings-field {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.settings-field label {
+  min-width: 120px;
+  flex: 0 0 auto;
+}
+
+.settings-field input {
+  flex: 1 1 auto;
+  padding: 6px 10px;
+  max-width: 238px;
+}
+
+.settings-field select {
+  flex: 1 1 auto;
+  max-width: 260px;
+}
+
+@media (min-width: 720px) {
+  .settings-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .settings-field {
+    padding-right: 8px;
+  }
 }
 
 h2 {
@@ -77,12 +123,20 @@ button {
   border: none;
 }
 
-#outputBox {
-  min-height: 252px;
+button#analyzeButton {
+  margin-top: 0;
 }
 
 input#withEnglishToggle {
   margin-left: -2px;
+}
+
+.settings-actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+  margin-top: 8px;
 }
 
 /* Omit results before Ante 9 checkbox/label spacing */
@@ -102,9 +156,9 @@ label[for="omitBeforeAnte9"] {
 }
 
 .search-container {
-  margin: 8px 40px 10px 20px;
+  margin: 8px 32px 10px 20px;
   padding: 0;
-  max-width: 900px;
+  /* max-width: 900px; */
 }
 
 #paginationContainer {
@@ -309,7 +363,7 @@ button.is-loading::after,
 .filter-panel {
   margin: 0 20px 12px 20px;
   padding: 0 6px 0 8px;
-  max-width: 800px;
+  /* max-width: 800px; */
   border: 1px solid #555555;
   border-radius: 8px;
   background-color: #242424;
@@ -345,7 +399,7 @@ button.is-loading::after,
 #searchInput {
   width: 100%;
   padding: 5px;
-  max-width: 800px;
+  /* max-width: 800px; */
   font-size: 14px;
 }
 
@@ -580,6 +634,8 @@ button.is-loading::after,
 .queueTitle {
   font-weight: bold;
   color: #ffffff;
+  user-select: none;
+  -webkit-user-select: none;
 }
 
 .anteTitle {
@@ -626,6 +682,8 @@ button.is-loading::after,
   padding: 2px 0px 0px 0px;
   margin: 0;
   white-space: nowrap;
+  user-select: none;
+  -webkit-user-select: none;
 }
 
 .packSep {

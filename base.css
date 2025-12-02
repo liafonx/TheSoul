@@ -94,14 +94,14 @@ button {
   color: #333;
 }
 
-/* Remove the default arrow and add custom styling */
+/* Simplified select styling (no extra arrow gap) */
 select {
   -webkit-appearance: none;
   -moz-appearance: none;
   appearance: none;
+  background-image: none;
   background-repeat: no-repeat;
-  background-position: right 8px center;
-  padding-right: 25px; /* Adjust as needed to accommodate the custom arrow */
+  padding-right: 10px;
 }
 
 /* Add border and padding */
