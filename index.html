@@ -60,8 +60,8 @@
           type="number"
           id="cardsPerAnte"
           min="0"
-          max="300"
-          value="100"
+          max="999"
+          value="200"
           required
         />
         <br />
@@ -878,7 +878,7 @@
         anteInput.value = Math.min(anteInput.value, 999);
         anteInput.value = Math.max(anteInput.value, 1);
         cardsPerAnteInput.value = Array(anteInput.value).fill(
-          Number(urlCardsPerAnte ? urlCardsPerAnte : "100")
+          Number(urlCardsPerAnte ? urlCardsPerAnte : "200")
         );
       }
       if (urlCardsPerAnte) {
@@ -915,7 +915,7 @@
       });
 
       cardsPerAnteInput.addEventListener("input", () => {
-        cardsPerAnteInput.value = Math.min(cardsPerAnteInput.value, 100);
+        cardsPerAnteInput.value = Math.min(cardsPerAnteInput.value, 999);
         cardsPerAnteInput.value = Math.max(cardsPerAnteInput.value, 0);
         cardsPerAnteInput.value = Array(anteInput.value).fill(
           Number(cardsPerAnteInput.value)
