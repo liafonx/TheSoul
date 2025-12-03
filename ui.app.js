@@ -585,7 +585,7 @@
                   if (chunk === "|") {
                     const pipeSpan = document.createElement("span");
                     pipeSpan.className = "miniSummaryPipe";
-                    pipeSpan.textContent = "|";
+                    pipeSpan.textContent = " | ";
                     textSpan.appendChild(pipeSpan);
                   } else {
                     const part = document.createElement("span");

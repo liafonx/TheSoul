@@ -487,36 +487,38 @@
             }
             return;
           }
-          const info = getFaceInfoForSegment(seg);
-          if (info) {
-            // Color joker segments, but keep '|' separators in default color
-            const chunks = seg.split(/(\|)/);
-            chunks.forEach((chunk) => {
-              if (!chunk) return;
-              if (chunk === "|") {
-                const pipeSpan = document.createElement("span");
-                pipeSpan.className = "summaryPipe";
-                pipeSpan.textContent = "|";
-                text.appendChild(pipeSpan);
-              } else {
-                const span = document.createElement("span");
-                span.className = "summaryFaceSegment";
-                span.dataset.faceEmoji = info.emoji;
-                const isNegativeChunk = chunk.includes("‼️");
-                if (isNegativeChunk) {
-                  span.classList.add("negativeFace");
-                } else if (info.color) {
-                  span.style.color = info.color;
-                }
-                span.textContent = chunk;
-                text.appendChild(span);
+
+          // Color only chunks that actually contain joker names; keep other parts (including boss/spectral) uncolored
+          const chunks = seg.split(/(\|)/);
+          chunks.forEach((chunk) => {
+            if (!chunk) return;
+            if (chunk === "|") {
+              const pipeSpan = document.createElement("span");
+              pipeSpan.className = "summaryPipe";
+              pipeSpan.textContent = " | ";
+              text.appendChild(pipeSpan);
+              return;
+            }
+
+            const info = getFaceInfoForSegment(chunk);
+            if (info) {
+              const span = document.createElement("span");
+              span.className = "summaryFaceSegment";
+              span.dataset.faceEmoji = info.emoji;
+              const isNegativeChunk = chunk.includes("‼️");
+              if (isNegativeChunk) {
+                span.classList.add("negativeFace");
+              } else if (info.color) {
+                span.style.color = info.color;
               }
-            });
-          } else {
-            const span = document.createElement("span");
-            span.textContent = seg;
-            text.appendChild(span);
-          }
+              span.textContent = chunk;
+              text.appendChild(span);
+            } else {
+              const span = document.createElement("span");
+              span.textContent = chunk;
+              text.appendChild(span);
+            }
+          });
         });
 
         const reorderItems = () => {
@@ -861,36 +863,27 @@
         row.style.display = hasVisible ? "" : "none";
       });
 
-      // Hide redundant delimiters in main summary (leading/trailing or around hidden items)
+      // Hide redundant delimiters in main summary (leading/trailing or around hidden face segments)
       document
         .querySelectorAll(".summaryText .summaryDelimiter")
         .forEach((delim) => {
-          const isVisibleSegment = (node) =>
+          const isVisibleFaceSegment = (node) =>
             node &&
             node.nodeType === 1 &&
-            !node.classList.contains("summaryDelimiter") &&
-            !node.classList.contains("summaryPipe") &&
+            node.classList.contains("summaryFaceSegment") &&
             node.style.display !== "none";
 
           let prev = delim.previousElementSibling;
-          while (
-            prev &&
-            (prev.classList.contains("summaryDelimiter") ||
-              prev.classList.contains("summaryPipe"))
-          ) {
+          while (prev && !prev.classList.contains("summaryFaceSegment")) {
             prev = prev.previousElementSibling;
           }
           let next = delim.nextElementSibling;
-          while (
-            next &&
-            (next.classList.contains("summaryDelimiter") ||
-              next.classList.contains("summaryPipe"))
-          ) {
+          while (next && !next.classList.contains("summaryFaceSegment")) {
             next = next.nextElementSibling;
           }
 
-          const prevVisible = isVisibleSegment(prev);
-          const nextVisible = isVisibleSegment(next);
+          const prevVisible = isVisibleFaceSegment(prev);
+          const nextVisible = isVisibleFaceSegment(next);
           delim.style.display = prevVisible && nextVisible ? "" : "none";
         });
 
@@ -918,14 +911,15 @@
           delim.style.display = prevVisible && nextVisible ? "" : "none";
         });
 
-      // Hide redundant delimiters in main summary (leading/trailing or with no visible neighbors)
+      // Hide redundant delimiters in main summary (leading/trailing or with no visible neighbors),
+      // treating only summaryFaceSegment nodes as "segments" so delimiters
+      // track the colored card-type chunks.
       document.querySelectorAll(".summaryText").forEach((container) => {
         const children = Array.from(container.children);
         const isSegment = (node) =>
           node &&
           node.nodeType === 1 &&
-          !node.classList.contains("summaryDelimiter") &&
-          !node.classList.contains("summaryPipe");
+          node.classList.contains("summaryFaceSegment");
 
         const isVisibleSegment = (node) =>
           isSegment(node) && node.style.display !== "none";
