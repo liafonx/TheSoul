@@ -1364,11 +1364,11 @@ button.is-loading::after,
   border: none;
   border-radius: 0;
   box-sizing: border-box;
-  color: var(--highlight-color, #ff5a5a);
+  color: #ff5a5a;
 }
 
 .highlight .cardName {
-  color: var(--highlight-color, #ffffff);
+  color: #ff5a5a;
   font-weight: 600;
   /* letter-spacing: 0.05em; */
 }
@@ -1376,7 +1376,7 @@ button.is-loading::after,
 .highlight .tagName,
 .highlight .voucherName,
 .highlight .bossName {
-  color: var(--highlight-color, #ff5a5a);
+  color: #ff5a5a;
   font-weight: 600;
 }
 
@@ -1389,28 +1389,10 @@ button.is-loading::after,
 
 .highlight canvas,
 .highlight img {
-  border: 2px solid var(--highlight-color, #ffffff);
+  border: 2px solid #ff5a5a;
   border-radius: 4px;
   display: block;
   box-sizing: border-box;
-}
-
-/* Force negative-effect face cards to use the unified negative color */
-.highlight[data-negative-face="1"] .cardName {
-  color: var(--negative-face-color) !important;
-  font-weight: 600;
-}
-
-.highlight[data-negative-face="1"] canvas,
-.highlight[data-negative-face="1"] img {
-  border-color: var(--negative-face-color) !important;
-}
-
-/* Keep voucher/boss/tag highlight borders in the original red */
-.voucherContainer.highlight canvas,
-.bossContainer.highlight canvas,
-.tagContainer.highlight canvas {
-  border-color: #ff5a5a;
 }
 
 .voucherContainer,
