@@ -514,7 +514,12 @@
         if (i === currentPageIndex) option.selected = true;
         pageSelect.appendChild(option);
       }
-      pageSelect.addEventListener("change", (e) => goToPage(Number(e.target.value)));
+      pageSelect.addEventListener("change", (e) => {
+        const newPage = Number(e.target.value);
+        if (newPage === currentPageIndex) return;
+        pageSelect.disabled = true;
+        setTimeout(() => goToPage(newPage), 0);
+      });
 
       info.append(pageSelect, createElement("span", "paginationInfoTotal", `/ ${totalPages}`));
       paginationContainer.append(prevBtn, info, nextBtn);
