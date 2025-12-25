@@ -810,7 +810,7 @@ button.is-loading::after,
 .queueInfo {
   display: flex;
   flex-wrap: wrap;
-  gap: 16px;
+  gap: 10px;
   font-size: 12px;
   margin-bottom: 10px;
   color: #cccccc;

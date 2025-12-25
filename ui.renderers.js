@@ -10,6 +10,58 @@
     stickerMap = {},
   } = data;
 
+  // Image cache for preloaded spritesheets
+  const imageCache = {};
+  const IMAGE_SOURCES = [
+    "images/Jokers.png",
+    "images/Tarots.png",
+    "images/Editions.png",
+    "images/stickers.png",
+    "images/8BitDeck.png",
+    "images/Enhancers.png",
+    "images/BlindChips.png",
+    "images/tags.png",
+    "images/Vouchers.png",
+  ];
+
+  /**
+   * Preload all spritesheets into cache
+   */
+  function preloadImages() {
+    IMAGE_SOURCES.forEach((src) => {
+      const img = new Image();
+      img.src = src;
+      imageCache[src] = img;
+    });
+  }
+
+  /**
+   * Get cached image, loading if needed
+   */
+  function getCachedImage(src) {
+    if (!imageCache[src]) {
+      const img = new Image();
+      img.src = src;
+      imageCache[src] = img;
+    }
+    return imageCache[src];
+  }
+
+  /**
+   * Execute callback when image is ready
+   */
+  function withImage(src, callback) {
+    const img = getCachedImage(src);
+    if (img.complete && img.naturalWidth > 0) {
+      callback(img);
+    } else {
+      img.onload = () => callback(img);
+    }
+  }
+
+  // Start preloading immediately
+  preloadImages();
+
   function maskToCanvas(canvas, itemName, type, itemModifiers, itemStickers) {
     let itemData;
     let imgSrc;
@@ -43,9 +95,7 @@
     const itemHeight = imageHeight / gridHeight;
 
     const ctx = canvas.getContext("2d");
-    const img = new Image();
-    img.src = imgSrc;
-    img.onload = function () {
+    withImage(imgSrc, (img) => {
       ctx.drawImage(
         img,
         itemData.pos.x * itemWidth,
@@ -74,13 +124,11 @@
       if (itemModifiers.includes("Negative")) {
         canvas.style.filter = "invert(0.8)";
       }
-    };
+    });
   }
 
   function overlayEdition(ctx, canvas, index) {
-    const editionImg = new Image();
-    editionImg.src = "images/Editions.png";
-    editionImg.onload = function () {
+    withImage("images/Editions.png", (editionImg) => {
       const editionWidth = editionImg.width / 5;
       const editionHeight = editionImg.height;
 
@@ -95,13 +143,11 @@
         canvas.width,
         canvas.height
       );
-    };
+    });
   }
 
   function overlaySticker(ctx, canvas, position) {
-    const stickerImg = new Image();
-    stickerImg.src = "images/stickers.png";
-    stickerImg.onload = function () {
+    withImage("images/stickers.png", (stickerImg) => {
       const stickerWidth = stickerImg.width / 5;
       const stickerHeight = stickerImg.height / 3;
 
@@ -116,7 +162,7 @@
         canvas.width,
         canvas.height
       );
-    };
+    });
   }
 
   function getStandardCardName(cardName) {
@@ -177,12 +223,6 @@
 
   function renderStandardCard(canvas, rank, suit, modifiers, seal) {
     const ctx = canvas.getContext("2d");
-
-    const deckImg = new Image();
-    deckImg.src = "images/8BitDeck.png";
-    const enhancersImg = new Image();
-    enhancersImg.src = "images/Enhancers.png";
-
     const cardWidth = canvas.width;
     const cardHeight = canvas.height;
     const deckWidth = 923;
@@ -192,13 +232,49 @@
 
     const { x: cardX, y: cardY } = getStandardCardPosition(rank, suit);
 
-    deckImg.onload = function () {
-      enhancersImg.onload = function () {
-        const enhancerPos = getEnhancerPosition(modifiers);
+    // Load both images, then render when both ready
+    const deckImg = getCachedImage("images/8BitDeck.png");
+    const enhancersImg = getCachedImage("images/Enhancers.png");
+
+    function drawCard() {
+      const enhancerPos = getEnhancerPosition(modifiers);
+      ctx.drawImage(
+        enhancersImg,
+        enhancerPos.x * (enhancersWidth / 7),
+        enhancerPos.y * (enhancersHeight / 5),
+        enhancersWidth / 7,
+        enhancersHeight / 5,
+        0,
+        0,
+        cardWidth,
+        cardHeight
+      );
+
+      ctx.drawImage(
+        deckImg,
+        cardX * (deckWidth / 13),
+        cardY * (deckHeight / 4),
+        deckWidth / 13,
+        deckHeight / 4,
+        0,
+        0,
+        cardWidth,
+        cardHeight
+      );
+
+      const edition = modifiers.find((mod) =>
+        ["Foil", "Holographic", "Polychrome"].includes(mod)
+      );
+      if (edition) {
+        overlayEdition(ctx, canvas, editionMap[edition]);
+      }
+
+      if (seal) {
+        const sealPos = getSealPosition(seal);
         ctx.drawImage(
           enhancersImg,
-          enhancerPos.x * (enhancersWidth / 7),
-          enhancerPos.y * (enhancersHeight / 5),
+          sealPos.x * (enhancersWidth / 7),
+          sealPos.y * (enhancersHeight / 5),
           enhancersWidth / 7,
           enhancersHeight / 5,
           0,
@@ -206,42 +282,26 @@
           cardWidth,
           cardHeight
         );
+      }
+    }
 
-        ctx.drawImage(
-          deckImg,
-          cardX * (deckWidth / 13),
-          cardY * (deckHeight / 4),
-          deckWidth / 13,
-          deckHeight / 4,
-          0,
-          0,
-          cardWidth,
-          cardHeight
-        );
+    // Check if both images are ready
+    const deckReady = deckImg.complete && deckImg.naturalWidth > 0;
+    const enhancersReady = enhancersImg.complete && enhancersImg.naturalWidth > 0;
 
-        const edition = modifiers.find((mod) =>
-          ["Foil", "Holographic", "Polychrome"].includes(mod)
-        );
-        if (edition) {
-          overlayEdition(ctx, canvas, editionMap[edition]);
-        }
-
-        if (seal) {
-          const sealPos = getSealPosition(seal);
-          ctx.drawImage(
-            enhancersImg,
-            sealPos.x * (enhancersWidth / 7),
-            sealPos.y * (enhancersHeight / 5),
-            enhancersWidth / 7,
-            enhancersHeight / 5,
-            0,
-            0,
-            cardWidth,
-            cardHeight
-          );
-        }
+    if (deckReady && enhancersReady) {
+      drawCard();
+    } else {
+      // Wait for both to load
+      let loaded = 0;
+      const checkBoth = () => {
+        loaded++;
+        if (loaded === 2) drawCard();
       };
-    };
+      if (deckReady) loaded++; else deckImg.onload = checkBoth;
+      if (enhancersReady) loaded++; else enhancersImg.onload = checkBoth;
+      if (loaded === 2) drawCard();
+    }
   }
 
   function getEnhancerPosition(modifiers) {
@@ -335,9 +395,7 @@
     }
 
     const ctx = canvas.getContext("2d");
-    const img = new Image();
-    img.src = "images/BlindChips.png";
-    img.onload = function () {
+    withImage("images/BlindChips.png", (img) => {
       const bossWidth = 714 / 21;
       const bossHeight = 1054 / 31;
 
@@ -352,7 +410,7 @@
         canvas.width,
         canvas.height
       );
-    };
+    });
   }
 
   function renderTag(canvas, tagName) {
@@ -363,9 +421,7 @@
     }
 
     const ctx = canvas.getContext("2d");
-    const img = new Image();
-    img.src = "images/tags.png";
-    img.onload = function () {
+    withImage("images/tags.png", (img) => {
       const tagWidth = 204 / 6;
       const tagHeight = 170 / 5;
 
@@ -380,7 +436,7 @@
         canvas.width,
         canvas.height
       );
-    };
+    });
   }
 
   function renderVoucher(canvas, voucherName) {
@@ -391,9 +447,7 @@
     }
 
     const ctx = canvas.getContext("2d");
-    const img = new Image();
-    img.src = "images/Vouchers.png";
-    img.onload = function () {
+    withImage("images/Vouchers.png", (img) => {
       const voucherWidth = 639 / 9;
       const voucherHeight = 380 / 4;
 
@@ -408,7 +462,7 @@
         canvas.width,
         canvas.height
       );
-    };
+    });
   }
 
   function parseCardItem(item) {
@@ -458,6 +512,7 @@
   }
 
   global.BalatroRenderers = {
+    preloadImages,
     maskToCanvas,
     getStandardCardName,
     getStandardCardModifiers,
