@@ -5,155 +5,105 @@ const hasNodeEnv =
 const nodeFs = hasNodeEnv ? require("fs") : null;
 const nodePath = hasNodeEnv ? require("path") : null;
 
+// Load shared lists from balatro_lists.js
 let sharedLists = null;
 if (hasNodeEnv) {
   try {
     sharedLists = require("./balatro_lists.js");
   } catch (err) {
-    sharedLists = null;
+    console.warn("Failed to load balatro_lists.js:", err.message);
   }
-} else if (
-  typeof globalThis !== "undefined" &&
-  globalThis.BalatroSharedLists
-) {
+} else if (typeof globalThis !== "undefined" && globalThis.BalatroSharedLists) {
   sharedLists = globalThis.BalatroSharedLists;
 }
 
 if (!sharedLists) {
-  throw new Error(
-    "BalatroSharedLists not found. Ensure balatro_lists.js is loaded."
-  );
+  console.warn("BalatroSharedLists not found. Using empty defaults.");
+  sharedLists = {};
 }
 
 const {
-  JOKER_TRANSLATIONS,
-  SPECTRAL_TRANSLATIONS,
-  TAG_EMOJI,
-  ALERT_BOSSES,
-  VOUCHER_EMOJI,
-  JOKER_NAMES,
-  SPECTRAL_NAMES,
-  TAG_NAMES,
-  VOUCHER_NAMES,
-  SUMMARY_FACE_EMOJI,
-  KING_DISPLAY,
-  SPECTRAL_PACK_PREFIXES,
-  BUFFOON_PACK_PREFIXES,
+  JOKER_TRANSLATIONS = {},
+  SPECTRAL_TRANSLATIONS = {},
+  TAG_EMOJI = {},
+  ALERT_BOSSES = [],
+  VOUCHER_EMOJI = {},
+  JOKER_NAMES = [],
+  SPECTRAL_NAMES = [],
+  TAG_NAMES = [],
+  VOUCHER_NAMES = [],
+  SUMMARY_FACE_EMOJI = {},
+  KING_DISPLAY = {},
+  SPECTRAL_PACK_PREFIXES = [],
+  BUFFOON_PACK_PREFIXES = [],
 } = sharedLists;
 
+// Pre-compiled regex patterns
 const RE_ANTE_HEADER = /^\s*(?:==)?\s*ANTE\s+(\d+)(?:==)?/i;
+const RE_SHOP_LINE = /^(\d+)\)\s+(.*)$/;
+const RE_KING_SUIT = /\bKing of ([A-Za-z]+)/i;
 
-const JOKER_NAME_PATTERNS = buildNameRegexMap(JOKER_NAMES);
-const SPECTRAL_NAME_PATTERNS = buildNameRegexMap(SPECTRAL_NAMES);
-const NEGATIVE_JOKER_PATTERNS = buildNegativeRegexMap(JOKER_NAMES);
+// Build regex maps for name matching
+const escapeRegExp = (str) => str.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
 
-// Build a lookup from joker name to its "face" emoji (if any) for summaries.
-let JOKER_FACE_EMOJI_MAP = null;
-function getFaceEmojiForJoker(name) {
-  if (!SUMMARY_FACE_EMOJI) {
-    return "";
-  }
-  if (!JOKER_FACE_EMOJI_MAP) {
-    JOKER_FACE_EMOJI_MAP = {};
-    Object.entries(SUMMARY_FACE_EMOJI).forEach(([emoji, cfg]) => {
-      if (!cfg || typeof cfg !== "object" || !cfg.cards) {
-        return;
+const JOKER_PATTERNS = Object.fromEntries(
+  JOKER_NAMES.map((name) => [name, new RegExp(`\\b${escapeRegExp(name)}\\b`)])
+);
+const NEGATIVE_JOKER_PATTERNS = Object.fromEntries(
+  JOKER_NAMES.map((name) => [name, new RegExp(`\\bNegative\\s+${escapeRegExp(name)}\\b`)])
+);
+const SPECTRAL_PATTERNS = Object.fromEntries(
+  SPECTRAL_NAMES.map((name) => [name, new RegExp(`\\b${escapeRegExp(name)}\\b`)])
+);
+
+// Build joker name -> face emoji lookup (lazy initialized)
+let jokerFaceEmojiMap = null;
+function getFaceEmoji(jokerName) {
+  if (!jokerFaceEmojiMap) {
+    jokerFaceEmojiMap = {};
+    for (const [emoji, cfg] of Object.entries(SUMMARY_FACE_EMOJI)) {
+      if (!cfg?.cards) continue;
+      const cards = Array.isArray(cfg.cards) ? cfg.cards : Object.keys(cfg.cards);
+      for (const name of cards) {
+        jokerFaceEmojiMap[name] ??= emoji;
       }
-      const cards = Array.isArray(cfg.cards)
-        ? cfg.cards
-        : Object.keys(cfg.cards);
-      cards.forEach((cardName) => {
-        if (!JOKER_FACE_EMOJI_MAP[cardName]) {
-          JOKER_FACE_EMOJI_MAP[cardName] = emoji;
-        }
-      });
-    });
+    }
   }
-  return JOKER_FACE_EMOJI_MAP[name] || "";
+  return jokerFaceEmojiMap[jokerName] || "";
 }
 
-function escapeRegExp(str) {
-  return str.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
-}
-
-function buildNameRegexMap(names) {
-  const map = {};
-  names.forEach((name) => {
-    map[name] = new RegExp(`\\b${escapeRegExp(name)}\\b`);
-  });
-  return map;
-}
-
-function buildNegativeRegexMap(names) {
-  const map = {};
-  names.forEach((name) => {
-    map[name] = new RegExp(`\\bNegative\\s+${escapeRegExp(name)}\\b`);
-  });
-  return map;
-}
-
-function splitCsv(listStr) {
-  return (listStr || "")
-    .split(",")
-    .map((s) => s.trim())
-    .filter(Boolean);
-}
-
-function capitalizeWord(word) {
-  return word && word.length
-    ? word.charAt(0).toUpperCase() + word.slice(1).toLowerCase()
-    : word;
-}
-
-function isPackLine(line, baseName) {
-  // Matches: "<baseName> -", "Jumbo <baseName> -", or "Mega <baseName> -"
-  return (
-    line.startsWith(`${baseName} -`) ||
-    line.startsWith(`Jumbo ${baseName} -`) ||
-    line.startsWith(`Mega ${baseName} -`)
-  );
-}
+// Utility functions
+const splitCsv = (str) => (str || "").split(",").map((s) => s.trim()).filter(Boolean);
+const normalizeText = (text) => (text || "").replace(/\r\n|\r/g, "\n");
 
 function startsWithAny(line, prefixes) {
-  return prefixes.some((prefix) => line.startsWith(prefix));
+  return Array.isArray(prefixes) && prefixes.some((p) => line.startsWith(p));
 }
 
-function formatKingName(name) {
-  const variants = normalizeKingVariants(name);
-  if (!variants.length) return null; // omit plain kings
+// Extract king card variants (Red Seal, Steel, Gold)
+function getKingVariants(cardText) {
+  const variants = [];
+  if (/\bRed Seal\b/i.test(cardText)) variants.push("Red Seal");
+  if (/\bSteel\b/i.test(cardText)) variants.push("Steel");
+  if (/\bGold\b/i.test(cardText)) variants.push("Gold");
+  return variants;
+}
+
+// Format king display name
+function formatKingDisplay(cardText, chineseOnly = false) {
+  const variants = getKingVariants(cardText);
+  if (!variants.length) return null;
 
   const prefix = variants.join(" ");
-  const chinese = KING_DISPLAY[prefix] || "";
+  const chinese = KING_DISPLAY[prefix];
   if (!chinese) return null;
 
-  return `${chinese}(${prefix} King)`;
+  return chineseOnly ? chinese : `${chinese}(${prefix} King)`;
 }
 
-function formatKingNameChineseOnly(name) {
-  const variants = normalizeKingVariants(name);
-  if (!variants.length) return null; // omit plain kings
-
-  const prefix = variants.join(" ");
-  const chinese = KING_DISPLAY[prefix] || "";
-  if (!chinese) return null;
-
-  return chinese;
-}
-
-function normalizeKingVariants(cardText) {
-  const hasRed = /\bRed Seal\b/i.test(cardText);
-  const hasSteel = /\bSteel\b/i.test(cardText);
-  const hasGold = /\bGold\b/i.test(cardText);
-
-  if (!hasRed && !hasSteel && !hasGold) return [];
-
-  const result = [];
-  if (hasRed) result.push("Red Seal");
-  if (hasSteel) result.push("Steel");
-  if (hasGold) result.push("Gold");
-  return result;
-}
-
+/**
+ * AnteData - Collects and formats data for a single ante
+ */
 class AnteData {
   constructor(number) {
     this.number = number;
@@ -172,9 +122,7 @@ class AnteData {
   }
 
   addJester(name, negative, index) {
-    if (!Object.prototype.hasOwnProperty.call(JOKER_TRANSLATIONS, name)) {
-      return;
-    }
+    if (!JOKER_TRANSLATIONS[name]) return;
     this.jesterCards.push({
       name,
       negative: Boolean(negative),
@@ -184,178 +132,121 @@ class AnteData {
   }
 
   addBuffoonJester(name) {
-    if (!Object.prototype.hasOwnProperty.call(JOKER_TRANSLATIONS, name)) {
-      return;
-    }
-    if (this.buffoonSeen.has(name)) {
-      return;
-    }
+    if (!JOKER_TRANSLATIONS[name] || this.buffoonSeen.has(name)) return;
     this.buffoonSeen.add(name);
     this.buffoonJesters.push(name);
   }
 
   addSpectral(name) {
-    if (!Object.prototype.hasOwnProperty.call(SPECTRAL_TRANSLATIONS, name)) {
-      return;
-    }
-    if (this.spectralSeen.has(name)) {
-      return;
-    }
+    if (!SPECTRAL_TRANSLATIONS[name] || this.spectralSeen.has(name)) return;
     this.spectralSeen.add(name);
     this.spectralCards.push(name);
   }
 
   addTag(tagName) {
-    if (!this.tagOrder.includes(tagName)) {
-      this.tagOrder.push(tagName);
-    }
-    if (!TAG_EMOJI[tagName]) {
-      return;
-    }
-    if (!this.tagNames.includes(tagName)) {
+    if (!this.tagOrder.includes(tagName)) this.tagOrder.push(tagName);
+    if (TAG_EMOJI[tagName] && !this.tagNames.includes(tagName)) {
       this.tagNames.push(tagName);
     }
   }
 
   addKing(name) {
-    if (!name) {
-      return;
-    }
-    const normalized = name.trim();
-    if (this.kingSeen.has(normalized)) {
-      return;
-    }
+    const normalized = (name || "").trim();
+    if (!normalized || this.kingSeen.has(normalized)) return;
     this.kingSeen.add(normalized);
     this.kingCards.push(normalized);
   }
 
-  getTagOutput() {
-    const display = [];
-    const names = [];
-    const hasNegative = this.tagNames.includes("Negative Tag");
-    const firstIsNegative =
-      hasNegative && this.tagOrder[0] === "Negative Tag";
-
-    for (const tagName of this.tagNames) {
-      const emoji = TAG_EMOJI[tagName];
-      if (!emoji) continue;
-
-      if (tagName === "Negative Tag") {
-        const needsBang = firstIsNegative;
-        display.push(needsBang ? `‼️${emoji}` : emoji);
-      } else {
-        display.push(emoji);
-      }
-      names.push(tagName);
-    }
-
-    return { display, names };
+  getTagDisplay() {
+    const firstIsNegative = this.tagOrder[0] === "Negative Tag";
+    return this.tagNames
+      .map((tag) => {
+        const emoji = TAG_EMOJI[tag];
+        if (!emoji) return null;
+        return tag === "Negative Tag" && firstIsNegative ? `‼️${emoji}` : emoji;
+      })
+      .filter(Boolean);
   }
 
   hasOutput() {
-    const tagOutput = this.getTagOutput();
-    return Boolean(
-      tagOutput.display.length ||
-        this.jesterCards.length ||
-        this.spectralCards.length ||
-        this.kingCards.length ||
-        this.buffoonJesters.length
+    return (
+      this.getTagDisplay().length > 0 ||
+      this.jesterCards.length > 0 ||
+      this.spectralCards.length > 0 ||
+      this.kingCards.length > 0 ||
+      this.buffoonJesters.length > 0
     );
   }
 
   formatOutput(options = {}) {
-    const chineseOnly = Boolean(options.chineseOnly);
+    const { chineseOnly = false } = options;
     const parts = [];
 
-    const { display: tagDisplay } = this.getTagOutput();
-    const voucherEmoji =
-      this.voucher && VOUCHER_EMOJI && VOUCHER_EMOJI[this.voucher]
-        ? VOUCHER_EMOJI[this.voucher]
-        : "";
+    // Boss/voucher segment
+    let bossVoucher = "";
+    if (ALERT_BOSSES.includes(this.boss)) bossVoucher += "‼️☠️";
+    if (VOUCHER_EMOJI[this.voucher]) bossVoucher += VOUCHER_EMOJI[this.voucher];
+    if (bossVoucher) parts.push(bossVoucher);
 
-    let bossVoucherSegment = "";
-    if (ALERT_BOSSES.includes(this.boss)) {
-      bossVoucherSegment += "‼️☠️";
-    }
-    if (voucherEmoji) {
-      bossVoucherSegment += voucherEmoji;
-    }
-    if (bossVoucherSegment) {
-      parts.push(bossVoucherSegment);
-    }
-    if (tagDisplay.length) {
-      parts.push(tagDisplay.join("、"));
-    }
+    // Tags
+    const tagDisplay = this.getTagDisplay();
+    if (tagDisplay.length) parts.push(tagDisplay.join("、"));
 
+    // Spectrals
     if (this.spectralCards.length) {
-      const spectral = this.spectralCards.map((name) => {
-        const chinese = SPECTRAL_TRANSLATIONS[name] || name;
-        return chineseOnly ? chinese : `${chinese}(${name})`;
+      const spectrals = this.spectralCards.map((name) => {
+        const cn = SPECTRAL_TRANSLATIONS[name] || name;
+        return chineseOnly ? cn : `${cn}(${name})`;
       });
-      parts.push(`💠${spectral.join("、")}`);
+      parts.push(`💠${spectrals.join("、")}`);
     }
 
+    // Kings
     if (this.kingCards.length) {
-      const kingDisplay = this.kingCards
-        .map((name) =>
-          chineseOnly ? formatKingNameChineseOnly(name) : formatKingName(name)
-        )
-        .filter(Boolean);
-      parts.push(`♔${kingDisplay.join("、")}`);
+      const kings = this.kingCards.map((k) => formatKingDisplay(k, chineseOnly)).filter(Boolean);
+      if (kings.length) parts.push(`♔${kings.join("、")}`);
     }
 
+    // Buffoon jokers
     if (this.buffoonJesters.length) {
-      const buffoon = this.buffoonJesters.map((name, idx) => {
-        const chinese = JOKER_TRANSLATIONS[name] || name;
-        const face = getFaceEmojiForJoker(name);
-        const base = chineseOnly ? chinese : `${chinese}(${name})`;
-        const decorated = `${face || ""}${base}`;
-        return idx === 0 ? `👝${decorated}` : decorated;
+      const buffoons = this.buffoonJesters.map((name, i) => {
+        const cn = JOKER_TRANSLATIONS[name] || name;
+        const face = getFaceEmoji(name);
+        const base = chineseOnly ? cn : `${cn}(${name})`;
+        return i === 0 ? `👝${face}${base}` : `${face}${base}`;
       });
-      parts.push(buffoon.join("、"));
+      parts.push(buffoons.join("、"));
     }
 
+    // Shop jokers
     if (this.jesterCards.length) {
-      const entries = this.jesterCards
+      const jesters = this.jesterCards
         .slice()
-        .sort((a, b) => a.order - b.order);
-      const jesterParts = entries.map((info) => {
-        const chinese = JOKER_TRANSLATIONS[info.name] || info.name;
-        const negativeSuffix = info.negative ? "‼️" : "";
-        const face = getFaceEmojiForJoker(info.name);
-        let entry;
-        if (chineseOnly) {
-          // Chinese-only: name + per-occurrence negative marker + #index
-          entry = `${face || ""}${chinese}${negativeSuffix}#${info.index}`;
-        } else {
-          // Mixed format with English name and index in parentheses
-          entry = `${face || ""}${chinese}${negativeSuffix}(${info.name} #${
-            info.index
-          })`;
-        }
-        return entry;
-      });
-      parts.push(jesterParts.join("、"));
+        .sort((a, b) => a.order - b.order)
+        .map(({ name, negative, index }) => {
+          const cn = JOKER_TRANSLATIONS[name] || name;
+          const face = getFaceEmoji(name);
+          const neg = negative ? "‼️" : "";
+          return chineseOnly
+            ? `${face}${cn}${neg}#${index}`
+            : `${face}${cn}${neg}(${name} #${index})`;
+        });
+      parts.push(jesters.join("、"));
     }
 
     return `${this.number}：${parts.join(" | ")}`;
   }
 
   toPlainObject() {
-    const tagOutput = this.getTagOutput();
     return {
       number: this.number,
       tagNames: [...this.tagNames],
-      tagEmojis: [...tagOutput.display],
-      tagOutputNames: [...tagOutput.names],
+      tagEmojis: this.getTagDisplay(),
       spectralCards: [...this.spectralCards],
       kingCards: [...this.kingCards],
       buffoonJesters: [...this.buffoonJesters],
-      jesterCards: this.jesterCards.map((info) => ({
-        name: info.name,
-        negative: info.negative,
-        index: info.index,
-        order: info.order,
+      jesterCards: this.jesterCards.map(({ name, negative, index, order }) => ({
+        name, negative, index, order,
       })),
       voucher: this.voucher,
       boss: this.boss,
@@ -363,15 +254,16 @@ class AnteData {
   }
 }
 
+/**
+ * Parse analysis output and collect ante data
+ */
 function collectAnteData(lines) {
   const anteList = [];
   let currentAnte = null;
   let state = null;
 
   const flush = () => {
-    if (currentAnte && currentAnte.hasOutput()) {
-      anteList.push(currentAnte);
-    }
+    if (currentAnte?.hasOutput()) anteList.push(currentAnte);
   };
 
   for (const rawLine of lines) {
@@ -382,95 +274,86 @@ function collectAnteData(lines) {
       state = null;
       continue;
     }
-    if (!currentAnte) {
-      continue;
-    }
+
+    if (!currentAnte) continue;
+
     const line = rawLine.trim();
     if (!line) {
       state = null;
       continue;
     }
-    if (line.startsWith("Shop Queue")) {
-      state = "shop";
-      continue;
-    }
-    if (line.startsWith("Packs")) {
-      state = "packs";
-      continue;
-    }
-    if (line.startsWith("Tags")) {
-      const parts = line.split(":");
-      if (parts.length > 1) {
-        splitCsv(parts[1]).forEach((tag) => currentAnte.addTag(tag));
-      }
+
+    // State transitions
+    if (line.startsWith("Shop Queue")) { state = "shop"; continue; }
+    if (line.startsWith("Packs")) { state = "packs"; continue; }
+
+    // Single-line data
+    if (line.startsWith("Tags:")) {
+      splitCsv(line.slice(5)).forEach((tag) => currentAnte.addTag(tag));
       state = null;
       continue;
     }
-    if (line.startsWith("Voucher")) {
-      const [, voucherValue = ""] = line.split(":");
-      currentAnte.voucher = voucherValue.trim() || null;
+    if (line.startsWith("Voucher:")) {
+      currentAnte.voucher = line.slice(8).trim() || null;
       state = null;
       continue;
     }
-    if (line.startsWith("Boss")) {
-      const [, bossValue = ""] = line.split(":");
-      currentAnte.boss = bossValue.trim() || null;
+    if (line.startsWith("Boss:")) {
+      currentAnte.boss = line.slice(5).trim() || null;
       state = null;
       continue;
     }
 
+    // Process shop queue items
     if (state === "shop") {
-      const match = /^(\d+)\)\s+(.*)$/.exec(line);
-      if (!match) {
-        continue;
-      }
-      const index = Number.parseInt(match[1], 10) || 0;
+      const match = RE_SHOP_LINE.exec(line);
+      if (!match) continue;
+
+      const index = parseInt(match[1], 10);
       const itemStr = match[2];
+
+      // Check each tracked joker
       for (const name of JOKER_NAMES) {
-        if (!itemStr.includes(name)) {
-          continue;
-        }
-        const negative = NEGATIVE_JOKER_PATTERNS[name].test(itemStr);
+        if (!itemStr.includes(name)) continue;
+        const negative = NEGATIVE_JOKER_PATTERNS[name]?.test(itemStr);
         currentAnte.addJester(name, negative, index);
       }
       continue;
     }
 
+    // Process pack contents
     if (state === "packs") {
-      if (isPackLine(line, "Standard Pack")) {
-        const dashIndex = line.indexOf("-");
-        const cardList = dashIndex >= 0 ? line.slice(dashIndex + 1) : "";
+      const dashIdx = line.indexOf("-");
+      const cardList = dashIdx >= 0 ? line.slice(dashIdx + 1) : "";
+
+      // Standard pack - check for special kings
+      if (line.includes("Standard Pack")) {
         splitCsv(cardList).forEach((card) => {
-          const suitMatch = /\bKing of ([A-Za-z]+)/i.exec(card);
+          const suitMatch = RE_KING_SUIT.exec(card);
           if (!suitMatch) return;
-          const variants = normalizeKingVariants(card);
-          if (!variants.length) return; // skip plain kings
-          const suit = capitalizeWord(suitMatch[1]);
-          const variantPrefix = variants.join(" ");
-          currentAnte.addKing(`${variantPrefix} King of ${suit}`);
+          const variants = getKingVariants(card);
+          if (!variants.length) return;
+          const suit = suitMatch[1].charAt(0).toUpperCase() + suitMatch[1].slice(1).toLowerCase();
+          currentAnte.addKing(`${variants.join(" ")} King of ${suit}`);
         });
         continue;
       }
-      const dashIndex = line.indexOf("-");
-      const cardList = dashIndex >= 0 ? line.slice(dashIndex + 1) : line;
 
+      // Buffoon pack - check for tracked jokers
       if (startsWithAny(line, BUFFOON_PACK_PREFIXES)) {
         splitCsv(cardList).forEach((card) => {
           for (const name of JOKER_NAMES) {
-            if (JOKER_NAME_PATTERNS[name].test(card)) {
-              currentAnte.addBuffoonJester(name);
-            }
+            if (JOKER_PATTERNS[name]?.test(card)) currentAnte.addBuffoonJester(name);
           }
         });
         continue;
       }
 
+      // Spectral pack - check for tracked spectrals
       if (startsWithAny(line, SPECTRAL_PACK_PREFIXES)) {
         splitCsv(cardList).forEach((card) => {
           for (const name of SPECTRAL_NAMES) {
-            if (SPECTRAL_NAME_PATTERNS[name].test(card)) {
-              currentAnte.addSpectral(name);
-            }
+            if (SPECTRAL_PATTERNS[name]?.test(card)) currentAnte.addSpectral(name);
           }
         });
         continue;
@@ -482,6 +365,7 @@ function collectAnteData(lines) {
   return anteList;
 }
 
+// Public API functions
 function formatAnteDataList(anteList, options = {}) {
   return anteList.map((ante) => ante.formatOutput(options));
 }
@@ -494,16 +378,11 @@ function parseLines(lines, options = {}) {
   return formatAnteDataList(collectAnteData(lines), options);
 }
 
-function normalizeText(text) {
-  return (text || "").replace(/\r\n/g, "\n").replace(/\r/g, "\n");
-}
-
 function summarizeText(text, options = {}) {
   const lines = normalizeText(text).split("\n");
   return formatAnteDataList(collectAnteData(lines), options).join("\n");
 }
 
-// Helper for UI: return Map<anteNumber, summaryLine>
 function summarizeToAnteMap(text, options = {}) {
   const lines = normalizeText(text).split("\n");
   const anteList = collectAnteData(lines);
@@ -519,14 +398,12 @@ function summarizeToAnteMap(text, options = {}) {
 }
 
 function parseFile(filePath) {
-  if (!nodeFs) {
-    throw new Error("parseFile is only available in Node environments.");
-  }
+  if (!nodeFs) throw new Error("parseFile is only available in Node environments.");
   const raw = nodeFs.readFileSync(filePath, { encoding: "utf8" });
-  const lines = normalizeText(raw).split("\n");
-  return parseLines(lines);
+  return parseLines(normalizeText(raw).split("\n"));
 }
 
+// Export module
 const exported = {
   parseFile,
   parseLines,
@@ -543,28 +420,21 @@ const exported = {
   },
 };
 
-if (hasNodeEnv) {
-  module.exports = exported;
-}
+if (hasNodeEnv) module.exports = exported;
+if (typeof window !== "undefined") window.BalatroAnalysis = exported;
 
-if (typeof window !== "undefined") {
-  window.BalatroAnalysis = exported;
-}
-
+// CLI entry point
 if (hasNodeEnv && require.main === module) {
   const inputFiles = process.argv.slice(2);
-  if (inputFiles.length === 0) {
-    console.error(
-      "Usage: node balatro_analysis.js <analysis.txt> [more files...]"
-    );
+  if (!inputFiles.length) {
+    console.error("Usage: node balatro_analysis.js <analysis.txt> [more files...]");
     process.exit(1);
   }
+
   let exitCode = 0;
   for (const file of inputFiles) {
     try {
-      const resolved = nodePath.resolve(file);
-      const results = parseFile(resolved);
-      results.forEach((line) => console.log(line));
+      parseFile(nodePath.resolve(file)).forEach((line) => console.log(line));
     } catch (err) {
       console.error(`Failed to process ${file}: ${err.message}`);
       exitCode = 1;

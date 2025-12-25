@@ -1,43 +1,60 @@
-//UI loader split: dynamically load modular UI pieces
+/**
+ * UI.js - UI module loader
+ * Loads all UI modules in correct dependency order and initializes the shop UI.
+ *
+ * Load order:
+ * 1. ui.data.js - Game data (jokers, tags, etc.)
+ * 2. ui.renderers.js - Canvas rendering helpers
+ * 3. ui.utils.js - Shared utilities (requires BalatroSharedLists)
+ * 4. ui.search.js - Search/highlight (requires BalatroData, BalatroUtils)
+ * 5. ui.cards.js - Card rendering (requires BalatroUtils, BalatroRenderers)
+ * 6. ui.packs.js - Pack rendering (requires BalatroUtils, BalatroRenderers)
+ * 7. ui.app.js - Main orchestrator (requires all above)
+ */
 (function () {
-  const scripts = ["ui.data.js", "ui.renderers.js", "ui.app.js"];
+  "use strict";
+
+  const scripts = [
+    "ui.data.js",
+    "ui.renderers.js",
+    "ui.utils.js",
+    "ui.search.js",
+    "ui.cards.js",
+    "ui.packs.js",
+    "ui.app.js",
+  ];
+
   let index = 0;
 
+  /**
+   * Apply filter-row layout to toggle groups
+   */
   function applyFilterRowLayout() {
-    // Filter row layout start
-    const toggleContainer = document.querySelector(".toggle-container");
-    if (!toggleContainer) {
-      return;
-    }
-    const toggleGroups = toggleContainer.querySelectorAll(".toggle-group");
-    toggleGroups.forEach((group) => {
-      if (group.classList.contains("filter-row")) {
-        return;
+    document.querySelectorAll(".toggle-group").forEach((group) => {
+      const title = group.querySelector(".toggle-group-title");
+      const buttons = group.querySelectorAll(".toggle-button");
+
+      if (!title || !buttons.length) return;
+
+      // Create wrapper for buttons if not already wrapped
+      let wrapper = group.querySelector(".toggle-buttons-wrapper");
+      if (!wrapper) {
+        wrapper = document.createElement("div");
+        wrapper.className = "toggle-buttons-wrapper";
+        buttons.forEach((btn) => wrapper.appendChild(btn));
+        group.appendChild(wrapper);
       }
+
       group.classList.add("filter-row");
-
-      const label = group.querySelector(".toggle-group-title");
-      if (label) {
-        label.classList.add("filter-label");
-      }
-
-      const buttonWrapper = document.createElement("div");
-      buttonWrapper.className = "filter-buttons";
-      Array.from(group.children)
-        .filter((child) => child.tagName === "BUTTON")
-        .forEach((button) => {
-          buttonWrapper.appendChild(button);
-        });
-
-      if (buttonWrapper.children.length > 0) {
-        group.appendChild(buttonWrapper);
-      }
     });
-    // Filter row layout end
   }
 
+  /**
+   * Load scripts sequentially
+   */
   function loadNext() {
     if (index >= scripts.length) {
+      // All scripts loaded - initialize UI
       if (window.initShopUI) {
         window.initShopUI();
         applyFilterRowLayout();
@@ -50,7 +67,7 @@
     const script = document.createElement("script");
     script.src = scripts[index];
     script.onload = () => {
-      index += 1;
+      index++;
       loadNext();
     };
     script.onerror = (err) => {

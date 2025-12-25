@@ -31,13 +31,7 @@
   </head>
   <body>
     <h1 class="site-title">
-      <img
-        src="images/icon.ico"
-        alt="The Soul icon"
-        class="site-title-icon"
-        width="48"
-        height="48"
-      />
+      <img src="images/icon.ico" alt="The Soul icon" class="site-title-icon" width="48" height="48" />
       <span>The Soul</span>
     </h1>
     <div class="container">
@@ -47,40 +41,17 @@
         <div class="settings-grid">
           <div class="settings-field">
             <label for="seed">Seed:</label>
-            <input
-              type="text"
-              id="seed"
-              maxlength="8"
-              pattern="[A-Z1-9]{1,8}"
-              class="settings-core-input"
-              required
-            />
+            <input type="text" id="seed" maxlength="8" pattern="[A-Z1-9]{1,8}" class="settings-core-input" required />
           </div>
 
           <div class="settings-field">
             <label for="ante">Max Ante:</label>
-            <input
-              type="number"
-              id="ante"
-              min="1"
-              max="999"
-              class="settings-core-input"
-              value="39"
-              required
-            />
+            <input type="number" id="ante" min="1" max="999" class="settings-core-input" value="39" required />
           </div>
 
           <div class="settings-field">
             <label for="cardsPerAnte">Cards per Ante:</label>
-            <input
-              type="number"
-              id="cardsPerAnte"
-              min="0"
-              max="999"
-              value="300"
-              class="settings-core-input"
-              required
-            />
+            <input type="number" id="cardsPerAnte" min="0" max="999" value="300" class="settings-core-input" required />
           </div>
 
           <div class="settings-field">
@@ -101,7 +72,6 @@
               <option value="Anaglyph Deck">Anaglyph Deck</option>
               <option value="Plasma Deck" selected>Plasma Deck</option>
               <option value="Erratic Deck">Erratic Deck</option>
-              <!-- Add deck options here -->
             </select>
           </div>
 
@@ -116,7 +86,6 @@
               <option value="Purple Stake">Purple Stake</option>
               <option value="Orange Stake">Orange Stake</option>
               <option value="Gold Stake">Gold Stake</option>
-              <!-- Add stake options here -->
             </select>
           </div>
 
@@ -127,7 +96,6 @@
               <option value="10014">1.0.0n</option>
               <option value="10106">1.0.1f</option>
               <option value="10103">1.0.1c</option>
-              <!-- Add version options here -->
             </select>
           </div>
         </div>
@@ -172,83 +140,32 @@
     </div>
   </body>
   <script>
-    // Unlocks stuff
-    // Option values
+    // Unlocks configuration
     const options = [
-      "Negative Tag",
-      "Foil Tag",
-      "Holographic Tag",
-      "Polychrome Tag",
-      "Rare Tag",
-      "Golden Ticket",
-      "Mr. Bones",
-      "Acrobat",
-      "Sock and Buskin",
-      "Swashbuckler",
-      "Troubadour",
-      "Certificate",
-      "Smeared Joker",
-      "Throwback",
-      "Hanging Chad",
-      "Rough Gem",
-      "Bloodstone",
-      "Arrowhead",
-      "Onyx Agate",
-      "Glass Joker",
-      "Showman",
-      "Flower Pot",
-      "Blueprint",
-      "Wee Joker",
-      "Merry Andy",
-      "Oops! All 6s",
-      "The Idol",
-      "Seeing Double",
-      "Matador",
-      "Hit the Road",
-      "The Duo",
-      "The Trio",
-      "The Family",
-      "The Order",
-      "The Tribe",
-      "Stuntman",
-      "Invisible Joker",
-      "Brainstorm",
-      "Satellite",
-      "Shoot the Moon",
-      "Driver's License",
-      "Cartomancer",
-      "Astronomer",
-      "Burnt Joker",
-      "Bootstraps",
-      "Overstock Plus",
-      "Liquidation",
-      "Glow Up",
-      "Reroll Glut",
-      "Omen Globe",
-      "Observatory",
-      "Nacho Tong",
-      "Recyclomancy",
-      "Tarot Tycoon",
-      "Planet Tycoon",
-      "Money Tree",
-      "Antimatter",
-      "Illusion",
-      "Petroglyph",
-      "Retcon",
-      "Palette",
+      "Negative Tag", "Foil Tag", "Holographic Tag", "Polychrome Tag", "Rare Tag",
+      "Golden Ticket", "Mr. Bones", "Acrobat", "Sock and Buskin", "Swashbuckler",
+      "Troubadour", "Certificate", "Smeared Joker", "Throwback", "Hanging Chad",
+      "Rough Gem", "Bloodstone", "Arrowhead", "Onyx Agate", "Glass Joker",
+      "Showman", "Flower Pot", "Blueprint", "Wee Joker", "Merry Andy",
+      "Oops! All 6s", "The Idol", "Seeing Double", "Matador", "Hit the Road",
+      "The Duo", "The Trio", "The Family", "The Order", "The Tribe",
+      "Stuntman", "Invisible Joker", "Brainstorm", "Satellite", "Shoot the Moon",
+      "Driver's License", "Cartomancer", "Astronomer", "Burnt Joker", "Bootstraps",
+      "Overstock Plus", "Liquidation", "Glow Up", "Reroll Glut", "Omen Globe",
+      "Observatory", "Nacho Tong", "Recyclomancy", "Tarot Tycoon", "Planet Tycoon",
+      "Money Tree", "Antimatter", "Illusion", "Petroglyph", "Retcon", "Palette",
     ];
-    selectedOptions = Array(61).fill(true);
+    let selectedOptions = Array(61).fill(true);
 
-    // Get references to elements
+    // DOM references
     const openCheckboxesBtn = document.getElementById("openCheckboxesBtn");
     const checkboxesOverlay = document.getElementById("checkboxesOverlay");
-    const checkboxesPopup = document.getElementById("checkboxesPopup");
     const checkboxesContainer = document.getElementById("checkboxesContainer");
     const submitBtn = document.getElementById("submitBtn");
     const lockBtn = document.getElementById("lockBtn");
     const unlockBtn = document.getElementById("unlockBtn");
 
-    // Function to create checkboxes
+    // Checkbox management
     function createCheckboxes() {
       checkboxesContainer.innerHTML = "";
       const numColumns = 6;
@@ -258,83 +175,56 @@
         const columnDiv = document.createElement("div");
         columnDiv.classList.add("checkbox-column");
 
-        for (
-          let j = i * optionsPerColumn;
-          j < (i + 1) * optionsPerColumn && j < options.length;
-          j++
-        ) {
+        for (let j = i * optionsPerColumn; j < (i + 1) * optionsPerColumn && j < options.length; j++) {
           const checkbox = document.createElement("input");
           checkbox.type = "checkbox";
           checkbox.value = options[j];
-          checkbox.checked = selectedOptions[j]; // Set checkboxes as selected by default
+          checkbox.checked = selectedOptions[j];
           const label = document.createElement("label");
           label.textContent = options[j];
           label.prepend(checkbox);
           columnDiv.appendChild(label);
         }
-
         checkboxesContainer.appendChild(columnDiv);
       }
     }
 
-    // Function to handle checkbox selections
     function handleSubmit() {
-      const checkboxes = checkboxesContainer.querySelectorAll(
-        'input[type="checkbox"]'
-      );
-      selectedOptions = [];
-      checkboxes.forEach((checkbox) => {
-        selectedOptions.push(checkbox.checked);
-      });
-      console.log("Selected Options:", selectedOptions);
-      // Do something with the selected options
+      const checkboxes = checkboxesContainer.querySelectorAll('input[type="checkbox"]');
+      selectedOptions = Array.from(checkboxes).map((cb) => cb.checked);
       closeOverlay();
     }
 
     function handleLock() {
-      const checkboxes = checkboxesContainer.querySelectorAll(
-        'input[type="checkbox"]'
-      );
-      selectedOptions = [];
-      checkboxes.forEach((checkbox) => {
-        checkbox.checked = false;
-      });
+      checkboxesContainer.querySelectorAll('input[type="checkbox"]').forEach((cb) => (cb.checked = false));
     }
 
     function handleUnlock() {
-      const checkboxes = checkboxesContainer.querySelectorAll(
-        'input[type="checkbox"]'
-      );
-      selectedOptions = [];
-      checkboxes.forEach((checkbox) => {
-        checkbox.checked = true;
-      });
+      checkboxesContainer.querySelectorAll('input[type="checkbox"]').forEach((cb) => (cb.checked = true));
     }
 
-    // Function to open the checkbox overlay
     function openOverlay() {
       createCheckboxes();
       checkboxesOverlay.style.display = "block";
     }
 
-    // Function to close the checkbox overlay
     function closeOverlay() {
       checkboxesOverlay.style.display = "none";
     }
 
-    // Event listeners
     openCheckboxesBtn.addEventListener("click", openOverlay);
-    window.addEventListener("click", (event) => {
-      if (event.target == checkboxesOverlay) {
-        closeOverlay();
-      }
-    });
+    window.addEventListener("click", (e) => e.target === checkboxesOverlay && closeOverlay());
     submitBtn.addEventListener("click", handleSubmit);
     lockBtn.addEventListener("click", handleLock);
     unlockBtn.addEventListener("click", handleUnlock);
 
+    // Initialize state
     window.instantAnalysis = false;
+    window.lastRawOutput = "";
+    window.lastSummary = "";
+    window.lastSummariesByAnte = new Map();
 
+    // DOM elements
     const anteInput = document.getElementById("ante");
     const cardsPerAnteInput = document.getElementById("cardsPerAnte");
     const deckSelect = document.getElementById("deck");
@@ -345,114 +235,101 @@
     const analyzeButton = document.getElementById("analyzeButton");
     const copyLinkButton = document.getElementById("copyButton");
     const downloadButton = document.getElementById("downloadButton");
-    const copyButton = document.getElementById("exportButton");
-    const summaryToggleButton = document.getElementById(
-      "summaryFloatingToggle"
-    );
+    const exportButton = document.getElementById("exportButton");
+    const summaryToggleButton = document.getElementById("summaryFloatingToggle");
     const summaryFilterToggle = document.getElementById("summaryFilterToggle");
-    const summaryFloatingWindow = document.getElementById(
-      "summaryFloatingWindow"
-    );
-    const summaryFloatingContent = document.getElementById(
-      "summaryFloatingContent"
-    );
+    const summaryFloatingWindow = document.getElementById("summaryFloatingWindow");
+    const summaryFloatingContent = document.getElementById("summaryFloatingContent");
     const summaryFilterWindow = document.getElementById("summaryFilterWindow");
-    const summaryFilterContent = document.getElementById(
-      "summaryFilterContent"
-    );
+    const summaryFilterContent = document.getElementById("summaryFilterContent");
     const withEnglishToggle = document.getElementById("withEnglishToggle");
+
+    // Helper to get utils (loaded later by UI.js)
+    const getUtils = () => window.BalatroUtils || {};
+
+    // Summary window visibility
     const setSummaryFloatingVisible = (flag) => {
       if (!summaryFloatingWindow) return;
-      const isVisible = Boolean(flag);
-      summaryFloatingWindow.classList.toggle("visible", isVisible);
-      document.body.classList.toggle("summary-floating-open", isVisible);
+      summaryFloatingWindow.classList.toggle("visible", Boolean(flag));
+      document.body.classList.toggle("summary-floating-open", Boolean(flag));
     };
+
+    // Button loading state (uses shared util when available)
     const setButtonLoadingState = (btn, flag) => {
-      if (!btn) return;
-      const isLoading = Boolean(flag);
-      btn.disabled = isLoading;
-      if (isLoading) {
-        // restart CSS spinner animation reliably
-        btn.classList.remove("is-loading");
-        // force reflow so ::after animation resets
-        void btn.offsetWidth;
-        btn.classList.add("is-loading");
-      } else {
-        btn.classList.remove("is-loading");
+      const utils = getUtils();
+      if (utils.setButtonLoadingState) {
+        utils.setButtonLoadingState(btn, flag);
+      } else if (btn) {
+        btn.disabled = Boolean(flag);
+        btn.classList.toggle("is-loading", Boolean(flag));
       }
     };
 
-    // Add event listener for the "Copy Link" button
-    copyLinkButton.addEventListener("click", copyLink);
+    // Copy link functionality
+    function copyLink() {
+      const baseUrl = window.location.origin + window.location.pathname;
+      const params = new URLSearchParams();
 
-    const summaryFaceEmojiMapRaw =
-      (window.BalatroSharedLists &&
-        window.BalatroSharedLists.SUMMARY_FACE_EMOJI) ||
-      {};
-    const jokerTranslations =
-      (window.BalatroSharedLists &&
-        window.BalatroSharedLists.JOKER_TRANSLATIONS) ||
-      {};
-
-    // Build a normalized map:
-    // summaryFaceEmojiMap: emoji -> { color, cards: [eng], cardColors: { eng: color } }
-    // summaryFaceCardMap: eng -> { emoji, color, cn }
-    const summaryFaceEmojiMap = {};
-    const summaryFaceCardMap = {};
-    Object.entries(summaryFaceEmojiMapRaw).forEach(([emoji, value]) => {
-      const color =
-        value && typeof value === "object" ? value.color || "" : value || "";
-      let cards = [];
-      let cardColors = {};
-      if (value && typeof value === "object" && value.cards) {
-        cards = Array.isArray(value.cards)
-          ? value.cards
-          : Object.keys(value.cards);
+      // Encode unlocks as base64
+      const binaryString = selectedOptions.map((u) => (u ? "1" : "0")).join("");
+      const byteArray = [];
+      for (let i = 0; i < binaryString.length; i += 8) {
+        byteArray.push(parseInt(binaryString.substr(i, 8).padEnd(8, "0"), 2));
       }
-      if (value && typeof value === "object" && value.cardColors) {
-        cardColors = value.cardColors;
-      }
-      summaryFaceEmojiMap[emoji] = { color, cards, cardColors };
-      cards.forEach((name) => {
-        const cn = jokerTranslations[name] || name;
-        const cardColor = cardColors[name] || color;
-        summaryFaceCardMap[name] = { emoji, color: cardColor, cn };
-      });
-    });
+      const base64Unlocks = btoa(String.fromCharCode.apply(null, byteArray));
 
-    window.summaryEmojiFilter = window.summaryEmojiFilter || {};
-    Object.keys(summaryFaceEmojiMap).forEach((emoji) => {
-      if (!(emoji in window.summaryEmojiFilter)) {
-        window.summaryEmojiFilter[emoji] = true;
-      }
-    });
+      if (anteInput.value !== "39") params.append("ante", anteInput.value);
+      if (cardsPerAnteInput.value !== "300") params.append("cardsPerAnte", cardsPerAnteInput.value);
+      if (deckSelect.value !== "Plasma Deck") params.append("deck", deckSelect.value);
+      if (stakeSelect.value !== "White Stake") params.append("stake", stakeSelect.value);
+      if (versionSelect.value !== "10115") params.append("version", versionSelect.value);
+      if (!omitBeforeAnte9Checkbox.checked) params.append("omitBeforeAnte9", "false");
+      if (seedInput.value !== "") params.append("seed", seedInput.value);
+      if (base64Unlocks !== "/////////x/4") params.append("unlocks", base64Unlocks);
 
-    // global toggle for summary text colors
-    window.summaryColorOff = Boolean(window.summaryColorOff);
-    if (window.summaryColorOff && document.body) {
-      document.body.classList.add("summary-color-off");
+      navigator.clipboard.writeText(`${baseUrl}?${params.toString()}`)
+        .then(() => alert("Link copied to clipboard!"))
+        .catch((err) => console.error("Failed to copy link:", err));
     }
 
-    function getFaceInfoForSegment(seg) {
-      const text = seg || "";
-      for (const [cardName, info] of Object.entries(summaryFaceCardMap)) {
-        const cnName = info.cn;
-        if (cnName && text.includes(cnName)) {
-          return info;
-        }
-        if (text.includes(cardName)) {
-          return info;
-        }
+    copyLinkButton.addEventListener("click", copyLink);
+
+    // Download output
+    downloadButton.addEventListener("click", () => {
+      const content = window.lastRawOutput || "";
+      if (!content) {
+        alert("Nothing to download yet.");
+        return;
       }
-      return null;
+      const blob = new Blob([content], { type: "text/plain" });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = seedInput.value + "_analysis.txt";
+      a.click();
+      URL.revokeObjectURL(url);
+    });
+
+    // Summary rendering
+    function buildSummaryLookup(summaryText) {
+      const map = new Map();
+      if (!summaryText?.trim()) return map;
+      summaryText.split("\n").forEach((line) => {
+        const trimmed = line.trim();
+        if (!trimmed) return;
+        const match = trimmed.match(/^ante\s*(\d+)\s*[：:]/i) || trimmed.match(/^(\d+)\s*[：:]/);
+        if (match) {
+          const anteNum = parseInt(match[1], 10);
+          if (!Number.isNaN(anteNum) && !map.has(anteNum)) map.set(anteNum, trimmed);
+        }
+      });
+      return map;
     }
 
     function renderSummaryList() {
       if (!summaryFloatingContent) return;
-      const map =
-        window.lastSummariesByAnte instanceof Map
-          ? window.lastSummariesByAnte
-          : null;
+      const utils = getUtils();
+      const map = window.lastSummariesByAnte;
       summaryFloatingContent.innerHTML = "";
 
       if (!map || map.size === 0) {
@@ -477,29 +354,22 @@
 
         const text = document.createElement("span");
         text.className = "summaryText";
-        const cleaned = rawLine
-          .replace(/^\s*ante\s*\d+\s*[：:]\s*/i, "")
-          .replace(/^\s*\d+\s*[：:]\s*/, "")
-          .trim();
+        const cleaned = (utils.cleanSummaryLine || ((x) => x))(rawLine);
         const baseText = cleaned || rawLine;
 
-        // Split summary into segments so we can color only joker items
+        // Render segments with face coloring
         const segments = baseText.split(/(、|,)/);
         segments.forEach((seg) => {
           if (!seg) return;
           if (seg === "、" || seg === ",") {
-            // delimiter (wrap so we can hide "extra" ones when items are filtered)
             const delimSpan = document.createElement("span");
             delimSpan.className = "summaryDelimiter";
             delimSpan.textContent = seg;
             text.appendChild(delimSpan);
-            if (seg === ",") {
-              text.appendChild(document.createTextNode(" "));
-            }
+            if (seg === ",") text.appendChild(document.createTextNode(" "));
             return;
           }
 
-          // Color only chunks that actually contain joker names; keep other parts (including boss/spectral) uncolored
           const chunks = seg.split(/(\|)/);
           chunks.forEach((chunk) => {
             if (!chunk) return;
@@ -511,81 +381,55 @@
               return;
             }
 
-            const info = getFaceInfoForSegment(chunk);
+            const info = utils.getFaceInfoForSegment?.(chunk);
+            const span = document.createElement("span");
+            span.textContent = chunk;
             if (info) {
-              const span = document.createElement("span");
               span.className = "summaryFaceSegment";
               span.dataset.faceEmoji = info.emoji;
-              const isNegativeChunk = chunk.includes("‼️");
-              if (isNegativeChunk) {
+              if (chunk.includes("‼️")) {
                 span.classList.add("negativeFace");
               } else if (info.color) {
                 span.style.color = info.color;
               }
-              span.textContent = chunk;
-              text.appendChild(span);
-            } else {
-              const span = document.createElement("span");
-              span.textContent = chunk;
-              text.appendChild(span);
             }
+            text.appendChild(span);
           });
         });
 
+        // Reorder items on completion
         const reorderItems = () => {
           const parent = item.parentElement;
           if (!parent) return;
           const children = Array.from(parent.children);
           children.sort((a, b) => {
-            const aChecked = a.classList.contains("completed") ? 1 : 0;
-            const bChecked = b.classList.contains("completed") ? 1 : 0;
-            if (aChecked !== bChecked) return aChecked - bChecked;
-            const aOrder = Number(a.dataset.order || 0);
-            const bOrder = Number(b.dataset.order || 0);
-            return aOrder - bOrder;
+            const aCompleted = a.classList.contains("completed") ? 1 : 0;
+            const bCompleted = b.classList.contains("completed") ? 1 : 0;
+            if (aCompleted !== bCompleted) return aCompleted - bCompleted;
+            return Number(a.dataset.order || 0) - Number(b.dataset.order || 0);
           });
           children.forEach((child) => parent.appendChild(child));
         };
 
         anteLabel.addEventListener("click", () => {
-          const anteTarget = Number(item.dataset.ante || anteNum);
-          const container = document.getElementById("scrollingContainer");
-          const pagination = document.getElementById("paginationContainer");
-
-          // If pagination exists, try to switch to the page containing this ante
-          if (pagination && typeof window.goToAntePage === "function") {
-            window.goToAntePage(anteTarget);
+          if (typeof window.goToAntePage === "function") {
+            window.goToAntePage(Number(item.dataset.ante || anteNum));
           }
+          setSummaryFloatingVisible(false);
 
-          // Close the summary window
-          const summaryWindow = document.getElementById("summaryFloatingWindow");
-          if (summaryWindow) {
-            setSummaryFloatingVisible(false);
-          }
-
-          // Scroll to the first queue container whose ante title matches
           requestAnimationFrame(() => {
-            const containers = container
-              ? container.querySelectorAll(".queueContainer")
-              : [];
+            const container = document.getElementById("scrollingContainer");
+            if (!container) return;
+            const queueContainers = container.querySelectorAll(".queueContainer");
             let targetNode = null;
-            containers.forEach((qc) => {
+            queueContainers.forEach((qc) => {
               if (targetNode) return;
               const titleEl = qc.querySelector(".queueTitle.anteTitle");
               if (!titleEl) return;
-              const match =
-                titleEl.textContent &&
-                titleEl.textContent.match(/ANTE\s*(\d+)/i);
-              if (match && Number(match[1]) === anteTarget) {
-                targetNode = qc;
-              }
+              const match = titleEl.textContent?.match(/ANTE\s*(\d+)/i);
+              if (match && Number(match[1]) === Number(item.dataset.ante)) targetNode = qc;
             });
-            if (targetNode) {
-              targetNode.scrollIntoView({
-                behavior: "smooth",
-                block: "start",
-              });
-            }
+            targetNode?.scrollIntoView({ behavior: "smooth", block: "start" });
           });
         });
 
@@ -600,177 +444,37 @@
       });
     }
 
-    summaryFloatingContent.textContent =
-      "Summary will appear here after you click Analyze.";
+    summaryFloatingContent.textContent = "Summary will appear here after you click Analyze.";
 
-    function buildSummaryLookup(summaryText) {
-      const map = new Map();
-      if (!summaryText || !summaryText.trim()) {
-        return map;
-      }
-      summaryText.split("\n").forEach((line) => {
-        const trimmed = line.trim();
-        if (!trimmed) return;
-        // Matches formats like "ANTE 9: ...", "9: ...", or "9： ..."
-        const match =
-          trimmed.match(/^ante\s*(\d+)\s*[：:]/i) ||
-          trimmed.match(/^(\d+)\s*[：:]/);
-        if (match) {
-          const anteNum = parseInt(match[1], 10);
-          if (!Number.isNaN(anteNum) && !map.has(anteNum)) {
-            map.set(anteNum, trimmed);
-          }
-        }
-      });
-      return map;
-    }
-
-    function copyLink() {
-      const baseUrl = window.location.origin + window.location.pathname;
-      const params = new URLSearchParams();
-
-      // Hash the unlocks
-      // Convert the array of booleans to a binary string
-      const binaryString = selectedOptions
-        .map((unlock) => (unlock ? "1" : "0"))
-        .join("");
-
-      // Convert the binary string to a byte array
-      const byteArray = [];
-      for (let i = 0; i < binaryString.length; i += 8) {
-        const byte = parseInt(binaryString.substr(i, 8), 2);
-        byteArray.push(byte);
-      }
-
-      // Pad the byte array with a null byte if necessary
-      if (binaryString.length % 8 !== 0) {
-        const paddingBits = "0".repeat(8 - (binaryString.length % 8));
-        const paddingByte = parseInt(
-          `${binaryString.slice(-binaryString.length % 8)}${paddingBits}`,
-          2
-        );
-        byteArray.push(paddingByte);
-      }
-
-      // Encode the byte array to base64
-      const base64Unlocks = btoa(String.fromCharCode.apply(null, byteArray));
-
-      // Add non-default input values as URL parameters
-      if (anteInput.value !== "39") params.append("ante", anteInput.value);
-      if (cardsPerAnteInput.value !== "300")
-        params.append("cardsPerAnte", cardsPerAnteInput.value);
-      if (deckSelect.value !== "Plasma Deck")
-        params.append("deck", deckSelect.value);
-      if (stakeSelect.value !== "White Stake")
-        params.append("stake", stakeSelect.value);
-      if (versionSelect.value !== "10115")
-        params.append("version", versionSelect.value);
-      if (!omitBeforeAnte9Checkbox.checked)
-        params.append("omitBeforeAnte9", "false");
-      if (seedInput.value !== "") params.append("seed", seedInput.value);
-      if (base64Unlocks != "/////////x/4")
-        params.append("unlocks", base64Unlocks);
-
-      const url = `${baseUrl}?${params.toString()}`;
-
-      // Copy the URL to the clipboard
-      navigator.clipboard
-        .writeText(url)
-        .then(() => {
-          alert("Link copied to clipboard!");
-        })
-        .catch((err) => {
-          console.error("Failed to copy link: ", err);
-        });
-    }
-
-    downloadButton.addEventListener("click", () => {
-      const filename = seedInput.value + "_analysis.txt";
-      const content =
-        (window.lastRawOutput && window.lastRawOutput.length
-          ? window.lastRawOutput
-          : "");
-
-      if (!content) {
-        alert("Nothing to download yet.");
-        return;
-      }
-
-      const blob = new Blob([content], { type: "text/plain" });
-      const url = URL.createObjectURL(blob);
-
-      const a = document.createElement("a");
-      a.href = url;
-      a.download = filename;
-      a.click();
-
-      URL.revokeObjectURL(url);
-    });
-
-    let balatroAnalysisPromise = null;
-    window.lastRawOutput = "";
-    window.lastSummary = "";
-    window.lastSummariesByAnte = new Map();
-    renderSummaryList();
-    applySummaryEmojiFilter();
-    function ensureBalatroAnalysisLoaded() {
-      if (
-        window.BalatroAnalysis &&
-        typeof window.BalatroAnalysis.summarizeText === "function"
-      ) {
-        return Promise.resolve(window.BalatroAnalysis);
-      }
-      if (!balatroAnalysisPromise) {
-        balatroAnalysisPromise = new Promise((resolve, reject) => {
-          const script = document.createElement("script");
-          script.src = "balatro_analysis.js";
-          script.onload = () => {
-            if (
-              window.BalatroAnalysis &&
-              typeof window.BalatroAnalysis.summarizeText === "function"
-            ) {
-              resolve(window.BalatroAnalysis);
-            } else {
-              reject(new Error("BalatroAnalysis helper missing after load."));
-            }
-          };
-          script.onerror = () =>
-            reject(new Error("Failed to load balatro_analysis.js"));
-          document.head.appendChild(script);
-        });
-      }
-      return balatroAnalysisPromise;
-    }
-
+    // Summary filter UI
     function buildSummaryFilterUI() {
       if (!summaryFilterContent) return;
+      const utils = getUtils();
+      const emojiMap = utils.summaryFaceEmojiMap || {};
       summaryFilterContent.innerHTML = "";
 
-      // Color toggle button
+      // Color toggle
       const colorBtn = document.createElement("button");
       colorBtn.type = "button";
       colorBtn.className = "summaryFilterButton";
       const updateColorBtn = () => {
         colorBtn.classList.toggle("active", window.summaryColorOff);
-        colorBtn.textContent = window.summaryColorOff
-          ? "Colors: default"
-          : "Colors: emoji";
+        colorBtn.textContent = window.summaryColorOff ? "Colors: default" : "Colors: emoji";
       };
       updateColorBtn();
       colorBtn.addEventListener("click", () => {
         window.summaryColorOff = !window.summaryColorOff;
-        if (document.body) {
-          document.body.classList.toggle("summary-color-off", window.summaryColorOff);
-        }
+        document.body?.classList.toggle("summary-color-off", window.summaryColorOff);
         updateColorBtn();
       });
       summaryFilterContent.appendChild(colorBtn);
 
-      Object.entries(summaryFaceEmojiMap).forEach(([emoji, color]) => {
+      // Emoji filter buttons
+      Object.entries(emojiMap).forEach(([emoji, data]) => {
         const btn = document.createElement("button");
         btn.type = "button";
         btn.className = "summaryFilterButton";
-        const isOn = window.summaryEmojiFilter[emoji] !== false;
+        const isOn = window.summaryEmojiFilter?.[emoji] !== false;
         btn.classList.toggle("active", isOn);
 
         btn.addEventListener("click", () => {
@@ -783,84 +487,38 @@
         const emojiSpan = document.createElement("span");
         emojiSpan.className = "summaryFilterEmoji";
         emojiSpan.textContent = emoji;
-        if (color) {
-          emojiSpan.style.color = color;
-        }
+        if (data.color) emojiSpan.style.color = data.color;
 
         btn.appendChild(emojiSpan);
         summaryFilterContent.appendChild(btn);
       });
     }
 
-    summaryToggleButton.addEventListener("click", () => {
-      const nowVisible = !summaryFloatingWindow.classList.contains("visible");
-      setSummaryFloatingVisible(nowVisible);
-    });
-
-    if (summaryFilterToggle) {
-      summaryFilterToggle.addEventListener("click", (event) => {
-        event.stopPropagation();
-        if (!summaryFilterWindow) return;
-        const nowVisible = !summaryFilterWindow.classList.contains("visible");
-        summaryFilterWindow.classList.toggle("visible", nowVisible);
-        if (nowVisible) {
-          buildSummaryFilterUI();
-        }
-      });
-    }
-
-    // clicking outside filter window closes it
-    window.addEventListener("click", (event) => {
-      if (!summaryFilterWindow) return;
-      if (!summaryFilterWindow.classList.contains("visible")) return;
-      const target = event.target;
-      if (
-        target === summaryFilterWindow ||
-        summaryFilterWindow.contains(target) ||
-        target === summaryFilterToggle
-      ) {
-        return;
-      }
-      summaryFilterWindow.classList.remove("visible");
-    });
-
+    // Emoji filter application
     function applySummaryEmojiFilter() {
-      const emojiMap = summaryFaceEmojiMap || {};
+      const utils = getUtils();
+      const emojiMap = utils.summaryFaceEmojiMap || {};
       const filter = window.summaryEmojiFilter || {};
+
       const isVisible = (emoji) => {
-        if (!emoji || !Object.prototype.hasOwnProperty.call(emojiMap, emoji)) {
-          return true;
-        }
-        if (Object.prototype.hasOwnProperty.call(filter, emoji)) {
-          return !!filter[emoji];
-        }
-        return true;
+        if (!emoji || !Object.prototype.hasOwnProperty.call(emojiMap, emoji)) return true;
+        return filter[emoji] !== false;
       };
 
-      // Main summary segments
-      document
-        .querySelectorAll(".summaryText .summaryFaceSegment")
-        .forEach((span) => {
-          const emoji = span.dataset.faceEmoji || "";
-          span.style.display = isVisible(emoji) ? "" : "none";
-        });
+      // Summary segments
+      document.querySelectorAll(".summaryText .summaryFaceSegment").forEach((span) => {
+        span.style.display = isVisible(span.dataset.faceEmoji || "") ? "" : "none";
+      });
 
       // Mini summary items
       document.querySelectorAll(".miniSummaryItem").forEach((span) => {
-        const emoji = span.dataset.faceEmoji || "";
-        span.style.display = isVisible(emoji) ? "" : "none";
+        span.style.display = isVisible(span.dataset.faceEmoji || "") ? "" : "none";
       });
 
-      // Queue / pack items (card set area)
-      document
-        .querySelectorAll(
-          ".queueItem[data-face-emoji], .packItem > div[data-face-emoji]"
-        )
-        .forEach((el) => {
-          const emoji = el.dataset.faceEmoji || "";
-          const visible = isVisible(emoji);
-          el.classList.toggle("emojiFilterOff", !visible);
-        });
+      // Queue/pack items
+      document.querySelectorAll(".queueItem[data-face-emoji], .packItem > div[data-face-emoji]").forEach((el) => {
+        el.classList.toggle("emojiFilterOff", !isVisible(el.dataset.faceEmoji || ""));
+      });
 
       // Hide mini summary rows with no visible items
       document.querySelectorAll(".miniSummaryEntry").forEach((row) => {
@@ -869,282 +527,157 @@
           row.style.display = "";
           return;
         }
-        const hasVisible = Array.from(items).some(
-          (item) => item.style.display !== "none"
-        );
-        row.style.display = hasVisible ? "" : "none";
+        row.style.display = Array.from(items).some((i) => i.style.display !== "none") ? "" : "none";
       });
 
-      // Hide redundant delimiters in main summary (leading/trailing or around hidden face segments)
-      document
-        .querySelectorAll(".summaryText .summaryDelimiter")
-        .forEach((delim) => {
-          const isVisibleFaceSegment = (node) =>
-            node &&
-            node.nodeType === 1 &&
-            node.classList.contains("summaryFaceSegment") &&
-            node.style.display !== "none";
-
-          let prev = delim.previousElementSibling;
-          while (prev && !prev.classList.contains("summaryFaceSegment")) {
-            prev = prev.previousElementSibling;
-          }
-          let next = delim.nextElementSibling;
-          while (next && !next.classList.contains("summaryFaceSegment")) {
-            next = next.nextElementSibling;
-          }
-
-          const prevVisible = isVisibleFaceSegment(prev);
-          const nextVisible = isVisibleFaceSegment(next);
-          delim.style.display = prevVisible && nextVisible ? "" : "none";
-        });
-
-      // Hide redundant delimiters in mini summaries
-      document
-        .querySelectorAll(".miniSummaryText .miniSummaryDelimiter")
-        .forEach((delim) => {
-          const isVisibleItem = (node) =>
-            node &&
-            node.nodeType === 1 &&
-            node.classList.contains("miniSummaryItem") &&
-            node.style.display !== "none";
-
-          let prev = delim.previousElementSibling;
-          while (prev && !prev.classList.contains("miniSummaryItem")) {
-            prev = prev.previousElementSibling;
-          }
-          let next = delim.nextElementSibling;
-          while (next && !next.classList.contains("miniSummaryItem")) {
-            next = next.nextElementSibling;
-          }
-
-          const prevVisible = isVisibleItem(prev);
-          const nextVisible = isVisibleItem(next);
-          delim.style.display = prevVisible && nextVisible ? "" : "none";
-        });
-
-      // Hide redundant delimiters in main summary (leading/trailing or with no visible neighbors),
-      // treating only summaryFaceSegment nodes as "segments" so delimiters
-      // track the colored card-type chunks.
+      // Hide redundant delimiters in summary
       document.querySelectorAll(".summaryText").forEach((container) => {
         const children = Array.from(container.children);
-        const isSegment = (node) =>
-          node &&
-          node.nodeType === 1 &&
-          node.classList.contains("summaryFaceSegment");
+        const isVisibleSegment = (n) => n?.classList?.contains("summaryFaceSegment") && n.style.display !== "none";
 
-        const isVisibleSegment = (node) =>
-          isSegment(node) && node.style.display !== "none";
-
-        let lastVisibleIndex = -1;
-        let firstVisibleIndex = -1;
-
+        let first = -1, last = -1;
         children.forEach((node, idx) => {
           if (isVisibleSegment(node)) {
-            if (firstVisibleIndex === -1) {
-              firstVisibleIndex = idx;
-            }
-            if (lastVisibleIndex !== -1) {
-              // ensure at most one visible delimiter between lastVisibleIndex and idx
-              let firstDelim = true;
-              for (let j = lastVisibleIndex + 1; j < idx; j += 1) {
-                const d = children[j];
-                if (
-                  d.classList &&
-                  d.classList.contains("summaryDelimiter")
-                ) {
-                  d.style.display = firstDelim ? "" : "none";
-                  firstDelim = false;
-                }
-              }
-            }
-            lastVisibleIndex = idx;
+            if (first === -1) first = idx;
+            last = idx;
           }
         });
 
-        // hide delimiters before first or after last visible segment
         children.forEach((node, idx) => {
-          if (
-            !node.classList ||
-            !node.classList.contains("summaryDelimiter")
-          ) {
-            return;
-          }
-          if (
-            firstVisibleIndex === -1 ||
-            idx < firstVisibleIndex ||
-            idx > lastVisibleIndex
-          ) {
-            node.style.display = "none";
-          }
+          if (!node.classList?.contains("summaryDelimiter")) return;
+          node.style.display = (first === -1 || idx < first || idx > last) ? "none" : "";
         });
       });
 
       // Hide redundant delimiters in mini summaries
       document.querySelectorAll(".miniSummaryText").forEach((container) => {
         const children = Array.from(container.children);
-        const isItem = (node) =>
-          node &&
-          node.nodeType === 1 &&
-          node.classList.contains("miniSummaryItem");
+        const isVisibleItem = (n) => n?.classList?.contains("miniSummaryItem") && n.style.display !== "none";
 
-        const isVisibleItem = (node) =>
-          isItem(node) && node.style.display !== "none";
-
-        let lastVisibleIndex = -1;
-        let firstVisibleIndex = -1;
-
+        let first = -1, last = -1;
         children.forEach((node, idx) => {
           if (isVisibleItem(node)) {
-            if (firstVisibleIndex === -1) {
-              firstVisibleIndex = idx;
-            }
-            if (lastVisibleIndex !== -1) {
-              let firstDelim = true;
-              for (let j = lastVisibleIndex + 1; j < idx; j += 1) {
-                const d = children[j];
-                if (
-                  d.classList &&
-                  d.classList.contains("miniSummaryDelimiter")
-                ) {
-                  d.style.display = firstDelim ? "" : "none";
-                  firstDelim = false;
-                }
-              }
-            }
-            lastVisibleIndex = idx;
+            if (first === -1) first = idx;
+            last = idx;
           }
         });
 
         children.forEach((node, idx) => {
-          if (
-            !node.classList ||
-            !node.classList.contains("miniSummaryDelimiter")
-          ) {
-            return;
-          }
-          if (
-            firstVisibleIndex === -1 ||
-            idx < firstVisibleIndex ||
-            idx > lastVisibleIndex
-          ) {
-            node.style.display = "none";
-          }
+          if (!node.classList?.contains("miniSummaryDelimiter")) return;
+          node.style.display = (first === -1 || idx < first || idx > last) ? "none" : "";
         });
       });
 
-      // Keep search filters in sync with emoji filters
-      if (window.syncEmojiFilterToSearch) {
-        window.syncEmojiFilterToSearch();
-      }
+      // Sync to search filters
+      if (window.syncEmojiFilterToSearch) window.syncEmojiFilterToSearch();
     }
 
     window.applySummaryEmojiFilter = applySummaryEmojiFilter;
 
-    function summarizeOutput(sourceButton) {
-      const rawText =
-        (window.lastRawOutput && window.lastRawOutput.length
-          ? window.lastRawOutput
-          : "") || "";
+    // Summary toggle buttons
+    summaryToggleButton.addEventListener("click", () => {
+      setSummaryFloatingVisible(!summaryFloatingWindow.classList.contains("visible"));
+    });
 
+    summaryFilterToggle?.addEventListener("click", (e) => {
+      e.stopPropagation();
+      if (!summaryFilterWindow) return;
+      const nowVisible = !summaryFilterWindow.classList.contains("visible");
+      summaryFilterWindow.classList.toggle("visible", nowVisible);
+      if (nowVisible) buildSummaryFilterUI();
+    });
+
+    window.addEventListener("click", (e) => {
+      if (!summaryFilterWindow?.classList.contains("visible")) return;
+      if (e.target === summaryFilterWindow || summaryFilterWindow.contains(e.target) || e.target === summaryFilterToggle) return;
+      summaryFilterWindow.classList.remove("visible");
+    });
+
+    // Balatro analysis loading
+    let balatroAnalysisPromise = null;
+
+    function ensureBalatroAnalysisLoaded() {
+      if (window.BalatroAnalysis?.summarizeText) return Promise.resolve(window.BalatroAnalysis);
+      if (!balatroAnalysisPromise) {
+        balatroAnalysisPromise = new Promise((resolve, reject) => {
+          const script = document.createElement("script");
+          script.src = "balatro_analysis.js";
+          script.onload = () => {
+            window.BalatroAnalysis?.summarizeText ? resolve(window.BalatroAnalysis) : reject(new Error("BalatroAnalysis missing after load."));
+          };
+          script.onerror = () => reject(new Error("Failed to load balatro_analysis.js"));
+          document.head.appendChild(script);
+        });
+      }
+      return balatroAnalysisPromise;
+    }
+
+    function summarizeOutput(sourceButton) {
+      const rawText = window.lastRawOutput || "";
       if (!rawText) {
         alert("Nothing to summarize yet.");
         return Promise.resolve();
       }
 
-      if (summaryFloatingContent) {
-        summaryFloatingContent.textContent = "Summarizing results...";
-      }
+      if (summaryFloatingContent) summaryFloatingContent.textContent = "Summarizing results...";
 
-      const withEnglish = withEnglishToggle ? withEnglishToggle.checked : true;
+      const withEnglish = withEnglishToggle?.checked ?? true;
       const summaryOptions = withEnglish ? {} : { chineseOnly: true };
 
-      if (sourceButton) {
-        setButtonLoadingState(sourceButton, true);
-      }
-      if (summaryToggleButton) {
-        setButtonLoadingState(summaryToggleButton, true);
-      }
+      if (sourceButton) setButtonLoadingState(sourceButton, true);
+      if (summaryToggleButton) setButtonLoadingState(summaryToggleButton, true);
 
       return ensureBalatroAnalysisLoaded()
         .then((balatro) => {
-          const anteMap =
-            typeof balatro.summarizeToAnteMap === "function"
-              ? balatro.summarizeToAnteMap(rawText, summaryOptions)
-              : null;
-          if (anteMap && anteMap.size) {
+          const anteMap = balatro.summarizeToAnteMap?.(rawText, summaryOptions);
+          if (anteMap?.size) {
             window.lastSummariesByAnte = anteMap;
             window.lastSummary = Array.from(anteMap.values()).join("\n");
           } else {
-            const summary = balatro.summarizeText(rawText, summaryOptions);
-            const finalSummary = summary || rawText;
-            window.lastSummary = finalSummary;
-            window.lastSummariesByAnte = buildSummaryLookup(finalSummary);
+            const summary = balatro.summarizeText(rawText, summaryOptions) || rawText;
+            window.lastSummary = summary;
+            window.lastSummariesByAnte = buildSummaryLookup(summary);
           }
           renderSummaryList();
           applySummaryEmojiFilter();
-          if (window.refreshShopDisplay) {
-            window.refreshShopDisplay();
-          }
+          window.refreshShopDisplay?.();
         })
         .catch((err) => {
           console.error("Failed to run balatro_analysis:", err);
-          const fallbackMap = buildSummaryLookup(rawText);
           window.lastSummary = rawText;
-          window.lastSummariesByAnte = fallbackMap;
+          window.lastSummariesByAnte = buildSummaryLookup(rawText);
           renderSummaryList();
           applySummaryEmojiFilter();
-          if (window.refreshShopDisplay) {
-            window.refreshShopDisplay();
-          }
+          window.refreshShopDisplay?.();
         })
         .finally(() => {
-          if (sourceButton) {
-            setButtonLoadingState(sourceButton, false);
-          }
-          if (summaryToggleButton) {
-            setButtonLoadingState(summaryToggleButton, false);
-          }
+          if (sourceButton) setButtonLoadingState(sourceButton, false);
+          if (summaryToggleButton) setButtonLoadingState(summaryToggleButton, false);
         });
     }
 
-    copyButton.addEventListener("click", () => {
-      summarizeOutput(copyButton);
-    });
-
-    // Add event listener to the "Analysis" button
+    exportButton.addEventListener("click", () => summarizeOutput(exportButton));
     analyzeButton.addEventListener("click", performAnalysis);
 
+    // Immolate instance creation
     function createImmolateInstance(seed, deck, stake, version) {
       const inst = new Immolate.Instance(seed);
       inst.params = new Immolate.InstParams(deck, stake, false, version);
       inst.initLocks(1, false, false);
-      inst.lock("Overstock Plus");
-      inst.lock("Liquidation");
-      inst.lock("Glow Up");
-      inst.lock("Reroll Glut");
-      inst.lock("Omen Globe");
-      inst.lock("Observatory");
-      inst.lock("Nacho Tong");
-      inst.lock("Recyclomancy");
-      inst.lock("Tarot Tycoon");
-      inst.lock("Planet Tycoon");
-      inst.lock("Money Tree");
-      inst.lock("Antimatter");
-      inst.lock("Illusion");
-      inst.lock("Petroglyph");
-      inst.lock("Retcon");
-      inst.lock("Palette");
-      for (let i = 0; i < options.length; i++) {
-        if (selectedOptions[i] == false) inst.lock(options[i]);
-      }
+      ["Overstock Plus", "Liquidation", "Glow Up", "Reroll Glut", "Omen Globe", "Observatory",
+       "Nacho Tong", "Recyclomancy", "Tarot Tycoon", "Planet Tycoon", "Money Tree",
+       "Antimatter", "Illusion", "Petroglyph", "Retcon", "Palette"].forEach((v) => inst.lock(v));
+
+      options.forEach((opt, i) => {
+        if (!selectedOptions[i]) inst.lock(opt);
+      });
       inst.setStake(stake);
       inst.setDeck(deck);
       return inst;
     }
 
+    // Main analysis
     function performAnalysis() {
-      // Get input values
       const ante = parseInt(anteInput.value, 10);
       const cardsPerAnte = Array(ante).fill(Number(cardsPerAnteInput.value));
       const deck = deckSelect.value;
@@ -1152,161 +685,129 @@
       const version = parseInt(versionSelect.value);
       const seed = seedInput.value.toUpperCase().replace(/0/g, "O");
 
-      output = "";
-
-      // show loading spinner on analyze button
+      let output = "";
       setButtonLoadingState(analyzeButton, true);
+      window.setGroupButtonsLoading?.(true);
 
-      if (window.setGroupButtonsLoading) {
-        window.setGroupButtonsLoading(true);
-      }
-
-      const runAnalysis = () => {
+      setTimeout(() => {
         const inst = createImmolateInstance(seed, deck, stake, version);
         const omitBeforeAnte9 = omitBeforeAnte9Checkbox.checked;
+
         for (let a = 1; a <= ante; a++) {
           inst.initUnlocks(a, false);
           const shouldOutput = !(omitBeforeAnte9 && a < 9);
-          const addOutput = shouldOutput
-            ? (text) => {
-                output += text;
-              }
-            : () => {};
-          addOutput("==ANTE " + a + "==\n");
-          addOutput("Boss: " + inst.nextBoss(a) + "\n");
-          var voucher = inst.nextVoucher(a);
-          addOutput("Voucher: " + voucher + "\n");
+          const addOutput = shouldOutput ? (t) => (output += t) : () => {};
+
+          addOutput(`==ANTE ${a}==\n`);
+          addOutput(`Boss: ${inst.nextBoss(a)}\n`);
+          const voucher = inst.nextVoucher(a);
+          addOutput(`Voucher: ${voucher}\n`);
           inst.lock(voucher);
+
           // Unlock next level voucher
           for (let i = 0; i < Immolate.VOUCHERS.size(); i += 2) {
-            if (Immolate.VOUCHERS.get(i) == voucher) {
+            if (Immolate.VOUCHERS.get(i) === voucher) {
               if (selectedOptions[options.indexOf(Immolate.VOUCHERS.get(i + 1))]) {
                 inst.unlock(Immolate.VOUCHERS.get(i + 1));
               }
             }
           }
-          addOutput("Tags: " + inst.nextTag(a) + ", " + inst.nextTag(a) + "\n");
 
+          addOutput(`Tags: ${inst.nextTag(a)}, ${inst.nextTag(a)}\n`);
           addOutput("Shop Queue: \n");
+
           for (let q = 1; q <= cardsPerAnte[a - 1]; q++) {
-            addOutput(q + ") ");
-            var item = inst.nextShopItem(a);
-            if (item.type == "Joker") {
+            addOutput(`${q}) `);
+            const item = inst.nextShopItem(a);
+            if (item.type === "Joker") {
               if (item.jokerData.stickers.eternal) addOutput("Eternal ");
               if (item.jokerData.stickers.perishable) addOutput("Perishable ");
               if (item.jokerData.stickers.rental) addOutput("Rental ");
-              if (item.jokerData.edition != "No Edition")
-                addOutput(item.jokerData.edition + " ");
+              if (item.jokerData.edition !== "No Edition") addOutput(`${item.jokerData.edition} `);
             }
-            addOutput(item.item + "\n");
+            addOutput(`${item.item}\n`);
             item.delete();
           }
 
           addOutput("\nPacks: \n");
-          var numPacks = a == 1 ? 4 : 6;
+          const numPacks = a === 1 ? 4 : 6;
           for (let p = 1; p <= numPacks; p++) {
-            var pack = inst.nextPack(a);
-            addOutput(pack + " - ");
-            var packInfo = Immolate.packInfo(pack);
-            if (packInfo.type == "Celestial Pack") {
-              var cards = inst.nextCelestialPack(packInfo.size, a);
+            const pack = inst.nextPack(a);
+            addOutput(`${pack} - `);
+            const packInfo = Immolate.packInfo(pack);
+
+            if (packInfo.type === "Celestial Pack") {
+              const cards = inst.nextCelestialPack(packInfo.size, a);
               for (let c = 0; c < packInfo.size; c++) {
                 addOutput(cards.get(c));
-                addOutput(c + 1 != packInfo.size ? ", " : "");
+                if (c + 1 !== packInfo.size) addOutput(", ");
               }
               cards.delete();
             }
-            if (packInfo.type == "Arcana Pack") {
-              var cards = inst.nextArcanaPack(packInfo.size, a);
+            if (packInfo.type === "Arcana Pack") {
+              const cards = inst.nextArcanaPack(packInfo.size, a);
               for (let c = 0; c < packInfo.size; c++) {
                 addOutput(cards.get(c));
-                addOutput(c + 1 != packInfo.size ? ", " : "");
+                if (c + 1 !== packInfo.size) addOutput(", ");
               }
               cards.delete();
             }
-            if (packInfo.type == "Spectral Pack") {
-              var cards = inst.nextSpectralPack(packInfo.size, a);
+            if (packInfo.type === "Spectral Pack") {
+              const cards = inst.nextSpectralPack(packInfo.size, a);
               for (let c = 0; c < packInfo.size; c++) {
                 addOutput(cards.get(c));
-                addOutput(c + 1 != packInfo.size ? ", " : "");
+                if (c + 1 !== packInfo.size) addOutput(", ");
               }
               cards.delete();
             }
-            if (packInfo.type == "Buffoon Pack") {
-              var cards = inst.nextBuffoonPack(packInfo.size, a);
+            if (packInfo.type === "Buffoon Pack") {
+              const cards = inst.nextBuffoonPack(packInfo.size, a);
               for (let c = 0; c < packInfo.size; c++) {
-                var joker = cards.get(c);
+                const joker = cards.get(c);
                 if (joker.stickers.eternal) addOutput("Eternal ");
                 if (joker.stickers.perishable) addOutput("Perishable ");
                 if (joker.stickers.rental) addOutput("Rental ");
-                if (joker.edition != "No Edition") addOutput(joker.edition + " ");
+                if (joker.edition !== "No Edition") addOutput(`${joker.edition} `);
                 addOutput(joker.joker);
-                addOutput(c + 1 != packInfo.size ? ", " : "");
+                if (c + 1 !== packInfo.size) addOutput(", ");
                 joker.delete();
               }
               cards.delete();
             }
-            if (packInfo.type == "Standard Pack") {
-              var cards = inst.nextStandardPack(packInfo.size, a);
+            if (packInfo.type === "Standard Pack") {
+              const cards = inst.nextStandardPack(packInfo.size, a);
               for (let c = 0; c < packInfo.size; c++) {
-                var card = cards.get(c);
-                if (card.seal != "No Seal") addOutput(card.seal + " ");
-                if (card.edition != "No Edition") addOutput(card.edition + " ");
-                if (card.enhancement != "No Enhancement")
-                  addOutput(card.enhancement + " ");
-                var rank = card.base[2];
-                if (rank == "T") addOutput("10");
-                else if (rank == "J") addOutput("Jack");
-                else if (rank == "Q") addOutput("Queen");
-                else if (rank == "K") addOutput("King");
-                else if (rank == "A") addOutput("Ace");
-                else addOutput(rank);
-                addOutput(" of ");
-                var suit = card.base[0];
-                if (suit == "C") addOutput("Clubs");
-                else if (suit == "S") addOutput("Spades");
-                else if (suit == "D") addOutput("Diamonds");
-                else if (suit == "H") addOutput("Hearts");
-                addOutput(c + 1 != packInfo.size ? ", " : "");
+                const card = cards.get(c);
+                if (card.seal !== "No Seal") addOutput(`${card.seal} `);
+                if (card.edition !== "No Edition") addOutput(`${card.edition} `);
+                if (card.enhancement !== "No Enhancement") addOutput(`${card.enhancement} `);
+                const rank = card.base[2];
+                const rankName = { T: "10", J: "Jack", Q: "Queen", K: "King", A: "Ace" }[rank] || rank;
+                const suitName = { C: "Clubs", S: "Spades", D: "Diamonds", H: "Hearts" }[card.base[0]];
+                addOutput(`${rankName} of ${suitName}`);
+                if (c + 1 !== packInfo.size) addOutput(", ");
                 card.delete();
               }
               cards.delete();
             }
             addOutput("\n");
           }
-
           addOutput("\n");
         }
 
         inst.delete();
-
         window.lastRawOutput = output;
 
-        summarizeOutput()
-          .finally(() => {
-            setButtonLoadingState(analyzeButton, false);
-            if (window.setGroupButtonsLoading) {
-              window.setGroupButtonsLoading(false);
-            }
-            window.pendingScrollToResults = true;
-            if (window.refreshShopDisplay) {
-              window.refreshShopDisplay();
-            } else {
-              const container = document.getElementById("scrollingContainer");
-              if (container) {
-                container.scrollIntoView({
-                  behavior: "smooth",
-                  block: "start",
-                });
-              }
-            }
-          });
-      };
-
-      // defer heavy work so the spinner can paint first
-      setTimeout(runAnalysis, 0);
+        summarizeOutput().finally(() => {
+          setButtonLoadingState(analyzeButton, false);
+          window.setGroupButtonsLoading?.(false);
+          window.pendingScrollToResults = true;
+          window.refreshShopDisplay?.() || document.getElementById("scrollingContainer")?.scrollIntoView({ behavior: "smooth", block: "start" });
+        });
+      }, 0);
     }
 
+    // Single ante queue computation
     function computeSingleAnteQueue(targetAnte, cardsLimit) {
       const deck = deckSelect.value;
       const stake = stakeSelect.value;
@@ -1314,9 +815,8 @@
       const seed = seedInput.value.toUpperCase().replace(/0/g, "O");
       const anteNum = Number(targetAnte);
       const limit = Math.max(0, Number(cardsLimit) || 0);
-      if (!Number.isFinite(anteNum) || anteNum < 1 || !limit) {
-        return [];
-      }
+
+      if (!Number.isFinite(anteNum) || anteNum < 1 || !limit) return [];
       if (typeof Immolate === "undefined" || !Immolate.Instance) {
         console.error("Immolate wasm not ready for single-ante compute.");
         return [];
@@ -1328,23 +828,16 @@
       const lines = [];
       for (let q = 1; q <= limit; q++) {
         const item = inst.nextShopItem(anteNum);
-
         let line = `${q}) `;
         if (item.type === "Joker" && item.jokerData) {
-          // keep sticker labels
           if (item.jokerData.stickers.eternal) line += "Eternal ";
           if (item.jokerData.stickers.perishable) line += "Perishable ";
           if (item.jokerData.stickers.rental) line += "Rental ";
-
-          // In this per-ante view only show a Negative "tag" marker and
-          // do not display other editions like Foil/Holographic/Polychrome.
-          const isNegativeEdition = item.jokerData.edition === "Negative";
-          const namePrefix = isNegativeEdition ? "‼️ " : "";
-          line += namePrefix + item.item;
+          if (item.jokerData.edition === "Negative") line += "‼️ ";
+          line += item.item;
         } else {
           line += item.item;
         }
-
         lines.push(line);
         item.delete();
       }
@@ -1355,103 +848,55 @@
 
     window.computeSingleAnteQueue = computeSingleAnteQueue;
 
+    // URL parameter handling
     window.addEventListener("DOMContentLoaded", () => {
-      const seedInput = document.getElementById("seed");
-      const cardsPerAnteInput = document.getElementById("cardsPerAnte");
-      const anteInput = document.getElementById("ante");
-      const deckInput = document.getElementById("deck");
-      const stakeInput = document.getElementById("stake");
-      const versionInput = document.getElementById("version");
-
-      // Get seed value from URL parameters
       const urlParams = new URLSearchParams(window.location.search);
-      const urlSeed = urlParams.get("seed");
+
+      // Decode unlocks
+      const urlUnlocks = urlParams.get("unlocks");
+      if (urlUnlocks) {
+        const binaryString = atob(urlUnlocks).split("").map((c) => c.charCodeAt(0).toString(2).padStart(8, "0")).join("");
+        const paddingLength = binaryString.length % 8;
+        const unpadded = paddingLength > 0 ? binaryString.slice(0, -paddingLength) : binaryString;
+        selectedOptions = unpadded.split("").map((b) => b === "1");
+      }
+
+      // Apply URL parameters
       const urlAnte = urlParams.get("ante");
       const urlCardsPerAnte = urlParams.get("cardsPerAnte");
       const urlDeck = urlParams.get("deck");
       const urlStake = urlParams.get("stake");
+      const urlSeed = urlParams.get("seed");
       const urlVersion = urlParams.get("version");
       const urlOmitBeforeAnte9 = urlParams.get("omitBeforeAnte9");
-      const urlUnlocks = urlParams.get("unlocks");
 
-      if (urlUnlocks) {
-        // Decode the base64 string
-        const binaryString = atob(urlUnlocks)
-          .split("")
-          .map((char) => char.charCodeAt(0).toString(2).padStart(8, "0"))
-          .join("");
-
-        // Remove the padding byte (if present)
-        const paddingLength = binaryString.length % 8;
-        const unpadded =
-          paddingLength > 0
-            ? binaryString.slice(0, -paddingLength)
-            : binaryString;
-
-        // Convert the binary string back to an array of booleans
-        const decodedUnlocks = unpadded.split("").map((bit) => bit === "1");
-        selectedOptions = decodedUnlocks;
-      }
-
-      // Set default seed value
       if (urlAnte) {
-        anteInput.value = urlAnte;
-        anteInput.value = Math.min(anteInput.value, 999);
-        anteInput.value = Math.max(anteInput.value, 1);
-        cardsPerAnteInput.value = Array(anteInput.value).fill(
-          Number(urlCardsPerAnte ? urlCardsPerAnte : "300")
-        );
+        anteInput.value = Math.min(Math.max(Number(urlAnte), 1), 999);
+        cardsPerAnteInput.value = urlCardsPerAnte || "300";
       }
-      if (urlCardsPerAnte) {
-        cardsPerAnteInput.value = Array(anteInput.value).fill(
-          Number(urlCardsPerAnte)
-        );
-      }
-      if (urlDeck) {
-        deckInput.value = urlDeck;
-      }
-      if (urlStake) {
-        stakeInput.value = urlStake;
-      }
+      if (urlCardsPerAnte) cardsPerAnteInput.value = urlCardsPerAnte;
+      if (urlDeck) deckSelect.value = urlDeck;
+      if (urlStake) stakeSelect.value = urlStake;
+      if (urlVersion) versionSelect.value = urlVersion;
+      if (urlOmitBeforeAnte9 !== null) omitBeforeAnte9Checkbox.checked = urlOmitBeforeAnte9 !== "false" && urlOmitBeforeAnte9 !== "0";
+
       if (urlSeed) {
         seedInput.value = filterSeed(urlSeed);
         window.instantAnalysis = true;
       }
-      if (urlVersion) {
-        versionInput.value = urlVersion;
-      }
-      if (urlOmitBeforeAnte9 !== null) {
-        omitBeforeAnte9Checkbox.checked =
-          urlOmitBeforeAnte9 !== "false" && urlOmitBeforeAnte9 !== "0";
-      }
 
-      // Add event listener for input event
-      seedInput.addEventListener("input", () => {
-        seedInput.value = filterSeed(seedInput.value);
-      });
-
-      anteInput.addEventListener("input", () => {
-        anteInput.value = Math.min(anteInput.value, 999);
-        anteInput.value = Math.max(anteInput.value, 1);
-      });
-
-      cardsPerAnteInput.addEventListener("input", () => {
-        cardsPerAnteInput.value = Math.min(cardsPerAnteInput.value, 999);
-        cardsPerAnteInput.value = Math.max(cardsPerAnteInput.value, 0);
-        cardsPerAnteInput.value = Array(anteInput.value).fill(
-          Number(cardsPerAnteInput.value)
-        );
-      });
+      // Input validation
+      seedInput.addEventListener("input", () => (seedInput.value = filterSeed(seedInput.value)));
+      anteInput.addEventListener("input", () => (anteInput.value = Math.min(Math.max(Number(anteInput.value), 1), 999)));
+      cardsPerAnteInput.addEventListener("input", () => (cardsPerAnteInput.value = Math.min(Math.max(Number(cardsPerAnteInput.value), 0), 999)));
 
       function filterSeed(seed) {
-        const filteredSeed = seed
-          .replace(/[^A-Za-z0-9]/g, "")
-          .toUpperCase()
-          .replace(/0/g, "O");
-
-        // Truncate the seed if it's longer than 8 characters
-        return filteredSeed.slice(0, 8);
+        return seed.replace(/[^A-Za-z0-9]/g, "").toUpperCase().replace(/0/g, "O").slice(0, 8);
       }
+
+      // Initial render
+      renderSummaryList();
+      applySummaryEmojiFilter();
     });
   </script>
 </html>
