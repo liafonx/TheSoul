@@ -19,14 +19,6 @@ if (hasNodeEnv) {
   sharedLists = globalThis.BalatroSharedLists;
 }
 
-const KING_DISPLAY = Object.freeze({
-  "Red Seal": "红封K",
-  "Steel": "钢铁K",
-  "Gold": "黄金K",
-  "Red Seal Steel": "红封钢K",
-  "Red Seal Gold": "红封金K",
-});
-
 if (!sharedLists) {
   throw new Error(
     "BalatroSharedLists not found. Ensure balatro_lists.js is loaded."
@@ -34,6 +26,7 @@ if (!sharedLists) {
 }
 
 const {
+  JOKER_TRANSLATIONS,
   SPECTRAL_TRANSLATIONS,
   TAG_EMOJI,
   ALERT_BOSSES,
@@ -43,43 +36,16 @@ const {
   TAG_NAMES,
   VOUCHER_NAMES,
   SUMMARY_FACE_EMOJI,
+  KING_DISPLAY,
+  SPECTRAL_PACK_PREFIXES,
+  BUFFOON_PACK_PREFIXES,
 } = sharedLists;
-
-const SPECTRAL_PACK_PREFIXES = [
-  "Spectral Pack -",
-  "Jumbo Spectral Pack -",
-  "Mega Spectral Pack -",
-  "Arcana Pack -",
-];
-
-const BUFFOON_PACK_PREFIXES = [
-  "Buffoon Pack -",
-  "Jumbo Buffoon Pack -",
-  "Mega Buffoon Pack -",
-];
 
 const RE_ANTE_HEADER = /^\s*(?:==)?\s*ANTE\s+(\d+)(?:==)?/i;
 
-// Build a translation map from SUMMARY_FACE_EMOJI: eng -> cn
-const JOKER_TRANSLATIONS = (() => {
-  const map = {};
-  if (SUMMARY_FACE_EMOJI) {
-    Object.values(SUMMARY_FACE_EMOJI).forEach((cfg) => {
-      if (!cfg || typeof cfg !== "object" || !cfg.cards) return;
-      const cardsMap = Array.isArray(cfg.cards)
-        ? Object.fromEntries(cfg.cards.map((name) => [name, name]))
-        : cfg.cards;
-      Object.entries(cardsMap).forEach(([eng, cnValue]) => {
-        const cn =
-          cnValue && typeof cnValue === "object" ? cnValue.cn || eng : cnValue;
-        if (!map[eng]) {
-          map[eng] = cn || eng;
-        }
-      });
-    });
-  }
-  return Object.freeze(map);
-})();
+const JOKER_NAME_PATTERNS = buildNameRegexMap(JOKER_NAMES);
+const SPECTRAL_NAME_PATTERNS = buildNameRegexMap(SPECTRAL_NAMES);
+const NEGATIVE_JOKER_PATTERNS = buildNegativeRegexMap(JOKER_NAMES);
 
 // Build a lookup from joker name to its "face" emoji (if any) for summaries.
 let JOKER_FACE_EMOJI_MAP = null;
@@ -110,6 +76,22 @@ function escapeRegExp(str) {
   return str.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
 }
 
+function buildNameRegexMap(names) {
+  const map = {};
+  names.forEach((name) => {
+    map[name] = new RegExp(`\\b${escapeRegExp(name)}\\b`);
+  });
+  return map;
+}
+
+function buildNegativeRegexMap(names) {
+  const map = {};
+  names.forEach((name) => {
+    map[name] = new RegExp(`\\bNegative\\s+${escapeRegExp(name)}\\b`);
+  });
+  return map;
+}
+
 function splitCsv(listStr) {
   return (listStr || "")
     .split(",")
@@ -130,6 +112,10 @@ function isPackLine(line, baseName) {
     line.startsWith(`Jumbo ${baseName} -`) ||
     line.startsWith(`Mega ${baseName} -`)
   );
+}
+
+function startsWithAny(line, prefixes) {
+  return prefixes.some((prefix) => line.startsWith(prefix));
 }
 
 function formatKingName(name) {
@@ -444,10 +430,7 @@ function collectAnteData(lines) {
         if (!itemStr.includes(name)) {
           continue;
         }
-        const negPattern = new RegExp(
-          `\\bNegative\\s+${escapeRegExp(name)}\\b`
-        );
-        const negative = negPattern.test(itemStr);
+        const negative = NEGATIVE_JOKER_PATTERNS[name].test(itemStr);
         currentAnte.addJester(name, negative, index);
       }
       continue;
@@ -471,11 +454,10 @@ function collectAnteData(lines) {
       const dashIndex = line.indexOf("-");
       const cardList = dashIndex >= 0 ? line.slice(dashIndex + 1) : line;
 
-      if (isPackLine(line, "Buffoon Pack")) {
+      if (startsWithAny(line, BUFFOON_PACK_PREFIXES)) {
         splitCsv(cardList).forEach((card) => {
           for (const name of JOKER_NAMES) {
-            const namePattern = new RegExp(`\\b${escapeRegExp(name)}\\b`);
-            if (namePattern.test(card)) {
+            if (JOKER_NAME_PATTERNS[name].test(card)) {
               currentAnte.addBuffoonJester(name);
             }
           }
@@ -483,14 +465,10 @@ function collectAnteData(lines) {
         continue;
       }
 
-      if (
-        isPackLine(line, "Spectral Pack") ||
-        isPackLine(line, "Arcana Pack")
-      ) {
+      if (startsWithAny(line, SPECTRAL_PACK_PREFIXES)) {
         splitCsv(cardList).forEach((card) => {
           for (const name of SPECTRAL_NAMES) {
-            const specPattern = new RegExp(`\\b${escapeRegExp(name)}\\b`);
-            if (specPattern.test(card)) {
+            if (SPECTRAL_NAME_PATTERNS[name].test(card)) {
               currentAnte.addSpectral(name);
             }
           }

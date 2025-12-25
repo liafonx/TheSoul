@@ -6,91 +6,59 @@
   }
 })(typeof globalThis !== "undefined" ? globalThis : this, function () {
   // Emoji categories for jokers used in summaries.
-  // Each entry: emoji -> { color, cards }
+  // Each entry: emoji -> { color, cards, cardColors? }
   // color may be empty to use default text color.
   const SUMMARY_FACE_EMOJI = Object.freeze({
     "👥": {
       color: "#76b1ff", // soft bright blue
-      cards: {
-        Blueprint: "蓝图",
-        Brainstorm: "头脑",
-        "Invisible Joker": "隐形",
-      },
+      cards: ["Blueprint", "Brainstorm", "Invisible Joker"],
     },
     "🎪": {
       color: "#ff7a7a", // warm coral red
-      cards: {
-        Showman: "马戏团",
-      },
+      cards: ["Showman"],
     },
     "💿": {
       color: "#5fd4d4", // bright aqua teal
-      cards: {
-        Seance: "通灵",
-        "Sixth Sense": "第六感",
-      },
+      cards: ["Seance", "Sixth Sense"],
     },
     "👑": {
       color: "#ffd36a", // rich gold
-      cards: {
-        Baron: "男爵",
-        Mime: "哑剧",
-      },
+      cards: ["Baron", "Mime"],
     },
     "🥤": {
       color: "#ff7a8a", // soft pink-red
-      cards: {
-        "Diet Cola": "可乐",
-      },
+      cards: ["Diet Cola"],
     },
     "🥊": {
       color: "", // #ff7a8a
-      cards: {
-        Luchador: "摔角手",
-      },
+      cards: ["Luchador"],
     },
     "5️⃣": {
       color: "#e867b2ff", // mint green, distinct from red/yellow
-      cards: {
-        Dusk: "黄昏",
-        "Sock and Buskin": "喜与悲",
-        "The Idol": "偶像",
-      },
+      cards: ["Dusk", "Sock and Buskin", "The Idol"],
     },
     "🧬": {
       color: "#c689ff", // bright lavender
-      cards: {
-        DNA: "DNA",
-      },
+      cards: ["DNA"],
     },
     "🃏": {
       color: "",
-      cards: {
-        Burglar: { cn: "窃贼", color: "rgb(255, 122, 138)" },
-        "Turtle Bean": "黑龟豆",
-        Juggler: "杂耍",
-        Troubadour: "吟游诗人",
+      cards: ["Burglar", "Turtle Bean", "Juggler", "Troubadour"],
+      cardColors: {
+        Burglar: "rgb(255, 122, 138)",
       },
     },
     "💴": {
       color: "#79c15aff", // money green
-      cards: {
-        "Reserved Parking": "车位",
-        "Golden Ticket": "门票",
-      },
+      cards: ["Reserved Parking", "Golden Ticket"],
     },
     "🧱": {
       color: "", // default color
-      cards: {
-        Photograph: "照片",
-        "Hanging Chad": "选票",
-      },
+      cards: ["Photograph", "Hanging Chad"],
     },
     "🪙": {
       color: "", // default color
-      cards: {
-        Certificate: "证书",
-      },
+      cards: ["Certificate"],
     },
   });
 
@@ -137,20 +105,10 @@
     "Sixth Sense": "第六感",
     "Diet Cola": "可乐",
     "Invisible Joker": "隐形",
-    // "Cloud 9": "9霄",
-    // "Card Sharp": "老千",
     Photograph: "照片",
-    // "To the Moon": "月球",
-    // Bull: "斗牛",
-    // "Trading Card": "交易卡",
     "Golden Ticket": "门票",
-    // "Mr. Bones": "骷髅",
-    // Acrobat: "杂技",
     Certificate: "证书",
     "Hanging Chad": "选票",
-    // "The Duo": "二重奏",
-    // Satellite: "卫星",
-    // "Driver's License": "驾照",
     Dusk: "黄昏",
     "Sock and Buskin": "喜与悲",
     "The Idol": "偶像",
@@ -159,6 +117,27 @@
     Troubadour: "吟游诗人",
   });
 
+  const KING_DISPLAY = Object.freeze({
+    "Red Seal": "红封K",
+    Steel: "钢铁K",
+    Gold: "黄金K",
+    "Red Seal Steel": "红封钢K",
+    "Red Seal Gold": "红封金K",
+  });
+
+  const SPECTRAL_PACK_PREFIXES = Object.freeze([
+    "Spectral Pack -",
+    "Jumbo Spectral Pack -",
+    "Mega Spectral Pack -",
+    "Arcana Pack -",
+  ]);
+
+  const BUFFOON_PACK_PREFIXES = Object.freeze([
+    "Buffoon Pack -",
+    "Jumbo Buffoon Pack -",
+    "Mega Buffoon Pack -",
+  ]);
+
   const shared = {
     JOKER_TRANSLATIONS,
     SPECTRAL_TRANSLATIONS,
@@ -166,6 +145,9 @@
     ALERT_BOSSES,
     VOUCHER_EMOJI,
     SUMMARY_FACE_EMOJI,
+    KING_DISPLAY,
+    SPECTRAL_PACK_PREFIXES,
+    BUFFOON_PACK_PREFIXES,
     JOKER_NAMES: Object.freeze(Object.keys(JOKER_TRANSLATIONS)),
     SPECTRAL_NAMES: Object.freeze(Object.keys(SPECTRAL_TRANSLATIONS)),
     TAG_NAMES: Object.freeze(Object.keys(TAG_EMOJI)),

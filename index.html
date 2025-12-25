@@ -361,6 +361,12 @@
       "summaryFilterContent"
     );
     const withEnglishToggle = document.getElementById("withEnglishToggle");
+    const setSummaryFloatingVisible = (flag) => {
+      if (!summaryFloatingWindow) return;
+      const isVisible = Boolean(flag);
+      summaryFloatingWindow.classList.toggle("visible", isVisible);
+      document.body.classList.toggle("summary-floating-open", isVisible);
+    };
     const setButtonLoadingState = (btn, flag) => {
       if (!btn) return;
       const isLoading = Boolean(flag);
@@ -383,9 +389,13 @@
       (window.BalatroSharedLists &&
         window.BalatroSharedLists.SUMMARY_FACE_EMOJI) ||
       {};
+    const jokerTranslations =
+      (window.BalatroSharedLists &&
+        window.BalatroSharedLists.JOKER_TRANSLATIONS) ||
+      {};
 
     // Build a normalized map:
-    // summaryFaceEmojiMap: emoji -> { color, cards: [eng], cardsMap: { eng: cn } }
+    // summaryFaceEmojiMap: emoji -> { color, cards: [eng], cardColors: { eng: color } }
     // summaryFaceCardMap: eng -> { emoji, color, cn }
     const summaryFaceEmojiMap = {};
     const summaryFaceCardMap = {};
@@ -393,22 +403,19 @@
       const color =
         value && typeof value === "object" ? value.color || "" : value || "";
       let cards = [];
-      let cardsMap = {};
+      let cardColors = {};
       if (value && typeof value === "object" && value.cards) {
-        if (Array.isArray(value.cards)) {
-          cards = value.cards;
-        } else if (typeof value.cards === "object") {
-          cards = Object.keys(value.cards);
-          cardsMap = value.cards;
-        }
+        cards = Array.isArray(value.cards)
+          ? value.cards
+          : Object.keys(value.cards);
       }
-      summaryFaceEmojiMap[emoji] = { color, cards, cardsMap };
+      if (value && typeof value === "object" && value.cardColors) {
+        cardColors = value.cardColors;
+      }
+      summaryFaceEmojiMap[emoji] = { color, cards, cardColors };
       cards.forEach((name) => {
-        const raw = cardsMap[name];
-        const cn =
-          raw && typeof raw === "object" ? raw.cn || name : raw || name;
-        const cardColor =
-          raw && typeof raw === "object" && raw.color ? raw.color : color;
+        const cn = jokerTranslations[name] || name;
+        const cardColor = cardColors[name] || color;
         summaryFaceCardMap[name] = { emoji, color: cardColor, cn };
       });
     });
@@ -553,7 +560,7 @@
           // Close the summary window
           const summaryWindow = document.getElementById("summaryFloatingWindow");
           if (summaryWindow) {
-            summaryWindow.classList.remove("visible");
+            setSummaryFloatingVisible(false);
           }
 
           // Scroll to the first queue container whose ante title matches
@@ -582,7 +589,7 @@
           });
         });
 
-        text.addEventListener("click", () => {
+        text.addEventListener("dblclick", () => {
           const nowCompleted = item.classList.toggle("completed");
           text.setAttribute("aria-pressed", nowCompleted ? "true" : "false");
           reorderItems();
@@ -786,7 +793,8 @@
     }
 
     summaryToggleButton.addEventListener("click", () => {
-      summaryFloatingWindow.classList.toggle("visible");
+      const nowVisible = !summaryFloatingWindow.classList.contains("visible");
+      setSummaryFloatingVisible(nowVisible);
     });
 
     if (summaryFilterToggle) {

@@ -14,7 +14,7 @@ The Soul is a browser-based Balatro seed analyzer. It ships a WebAssembly build 
 
 ## Core logic files
 - `balatro_analysis.js`: main analyzer logic (browser + CLI), summary formatting, ante parsing.
-- `balatro_lists.js`: shared lists and emoji metadata (e.g., summary-face emoji mapping).
+- `balatro_lists.js`: shared lists and emoji metadata (e.g., summary-face emoji mapping, pack prefix lists, king display mapping).
 
 ## UI layers
 - `UI.js`: UI bootstrap and wiring.
@@ -33,7 +33,9 @@ The Soul is a browser-based Balatro seed analyzer. It ships a WebAssembly build 
   - Non-delimiter chunks are rendered as `.summaryFaceSegment` (main summary) or `.miniSummaryItem` (mini summary).
 - Emoji-to-card mapping comes from `SUMMARY_FACE_EMOJI` in `balatro_lists.js`. It defines:
   - `color`: a hex color for the emoji category.
-  - `cards`: an english->chinese map used to detect which items belong to the emoji category.
+  - `cards`: a list of English card names in that emoji category.
+  - `cardColors` (optional): per-card color overrides keyed by English name.
+- Chinese names for jokers come from `JOKER_TRANSLATIONS` by English card name.
 - When a summary chunk matches a mapped card name, it receives:
   - `data-face-emoji` with the emoji category.
   - Optional inline color (the category color).

@@ -20,6 +20,10 @@ body {
   color: #d9d9d9;
 }
 
+body.summary-floating-open {
+  overflow: hidden;
+}
+
 h1 {
   color: #ffffff;
   background-color: #444444;
@@ -287,6 +291,7 @@ button.is-loading::after,
   bottom: 10px;
   width: auto;
   max-height: none;
+  overscroll-behavior: contain;
   background-color: rgba(20, 20, 20, 0.96);
   border: 1px solid rgba(255, 224, 138, 0.25);
   border-radius: 10px;
@@ -456,6 +461,8 @@ button.is-loading::after,
   flex: 1 1 auto;
   overflow-wrap: anywhere;
   color: #cccccc;
+  user-select: none;
+  -webkit-user-select: none;
 }
 
 .summaryEmpty {

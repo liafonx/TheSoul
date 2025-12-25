@@ -57,8 +57,12 @@
       (global.BalatroSharedLists &&
         global.BalatroSharedLists.SUMMARY_FACE_EMOJI) ||
       null;
+    const jokerTranslations =
+      (global.BalatroSharedLists &&
+        global.BalatroSharedLists.JOKER_TRANSLATIONS) ||
+      {};
 
-    // summaryFaceEmojiMap: emoji -> { color, cards: [eng], cardsMap: { eng: cn } }
+    // summaryFaceEmojiMap: emoji -> { color, cards: [eng], cardColors: { eng: color } }
     // summaryFaceCardMap: eng -> { emoji, color, cn }
     const summaryFaceEmojiMap = {};
     const summaryFaceCardMap = {};
@@ -67,22 +71,19 @@
         const color =
           value && typeof value === "object" ? value.color || "" : value || "";
         let cards = [];
-        let cardsMap = {};
+        let cardColors = {};
         if (value && typeof value === "object" && value.cards) {
-          if (Array.isArray(value.cards)) {
-            cards = value.cards;
-          } else if (typeof value.cards === "object") {
-            cards = Object.keys(value.cards);
-            cardsMap = value.cards;
-          }
+          cards = Array.isArray(value.cards)
+            ? value.cards
+            : Object.keys(value.cards);
         }
-        summaryFaceEmojiMap[emoji] = { color, cards, cardsMap };
+        if (value && typeof value === "object" && value.cardColors) {
+          cardColors = value.cardColors;
+        }
+        summaryFaceEmojiMap[emoji] = { color, cards, cardColors };
         cards.forEach((name) => {
-          const raw = cardsMap[name];
-          const cn =
-            raw && typeof raw === "object" ? raw.cn || name : raw || name;
-          const cardColor =
-            raw && typeof raw === "object" && raw.color ? raw.color : color;
+          const cn = jokerTranslations[name] || name;
+          const cardColor = cardColors[name] || color;
           summaryFaceCardMap[name] = { emoji, color: cardColor, cn };
         });
       });
