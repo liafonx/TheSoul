@@ -78,8 +78,12 @@
         }
         summaryFaceEmojiMap[emoji] = { color, cards, cardsMap };
         cards.forEach((name) => {
-          const cn = cardsMap[name] || name;
-          summaryFaceCardMap[name] = { emoji, color, cn };
+          const raw = cardsMap[name];
+          const cn =
+            raw && typeof raw === "object" ? raw.cn || name : raw || name;
+          const cardColor =
+            raw && typeof raw === "object" && raw.color ? raw.color : color;
+          summaryFaceCardMap[name] = { emoji, color: cardColor, cn };
         });
       });
     }
@@ -627,8 +631,56 @@
               popup.append(popupAnte, popupText);
               row.appendChild(popup);
 
+              let isDragging = false;
+              let startX = 0;
+              let startScrollLeft = 0;
+
+              const onPointerDown = (event) => {
+                if (event.button !== undefined && event.button !== 0) {
+                  return;
+                }
+                isDragging = false;
+                startX = event.clientX;
+                startScrollLeft = textSpan.scrollLeft;
+                textSpan.setPointerCapture(event.pointerId);
+              };
+
+              const onPointerMove = (event) => {
+                if (!textSpan.hasPointerCapture(event.pointerId)) {
+                  return;
+                }
+                const deltaX = event.clientX - startX;
+                if (!isDragging && Math.abs(deltaX) > 4) {
+                  isDragging = true;
+                }
+                if (isDragging) {
+                  textSpan.scrollLeft = startScrollLeft - deltaX;
+                }
+              };
+
+              const onPointerUp = (event) => {
+                if (textSpan.hasPointerCapture(event.pointerId)) {
+                  textSpan.releasePointerCapture(event.pointerId);
+                }
+                if (isDragging) {
+                  event.preventDefault();
+                }
+                setTimeout(() => {
+                  isDragging = false;
+                }, 0);
+              };
+
+              textSpan.addEventListener("pointerdown", onPointerDown);
+              textSpan.addEventListener("pointermove", onPointerMove);
+              textSpan.addEventListener("pointerup", onPointerUp);
+              textSpan.addEventListener("pointercancel", onPointerUp);
+
               row.addEventListener("click", (event) => {
                 event.stopPropagation();
+                if (isDragging) {
+                  isDragging = false;
+                  return;
+                }
                 const isOpen = popup.classList.contains("visible");
                 document
                   .querySelectorAll(".miniSummaryPopup.visible")

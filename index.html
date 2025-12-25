@@ -404,8 +404,12 @@
       }
       summaryFaceEmojiMap[emoji] = { color, cards, cardsMap };
       cards.forEach((name) => {
-        const cn = cardsMap[name] || name;
-        summaryFaceCardMap[name] = { emoji, color, cn };
+        const raw = cardsMap[name];
+        const cn =
+          raw && typeof raw === "object" ? raw.cn || name : raw || name;
+        const cardColor =
+          raw && typeof raw === "object" && raw.color ? raw.color : color;
+        summaryFaceCardMap[name] = { emoji, color: cardColor, cn };
       });
     });
 

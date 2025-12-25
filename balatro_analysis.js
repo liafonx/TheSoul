@@ -69,9 +69,11 @@ const JOKER_TRANSLATIONS = (() => {
       const cardsMap = Array.isArray(cfg.cards)
         ? Object.fromEntries(cfg.cards.map((name) => [name, name]))
         : cfg.cards;
-      Object.entries(cardsMap).forEach(([eng, cn]) => {
+      Object.entries(cardsMap).forEach(([eng, cnValue]) => {
+        const cn =
+          cnValue && typeof cnValue === "object" ? cnValue.cn || eng : cnValue;
         if (!map[eng]) {
-          map[eng] = cn;
+          map[eng] = cn || eng;
         }
       });
     });
@@ -175,6 +177,7 @@ class AnteData {
     this.buffoonSeen = new Set();
     this.spectralCards = [];
     this.spectralSeen = new Set();
+    this.tagOrder = [];
     this.tagNames = [];
     this.kingCards = [];
     this.kingSeen = new Set();
@@ -217,6 +220,9 @@ class AnteData {
   }
 
   addTag(tagName) {
+    if (!this.tagOrder.includes(tagName)) {
+      this.tagOrder.push(tagName);
+    }
     if (!TAG_EMOJI[tagName]) {
       return;
     }
@@ -241,7 +247,8 @@ class AnteData {
     const display = [];
     const names = [];
     const hasNegative = this.tagNames.includes("Negative Tag");
-    const firstIsNegative = hasNegative && this.tagNames[0] === "Negative Tag";
+    const firstIsNegative =
+      hasNegative && this.tagOrder[0] === "Negative Tag";
 
     for (const tagName of this.tagNames) {
       const emoji = TAG_EMOJI[tagName];
@@ -291,7 +298,7 @@ class AnteData {
       parts.push(bossVoucherSegment);
     }
     if (tagDisplay.length) {
-      parts.push(tagDisplay.join(""));
+      parts.push(tagDisplay.join("、"));
     }
 
     if (this.spectralCards.length) {

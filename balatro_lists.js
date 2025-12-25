@@ -44,7 +44,7 @@
       },
     },
     "🥊": {
-      color: "#ff7a8a", // soft pink-red
+      color: "", // #ff7a8a
       cards: {
         Luchador: "摔角手",
       },
@@ -64,9 +64,9 @@
       },
     },
     "🃏": {
-      color: "", // shared violet
+      color: "",
       cards: {
-        Burglar: "窃贼",
+        Burglar: { cn: "窃贼", color: "rgb(255, 122, 138)" },
         "Turtle Bean": "黑龟豆",
         Juggler: "杂耍",
         Troubadour: "吟游诗人",
