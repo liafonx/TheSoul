@@ -97,6 +97,10 @@
       return [...new Set(analyzed)].sort((a, b) => a - b);
     }
 
+    function isNearbySummariesEnabled() {
+      return global.summaryNearbyVisible !== false;
+    }
+
     /** Render mini summaries for nearby antes */
     function renderMiniSummaries(anteNum, container, analyzedAntes) {
       const summaryLookup = global.lastSummariesByAnte instanceof Map ? global.lastSummariesByAnte : null;
@@ -211,7 +215,7 @@
       metaColumn.appendChild(metaRow);
       info.appendChild(metaColumn);
 
-      if (anteNum !== null) renderMiniSummaries(anteNum, info, analyzedAntes);
+      if (anteNum !== null && isNearbySummariesEnabled()) renderMiniSummaries(anteNum, info, analyzedAntes);
       container.appendChild(info);
 
       // Card set with controls
@@ -267,7 +271,8 @@
     }
 
     /** Render current page of shop queues */
-    function renderCurrentPage() {
+    function renderCurrentPage(options = {}) {
+      const skipScroll = Boolean(options.skipScroll);
       const totalPages = Math.ceil(allShopQueues.length / ANTES_PER_PAGE);
       const analyzedAntes = getAnalyzedAnteNumbers();
       scrollingContainer.innerHTML = "";
@@ -279,7 +284,9 @@
         .slice(currentPageIndex * ANTES_PER_PAGE, (currentPageIndex + 1) * ANTES_PER_PAGE)
         .forEach((q) => scrollingContainer.appendChild(renderAnteQueue(q, analyzedAntes)));
 
-      window.scrollTo({ top: window.scrollY + scrollingContainer.getBoundingClientRect().top - 12, behavior: "smooth" });
+      if (!skipScroll) {
+        window.scrollTo({ top: window.scrollY + scrollingContainer.getBoundingClientRect().top - 12, behavior: "smooth" });
+      }
       scrollingContainer.querySelectorAll(".scrollable").forEach(setupDragScroll);
       search.searchAndHighlight?.();
       global.applySummaryEmojiFilter?.();
@@ -324,6 +331,11 @@
     // Initialize
     displayShopQueues();
     global.refreshShopDisplay = displayShopQueues;
+    global.setNearbySummariesVisible = (flag) => {
+      global.summaryNearbyVisible = flag !== false;
+      if (!allShopQueues.length) return;
+      renderCurrentPage({ skipScroll: true });
+    };
 
     // Close popups on outside click
     document.addEventListener("click", () => {

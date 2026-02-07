@@ -402,6 +402,8 @@
 
   // Initialize global color toggle state
   global.summaryColorOff = Boolean(global.summaryColorOff);
+  // Initialize nearby summary visibility (default enabled)
+  global.summaryNearbyVisible = global.summaryNearbyVisible !== false;
 
   // Export utilities
   global.BalatroUtils = {

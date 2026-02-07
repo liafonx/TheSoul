@@ -721,7 +721,7 @@ button.is-loading::after,
 }
 
 /* Make first controls span full width and fit text */
-#summaryFilterContent .summaryFilterButton:nth-child(-n + 2) {
+#summaryFilterContent .summaryFilterButton:nth-child(-n + 3) {
   grid-column: 1 / -1;
   padding-inline: 10px;
   justify-content: center;
@@ -1035,6 +1035,16 @@ button.is-loading::after,
   h1.site-title > span {
     font-size: 24px;
   }
+
+  .miniSummaryText {
+    line-height: 1.55;
+    max-height: 1.55em;
+    min-height: 1.55em;
+  }
+
+  .miniSummaryPopup .miniSummaryTextFull {
+    line-height: 1.6;
+  }
 }
 
 .pack-filter {
@@ -1133,6 +1143,17 @@ button.is-loading::after,
   cursor: pointer;
   transition: background-color 0.15s ease, border-color 0.15s ease,
     transform 0.1s ease;
+}
+
+.pack-filter.pack-inline .toggle-button:disabled,
+.pack-filter.pack-inline .toggle-button.disabled {
+  opacity: 0.62;
+  text-decoration: line-through;
+  background-color: #2a2d33;
+  border-color: #4a4e56;
+  color: #7f8794;
+  cursor: default;
+  pointer-events: none;
 }
 
 .cardSetToggle {

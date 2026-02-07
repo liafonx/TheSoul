@@ -263,6 +263,8 @@
       else if (def.key === "STANDARD") isEnabled = typesPresent.has("Standard Pack");
 
       btn.disabled = !isEnabled;
+      btn.classList.toggle("disabled", !isEnabled);
+      btn.setAttribute("aria-disabled", String(!isEnabled));
       if (def.key === activeFilter && isEnabled) btn.classList.add("active");
 
       btn.addEventListener("click", () => {
@@ -279,16 +281,27 @@
 
     // Packs container
     const container = createElement("div");
+    let packsBuilt = false;
+    let onRenderRaf = 0;
+    const packItems = [];
 
-    function renderPacks() {
+    function scheduleOnRender() {
+      if (onRenderRaf) cancelAnimationFrame(onRenderRaf);
+      onRenderRaf = requestAnimationFrame(() => {
+        onRenderRaf = 0;
+        onRender?.();
+      });
+    }
+
+    function ensurePacksBuilt() {
+      if (packsBuilt) return;
+      packsBuilt = true;
       container.innerHTML = "";
+      packItems.length = 0;
 
       packs.forEach((pack) => {
         const [packName, cardListStr] = pack.split(" - ");
         const packType = getPackTypeFromName?.(packName);
-
-        if (!shouldShowPack(packName, activeFilter)) return;
-
         const packCards = cardListStr ? cardListStr.split(", ") : [];
         const packItem = createElement("div", "packItem");
 
@@ -305,9 +318,17 @@
         });
 
         container.appendChild(packItem);
+        packItems.push({ packName, element: packItem });
       });
+    }
 
-      onRender?.();
+    function renderPacks() {
+      ensurePacksBuilt();
+      packItems.forEach(({ packName, element }) => {
+        const visible = shouldShowPack(packName, activeFilter);
+        element.style.display = visible ? "" : "none";
+      });
+      scheduleOnRender();
     }
 
     // Auto-expand when packs contain tracked items

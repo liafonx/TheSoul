@@ -142,7 +142,6 @@
           <input type="checkbox" id="omitBeforeAnte9" checked />
           <label for="omitBeforeAnte9">Omit results before Ante 9</label>
         </div>
-
         <div class="settings-actions">
           <button id="analyzeButton">Analyze</button>
           <button id="openCheckboxesBtn">Modify Unlocks</button>
@@ -561,6 +560,23 @@
         updateColorBtn();
       });
       summaryFilterContent.appendChild(colorBtn);
+
+      const nearbyBtn = document.createElement("button");
+      nearbyBtn.type = "button";
+      nearbyBtn.className = "summaryFilterButton";
+      const updateNearbyBtn = () => {
+        const visible = window.summaryNearbyVisible !== false;
+        nearbyBtn.classList.toggle("active", visible);
+        nearbyBtn.textContent = visible ? t("Nearby Summaries: visible") : t("Nearby Summaries: hidden");
+      };
+      updateNearbyBtn();
+      nearbyBtn.addEventListener("click", () => {
+        const nextVisible = window.summaryNearbyVisible === false;
+        window.summaryNearbyVisible = nextVisible;
+        window.setNearbySummariesVisible?.(nextVisible);
+        updateNearbyBtn();
+      });
+      summaryFilterContent.appendChild(nearbyBtn);
 
       // Emoji filter buttons
       Object.keys(allEmojiMap).forEach((emoji) => {

@@ -35,6 +35,8 @@
     "Analyze workload is too large. Reduce Max Ante or Cards per Ante.": "分析规模过大，请降低最高底注或每底注牌数。",
     "Text Color: default": "文本颜色：单色",
     "Text Color: colorful": "文本颜色：多彩",
+    "Nearby Summaries: visible": "附近总结：显示",
+    "Nearby Summaries: hidden": "附近总结：隐藏",
     "Nothing to summarize yet.": "暂无可总结内容。",
     "Nothing to download yet.": "暂无可下载内容。",
     "Link copied to clipboard!": "链接已复制到剪贴板！",
@@ -72,7 +74,7 @@
     "Switch to Carousel": "切换走马灯布局",
     "Cards (this Ante):": "本底注牌数：",
     "Re-run": "重新预测",
-    "Restore": "恢复图片",
+    "Restore": "恢复预设牌数",
     "Only groups with hits": "仅显示命中分组",
     "Show all groups": "显示全部分组"
   });
