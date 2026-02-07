@@ -96,7 +96,7 @@ def parse_summary_output(summary_text: str):
     """
     summary_map = {}
     line_re = re.compile(r"^\s*(\d+)\s*：\s*(.*)$")
-    jester_re = re.compile(r"([^\(、|]*?)(🔘?)\(([^()#]+?)\s*#\s*(\d+)\)")
+    jester_re = re.compile(r"([^、|#]+?)(‼️)?#(\d+)")
 
     for raw_line in summary_text.splitlines():
         raw_line = raw_line.strip()
@@ -117,8 +117,8 @@ def parse_summary_output(summary_text: str):
             if "(" in part:
                 # Skip segments that contain card entries.
                 continue
-            if any(sym in part for sym in ("🔘", "🖇️", "🎟️")):
-                if "🔘" in part:
+            if any(sym in part for sym in ("🎞️", "🖇️", "🎟️")):
+                if "🎞️" in part:
                     tag_names.append("Negative Tag")
                 if "🖇️" in part:
                     tag_names.append("Double Tag")
@@ -128,9 +128,11 @@ def parse_summary_output(summary_text: str):
 
         jester_cards = []
         for jm in jester_re.finditer(rest):
-            negative_flag = jm.group(2) == "🔘"
-            name = jm.group(3).strip()
-            index = int(jm.group(4))
+            negative_flag = bool(jm.group(2))
+            name = re.sub(r"^[^A-Za-z]*(?=[A-Za-z])", "", jm.group(1).strip())
+            index = int(jm.group(3))
+            if not name:
+                continue
             jester_cards.append(
                 {
                     "name": name,
@@ -299,11 +301,11 @@ Standard Pack - Red Seal Gold King of Hearts
         )
 
         expected_snippets = [
-            "♔红封K(Red Seal King)",
-            "♔钢铁K(Steel King)",
-            "♔黄金K(Gold King)",
-            "♔红封钢K(Red Seal Steel King)",
-            "♔红封金K(Red Seal Gold King)",
+            "♔Red Seal King",
+            "♔Steel King",
+            "♔Gold King",
+            "♔Red Seal Steel King",
+            "♔Red Seal Gold King",
         ]
 
         for idx, snippet in enumerate(expected_snippets):
@@ -317,4 +319,3 @@ Standard Pack - Red Seal Gold King of Hearts
 
 if __name__ == "__main__":
     unittest.main()
-

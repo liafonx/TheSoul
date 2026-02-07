@@ -1,0 +1,57 @@
+{
+  "enNameEntries": 377,
+  "zhNameEntries": 377,
+  "enScalarEntries": 392,
+  "zhScalarEntries": 392,
+  "translationCount": 372,
+  "collisions": [
+    {
+      "english": "Locked",
+      "previous": "未解锁",
+      "next": "锁定",
+      "sourceKey": "deck_locked_discover"
+    },
+    {
+      "english": "Locked",
+      "previous": "未解锁",
+      "next": "锁定",
+      "sourceKey": "deck_locked_stake"
+    },
+    {
+      "english": "Locked",
+      "previous": "未解锁",
+      "next": "锁定",
+      "sourceKey": "deck_locked_win"
+    },
+    {
+      "english": "Locked",
+      "previous": "未解锁",
+      "next": "锁定",
+      "sourceKey": "demo_locked"
+    },
+    {
+      "english": "Locked",
+      "previous": "未解锁",
+      "next": "锁定",
+      "sourceKey": "demo_shop_locked"
+    },
+    {
+      "english": "Locked",
+      "previous": "未解锁",
+      "next": "锁定",
+      "sourceKey": "joker_locked_legendary"
+    },
+    {
+      "english": "Locked",
+      "previous": "未解锁",
+      "next": "锁定",
+      "sourceKey": "locked"
+    },
+    {
+      "english": "Locked",
+      "previous": "未解锁",
+      "next": "锁定",
+      "sourceKey": "wip_locked"
+    }
+  ]
+}

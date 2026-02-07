@@ -5,6 +5,8 @@
 (function (global) {
   "use strict";
 
+  const t = (key) => global.BalatroI18n?.t ? global.BalatroI18n.t(key) : key;
+
   // Lazy getters for dependencies
   const getUtils = () => global.BalatroUtils || {};
   const getRenderers = () => global.BalatroRenderers || {};
@@ -77,19 +79,15 @@
     groupFilterCallbacks.forEach((cb) => cb());
   }
 
-  /**
-   * Helper: create element with class and text
-   */
-  function createElement(tag, className, text) {
-    const utils = getUtils();
-    if (utils.createElement) {
-      return utils.createElement(tag, className, text);
-    }
+  /** Helper: get createElement from utils */
+  const createElement = (tag, className, text) => {
+    const fn = getUtils().createElement;
+    if (fn) return fn(tag, className, text);
     const el = document.createElement(tag);
     if (className) el.className = className;
     if (text !== undefined) el.textContent = text;
     return el;
-  }
+  };
 
   /**
    * Build queue item nodes from raw queue items
@@ -100,7 +98,11 @@
   function buildQueueNodes(items, options = {}) {
     const utils = getUtils();
     const renderers = getRenderers();
-    const { getFaceInfoForSegment } = utils;
+    const {
+      getFaceInfoForSegment,
+      getSummaryEmojisForText,
+      translateGameText = (x) => x,
+    } = utils;
     const { maskToCanvas, determineItemType, parseCardItem } = renderers;
     const textOnly = Boolean(options.textOnly);
 
@@ -111,6 +113,7 @@
       const baseName = hasNegativePrefix ? cardName.slice(negMatch[0].length) : cardName;
 
       const queueItem = createElement("div", "queueItem");
+      queueItem.dataset.searchText = [baseName, ...itemModifiers, ...itemStickers].join(" ");
       if (textOnly) queueItem.classList.add("queueItemTextOnly");
 
       // Set face info data attributes
@@ -121,6 +124,12 @@
       }
       if (faceInfo && (itemModifiers.includes("Negative") || hasNegativePrefix)) {
         queueItem.dataset.negativeFace = "1";
+      }
+      const summaryEmojis = getSummaryEmojisForText
+        ? getSummaryEmojisForText(`${item || ""} ${baseName || ""}`)
+        : [];
+      if (summaryEmojis.length) {
+        queueItem.dataset.summaryEmojis = summaryEmojis.join(",");
       }
 
       // Render card image (unless text-only)
@@ -141,7 +150,7 @@
           ["Foil", "Holographic", "Polychrome", "Negative"].includes(m)
         );
         if (overlayMod) {
-          const modLabel = createElement("div", "modifier", overlayMod);
+          const modLabel = createElement("div", "modifier", translateGameText(overlayMod));
           modLabel.classList.add(overlayMod.toLowerCase());
           canvasWrapper.appendChild(modLabel);
         }
@@ -150,14 +159,17 @@
 
         // Add sticker labels
         itemStickers.forEach((stick) => {
-          queueItem.appendChild(createElement("div", "sticker", stick));
+          queueItem.appendChild(createElement("div", "sticker", translateGameText(stick)));
         });
       }
 
       // Card name label
-      const nameEl = createElement("div", "cardName", cardName);
+      const localizedBase = translateGameText(baseName);
+      const localizedCardName = `${hasNegativePrefix ? `${negMatch[1]} ` : ""}${localizedBase}`;
+      const nameEl = createElement("div", "cardName", localizedCardName);
       nameEl.dataset.enName = baseName;
       nameEl.dataset.originalText = cardName;
+      nameEl.dataset.defaultText = localizedCardName;
       if (hasNegativePrefix) nameEl.dataset.negativeTag = "1";
       queueItem.appendChild(nameEl);
 
@@ -235,7 +247,7 @@
     const { setButtonLoadingState } = utils;
 
     const controls = createElement("div", "groupSizeControls");
-    const label = createElement("span", "groupSizeLabel", "Group Size:");
+    const label = createElement("span", "groupSizeLabel", t("Group Size:"));
     controls.appendChild(label);
 
     const localButtons = [];
@@ -283,7 +295,7 @@
     const { setButtonLoadingState } = utils;
     let layoutMode = "scroll";
 
-    const button = createElement("button", "cardSetToggle", "Switch to Grid");
+    const button = createElement("button", "cardSetToggle", t("Switch to Grid"));
     button.type = "button";
 
     const setMode = (mode) => {
@@ -292,7 +304,7 @@
       cardList.classList.toggle("scrollable", !useGrid);
       cardList.classList.toggle("grid-layout", useGrid);
       cardList.classList.toggle("no-select", !useGrid);
-      button.textContent = useGrid ? "Switch to Carousel" : "Switch to Grid";
+      button.textContent = useGrid ? t("Switch to Carousel") : t("Switch to Grid");
     };
 
     button.addEventListener("click", () => {

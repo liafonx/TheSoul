@@ -14,6 +14,7 @@
 (function () {
   "use strict";
 
+  const assetVersion = window.__ASSET_VERSION__ || "1";
   const scripts = [
     "ui.data.js",
     "ui.renderers.js",
@@ -65,7 +66,7 @@
     }
 
     const script = document.createElement("script");
-    script.src = scripts[index];
+    script.src = `${scripts[index]}?v=${assetVersion}`;
     script.onload = () => {
       index++;
       loadNext();

@@ -12,6 +12,8 @@
 
   // Image cache for preloaded spritesheets
   const imageCache = {};
+  const imagePendingCallbacks = {};
+  const hookedImages = new WeakSet();
   const IMAGE_SOURCES = [
     "images/Jokers.png",
     "images/Tarots.png",
@@ -54,8 +56,24 @@
     const img = getCachedImage(src);
     if (img.complete && img.naturalWidth > 0) {
       callback(img);
+    } else if (img.complete) {
+      // Failed image load: skip drawing to keep UI responsive.
+      return;
     } else {
-      img.onload = () => callback(img);
+      imagePendingCallbacks[src] = imagePendingCallbacks[src] || [];
+      imagePendingCallbacks[src].push(callback);
+      if (!hookedImages.has(img)) {
+        hookedImages.add(img);
+        const flush = () => {
+          const pending = imagePendingCallbacks[src] || [];
+          delete imagePendingCallbacks[src];
+          if (img.naturalWidth > 0) {
+            pending.forEach((cb) => cb(img));
+          }
+        };
+        img.addEventListener("load", flush);
+        img.addEventListener("error", flush);
+      }
     }
   }
 
@@ -171,25 +189,6 @@
       .replace(/\b(Bonus|Mult|Wild|Glass|Steel|Stone|Gold|Lucky)\b/g, "")
       .replace(/\b(Foil|Holographic|Polychrome)\b/g, "")
       .trim();
-  }
-
-  function getStandardCardModifiers(cardName) {
-    const sealRegex = /\b(Purple Seal|Red Seal|Blue Seal|Gold Seal)\b/g;
-    const enhancementRegex =
-      /\b(Bonus|Mult|Wild|Glass|Steel|Stone|Gold|Lucky)\b/g;
-    const editionRegex = /\b(Foil|Holographic|Polychrome)\b/g;
-
-    const seals = [];
-    let sealMatch;
-    while ((sealMatch = sealRegex.exec(cardName)) !== null) {
-      seals.push(sealMatch[0]);
-    }
-
-    const cardNameWithoutSeals = cardName.replace(sealRegex, "").trim();
-    const enhancements = cardNameWithoutSeals.match(enhancementRegex) || [];
-    const editions = cardNameWithoutSeals.match(editionRegex) || [];
-
-    return [...seals, ...enhancements, ...editions];
   }
 
   function getStandardCardPosition(rank, suit) {
@@ -515,7 +514,6 @@
     preloadImages,
     maskToCanvas,
     getStandardCardName,
-    getStandardCardModifiers,
     parseStandardCardName,
     getModifierColor,
     renderStandardCard,

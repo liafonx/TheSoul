@@ -5,6 +5,8 @@
 (function (global) {
   "use strict";
 
+  const t = (key) => global.BalatroI18n?.t ? global.BalatroI18n.t(key) : key;
+
   // Lazy getters for dependencies
   const getUtils = () => global.BalatroUtils || {};
   const getRenderers = () => global.BalatroRenderers || {};
@@ -18,19 +20,15 @@
     { key: "CELESTIAL", label: "Celestial" },
   ];
 
-  /**
-   * Helper: create element with class and text
-   */
-  function createElement(tag, className, text) {
-    const utils = getUtils();
-    if (utils.createElement) {
-      return utils.createElement(tag, className, text);
-    }
+  /** Helper: get createElement from utils */
+  const createElement = (tag, className, text) => {
+    const fn = getUtils().createElement;
+    if (fn) return fn(tag, className, text);
     const el = document.createElement(tag);
     if (className) el.className = className;
     if (text !== undefined) el.textContent = text;
     return el;
-  }
+  };
 
   /**
    * Determine which pack types are present in a list of packs
@@ -95,7 +93,11 @@
   function renderPackCard(cardName, packType) {
     const utils = getUtils();
     const renderers = getRenderers();
-    const { getFaceInfoForSegment } = utils;
+    const {
+      getFaceInfoForSegment,
+      getSummaryEmojisForText,
+      translateGameText = (x) => x,
+    } = utils;
     const {
       maskToCanvas,
       determineItemType,
@@ -109,6 +111,7 @@
     const { cardName: parsedName, itemModifiers, itemStickers } = parseCardItem(cardName);
     const itemType = determineItemType?.(parsedName);
     const container = createElement("div");
+    container.dataset.searchText = [parsedName, ...itemModifiers, ...itemStickers].join(" ");
 
     // Set face info
     const faceInfo = getFaceInfoForSegment?.(parsedName);
@@ -118,6 +121,12 @@
     }
     if (faceInfo && itemModifiers.includes("Negative")) {
       container.dataset.negativeFace = "1";
+    }
+    const summaryEmojis = getSummaryEmojisForText
+      ? getSummaryEmojisForText(`${cardName || ""} ${parsedName || ""}`)
+      : [];
+    if (summaryEmojis.length) {
+      container.dataset.summaryEmojis = summaryEmojis.join(",");
     }
 
     if (itemType !== "unknown") {
@@ -133,7 +142,8 @@
       container.appendChild(canvasWrapper);
 
       // Card name
-      const nameEl = createElement("div", "cardName", parsedName);
+      const nameEl = createElement("div", "cardName", translateGameText(parsedName));
+      nameEl.dataset.enName = parsedName;
       nameEl.dataset.originalText = parsedName;
       container.appendChild(nameEl);
 
@@ -143,20 +153,20 @@
           ["Foil", "Holographic", "Polychrome", "Negative"].includes(m)
         );
         if (overlayMod) {
-          const modLabel = createElement("div", "modifier", overlayMod);
+          const modLabel = createElement("div", "modifier", translateGameText(overlayMod));
           modLabel.classList.add(overlayMod.toLowerCase());
           canvasWrapper.appendChild(modLabel);
         }
       } else {
         // Other packs: show modifiers as text
         itemModifiers.forEach((mod) => {
-          container.appendChild(createElement("div", "modifier", mod));
+          container.appendChild(createElement("div", "modifier", translateGameText(mod)));
         });
       }
 
       // Stickers always as text
       itemStickers.forEach((stick) => {
-        container.appendChild(createElement("div", "sticker", stick));
+        container.appendChild(createElement("div", "sticker", translateGameText(stick)));
       });
     } else {
       // Standard playing card
@@ -171,17 +181,21 @@
         }
         container.appendChild(canvas);
 
-        const cardText = createElement("div", "standardCardName", getStandardCardName?.(cardName) || cardName);
+        const standardEnglishName = getStandardCardName?.(cardName) || cardName;
+        const cardText = createElement("div", "standardCardName", translateGameText(standardEnglishName));
+        cardText.dataset.enName = standardEnglishName;
+        cardText.dataset.originalText = standardEnglishName;
         container.appendChild(cardText);
+        container.dataset.searchText = [standardEnglishName, ...modifiers, seal || ""].join(" ").trim();
 
         modifiers.forEach((mod) => {
-          const modEl = createElement("div", "modifier", mod);
+          const modEl = createElement("div", "modifier", translateGameText(mod));
           if (getModifierColor) modEl.style.color = getModifierColor(mod);
           container.appendChild(modEl);
         });
 
         if (seal) {
-          const sealEl = createElement("div", "seal", seal);
+          const sealEl = createElement("div", "seal", translateGameText(seal));
           if (getModifierColor) sealEl.style.color = getModifierColor(seal);
           container.appendChild(sealEl);
         }
@@ -198,15 +212,38 @@
    * @returns {{ header: HTMLElement, toggles: HTMLElement, container: HTMLElement }}
    */
   function createPackSection(packs, onRender) {
+    const utils = getUtils();
+    const data = global.BalatroData || {};
     const renderers = getRenderers();
-    const { getPackTypeFromName } = renderers;
+    const { getPackTypeFromName, parseCardItem } = renderers;
+    const localizePackName = utils.localizePackName || ((x) => x);
+    const trackedItems = new Set(
+      [
+        ...(data.trackedJokers || []),
+        ...(data.trackedSpectrals || []),
+        ...(data.trackedTags || []),
+        ...(data.trackedBosses || []),
+        ...(data.trackedVouchers || []),
+      ].map((name) => String(name || "").trim().toLowerCase())
+    );
 
     const typesPresent = getPackTypesPresent(packs);
     let activeFilter = getDefaultPackFilter(typesPresent);
 
+    const hasTrackedPackItem = packs.some((pack) => {
+      const [, cardListStr = ""] = String(pack || "").split(" - ");
+      if (!cardListStr) return false;
+      return cardListStr.split(", ").some((cardNameStr) => {
+        const parsed = parseCardItem?.(cardNameStr);
+        const baseName = String(parsed?.cardName || cardNameStr || "").trim().toLowerCase();
+        return trackedItems.has(baseName);
+      });
+    });
+    if (hasTrackedPackItem) activeFilter = "ALL";
+
     // Header row
     const headerRow = createElement("div", "packHeaderRow");
-    const title = createElement("div", "queueTitle packTitle", "Packs");
+    const title = createElement("div", "queueTitle packTitle", t("Packs"));
     headerRow.appendChild(title);
 
     // Filter toggles
@@ -214,7 +251,7 @@
     const filterButtons = {};
 
     PACK_FILTERS.forEach((def) => {
-      const btn = createElement("button", "toggle-button", def.label);
+      const btn = createElement("button", "toggle-button", t(def.label));
       btn.type = "button";
 
       // Check if filter is available
@@ -256,7 +293,9 @@
         const packItem = createElement("div", "packItem");
 
         // Pack name
-        const nameEl = createElement("div", "packName", packName + ": ");
+        const nameEl = createElement("div", "packName", `${localizePackName(packName)}: `);
+        nameEl.dataset.enName = packName;
+        nameEl.dataset.originalText = packName;
         packItem.appendChild(nameEl);
 
         // Pack cards
@@ -271,10 +310,16 @@
       onRender?.();
     }
 
-    // Collapsed by default
-    let collapsed = true;
+    // Auto-expand when packs contain tracked items
+    let collapsed = !hasTrackedPackItem;
     toggles.style.display = "none";
     container.style.display = "none";
+
+    if (!collapsed) {
+      toggles.style.display = "";
+      container.style.display = "";
+      renderPacks();
+    }
 
     headerRow.addEventListener("click", () => {
       collapsed = !collapsed;

@@ -6,60 +6,34 @@
   "use strict";
 
   const ANTES_PER_PAGE = 4;
-
   let currentPageIndex = 0;
   let allShopQueues = [];
   let paginationContainer = null;
   let scrollingContainer = null;
-
-  /**
-   * Fallback createElement function
-   */
-  function fallbackCreateElement(tag, className, text) {
-    const el = document.createElement(tag);
-    if (className) el.className = className;
-    if (text !== undefined) el.textContent = text;
-    return el;
-  }
-
-  /**
-   * Fallback cleanSummaryLine function
-   */
-  function fallbackCleanSummaryLine(rawLine) {
-    return rawLine
-      .replace(/^\s*ante\s*\d+\s*[：:]\s*/i, "")
-      .replace(/^\s*\d+\s*[：:]\s*/, "")
-      .trim() || rawLine;
-  }
+  let lastQueueSource = null;
+  let lastQueueParsed = [];
 
   function initShopUI() {
+    const t = (key) => global.BalatroI18n?.t ? global.BalatroI18n.t(key) : key;
     const utils = global.BalatroUtils || {};
     const search = global.BalatroSearch || {};
     const cards = global.BalatroCards || {};
     const packs = global.BalatroPacks || {};
     const renderers = global.BalatroRenderers || {};
 
-    // Use fallbacks for potentially undefined functions
-    const createElement = utils.createElement || fallbackCreateElement;
-    const cleanSummaryLine = utils.cleanSummaryLine || fallbackCleanSummaryLine;
+    // Destructure utilities with inline fallbacks for robustness
+    const createElement = utils.createElement || ((tag, cls, txt) => Object.assign(document.createElement(tag), cls && { className: cls }, txt !== undefined && { textContent: txt }));
+    const cleanSummaryLine = utils.cleanSummaryLine || ((raw) => raw.replace(/^\s*ante\s*\d+\s*[：:]\s*/i, "").replace(/^\s*\d+\s*[：:]\s*/, "").trim() || raw);
     const setupDragScroll = utils.setupDragScroll || (() => {});
-    const setButtonLoadingState = utils.setButtonLoadingState || ((btn, flag) => {
-      if (btn) btn.disabled = Boolean(flag);
-    });
+    const setButtonLoadingState = utils.setButtonLoadingState || ((btn, flag) => btn && (btn.disabled = Boolean(flag)));
     const getFaceInfoForSegment = utils.getFaceInfoForSegment || (() => null);
-    const setupPointerDragScroll = utils.setupPointerDragScroll || ((el) => ({ isDragging: () => false }));
+    const getSummaryEmojisForText = utils.getSummaryEmojisForText || (() => []);
+    const translateGameText = utils.translateGameText || ((text) => text);
+    const setupPointerDragScroll = utils.setupPointerDragScroll || (() => ({ isDragging: () => false }));
 
     const { renderBoss, renderTag, renderVoucher } = renderers;
-
-    // Validate critical dependencies
-    if (!renderBoss || !renderTag || !renderVoucher) {
-      console.error("Balatro render helpers missing; aborting UI init.");
-      return;
-    }
-
-    // Validate search module
-    if (!search.createSearchUI) {
-      console.error("BalatroSearch.createSearchUI missing; aborting UI init.");
+    if (!renderBoss || !renderTag || !renderVoucher || !search.createSearchUI) {
+      console.error("Critical dependencies missing; aborting UI init.");
       return;
     }
 
@@ -86,6 +60,8 @@
      * Extract shop queues from raw analysis output
      */
     function extractShopQueues(text) {
+      if (text === lastQueueSource) return lastQueueParsed;
+
       const queues = [];
       const regex = /==ANTE \d+==[\s\S]*?(?=(?:==ANTE \d+==|$))/g;
       const matches = text.match(regex);
@@ -106,291 +82,178 @@
         });
       }
 
+      lastQueueSource = text;
+      lastQueueParsed = queues;
       return queues;
     }
 
-    /**
-     * Render mini summaries for nearby antes
-     */
-    function renderMiniSummaries(anteNum, container) {
+    function getAnalyzedAnteNumbers() {
+      const analyzed = allShopQueues
+        .map(({ title }) => {
+          const match = String(title || "").match(/ANTE\s*(\d+)/i);
+          return match ? Number(match[1]) : NaN;
+        })
+        .filter(Number.isFinite);
+      return [...new Set(analyzed)].sort((a, b) => a - b);
+    }
+
+    /** Render mini summaries for nearby antes */
+    function renderMiniSummaries(anteNum, container, analyzedAntes) {
       const summaryLookup = global.lastSummariesByAnte instanceof Map ? global.lastSummariesByAnte : null;
-
       const wrapper = createElement("div", "miniSummaryWrapper");
-      const label = createElement("div", "miniSummaryLabel", "Nearby Summaries");
-      wrapper.appendChild(label);
-
+      wrapper.appendChild(createElement("div", "miniSummaryLabel", t("Nearby Summaries")));
       const list = createElement("div", "miniSummaryList");
+      const anteKeys = analyzedAntes.length
+        ? analyzedAntes
+          .slice()
+          .sort((a, b) => (Math.abs(a - anteNum) - Math.abs(b - anteNum)) || (a - b))
+          .slice(0, 4)
+          .sort((a, b) => a - b)
+        : [anteNum];
 
-      for (let offset = 0; offset < 4; offset++) {
-        const anteKey = anteNum + offset;
-        const rawText = summaryLookup?.get(anteKey) || `Ante ${anteKey}: No summary yet`;
-
-        const row = createElement("div", "miniSummaryEntry");
-        const anteSpan = createElement("span", "miniSummaryAnte", `Ante ${anteKey}`);
-        const textSpan = createElement("span", "miniSummaryText");
-
-        const cleaned = cleanSummaryLine(rawText);
-        const segments = cleaned.split("、");
-
-        segments.forEach((seg, idx) => {
+      // Helper to render text with segments and delimiters
+      const renderSegments = (text, textSpan) => {
+        cleanSummaryLine(text).split("、").forEach((seg, idx, arr) => {
           const trimmed = seg.trim();
           if (!trimmed) return;
-
-          const chunks = trimmed.split(/(\|)/);
-          chunks.forEach((chunk) => {
+          trimmed.split(/(\|)/).forEach((chunk) => {
             if (!chunk) return;
-            if (chunk === "|") {
-              textSpan.appendChild(createElement("span", "miniSummaryPipe", " | "));
-              return;
-            }
-
+            if (chunk === "|") { textSpan.appendChild(createElement("span", "miniSummaryPipe", " | ")); return; }
             const part = createElement("span", "miniSummaryItem", chunk);
-            const info = getFaceInfoForSegment(chunk);
+            part.dataset.originalText = chunk;
+            const info = getFaceInfoForSegment?.(chunk);
             if (info) {
               part.dataset.faceEmoji = info.emoji;
-              if (chunk.includes("‼️")) {
-                part.classList.add("negativeFace");
-              } else if (info.color) {
-                part.style.color = info.color;
-              }
+              chunk.includes("‼️") ? part.classList.add("negativeFace") : info.color && (part.style.color = info.color);
+            }
+            const emojis = getSummaryEmojisForText?.(chunk) || [];
+            if (emojis.length) {
+              part.dataset.summaryEmojis = emojis.join(",");
             }
             textSpan.appendChild(part);
           });
-
-          if (idx < segments.length - 1) {
-            textSpan.appendChild(createElement("span", "miniSummaryDelimiter", "、"));
-            textSpan.appendChild(document.createTextNode(" "));
-          }
+          if (idx < arr.length - 1) { textSpan.appendChild(createElement("span", "miniSummaryDelimiter", "、")); textSpan.appendChild(document.createTextNode(" ")); }
         });
+      };
+
+      anteKeys.forEach((anteKey) => {
+        const row = createElement("div", "miniSummaryEntry");
+        const anteSpan = createElement("span", "miniSummaryAnte", `${t("Ante")} ${anteKey}`);
+        const textSpan = createElement("span", "miniSummaryText");
+        renderSegments(summaryLookup?.get(anteKey) || `${t("Ante")} ${anteKey}: ${t("No summary yet")}`, textSpan);
 
         row.append(anteSpan, textSpan);
-
-        // Popup for full content
         const popup = createElement("div", "miniSummaryPopup");
-        popup.append(
-          Object.assign(anteSpan.cloneNode(true), { className: "miniSummaryAnte miniSummaryPopupAnte" }),
-          Object.assign(textSpan.cloneNode(true), { className: "miniSummaryText miniSummaryTextFull" })
-        );
+        popup.append(Object.assign(anteSpan.cloneNode(true), { className: "miniSummaryAnte miniSummaryPopupAnte" }), Object.assign(textSpan.cloneNode(true), { className: "miniSummaryText miniSummaryTextFull" }));
         row.appendChild(popup);
 
-        // Drag scroll on text span
-        const dragState = setupPointerDragScroll(textSpan);
-
-        row.addEventListener("click", (e) => {
-          e.stopPropagation();
-          if (dragState.isDragging()) return;
-          const isOpen = popup.classList.contains("visible");
-          document.querySelectorAll(".miniSummaryPopup.visible").forEach((el) => el.classList.remove("visible"));
-          if (!isOpen) popup.classList.add("visible");
-        });
-
-        popup.addEventListener("click", (e) => {
-          e.stopPropagation();
-          popup.classList.remove("visible");
-        });
-
+        const dragState = setupPointerDragScroll?.(textSpan) || { isDragging: () => false };
+        row.addEventListener("click", (e) => { e.stopPropagation(); if (dragState.isDragging()) return; document.querySelectorAll(".miniSummaryPopup.visible").forEach((el) => el.classList.remove("visible")); !popup.classList.contains("visible") && popup.classList.add("visible"); });
+        popup.addEventListener("click", (e) => { e.stopPropagation(); popup.classList.remove("visible"); });
         list.appendChild(row);
-      }
-
+      });
       wrapper.appendChild(list);
       container.appendChild(wrapper);
     }
 
-    /**
-     * Render a single ante's content
-     */
-    function renderAnteQueue({ title, queue, boss, voucher, tags, packs: packsList }) {
+    /** Render a single ante's content */
+    function renderAnteQueue({ title, queue, boss, voucher, tags, packs: packsList }, analyzedAntes) {
       const container = createElement("div", "queueContainer");
       const info = createElement("div", "queueInfo");
       const metaColumn = createElement("div", "queueMetaColumn");
 
-      // Title
+      // Title with color-coded ante number
       const titleEl = createElement("div", "queueTitle anteTitle");
       const cleanTitle = (title.match(/ANTE\s*\d+/i) || [title.replace(/=+/g, "").trim()])[0];
       const match = cleanTitle.match(/^(ANTE)\s*(\d+)/i);
-      let anteNum = null;
-
+      const anteNum = match ? parseInt(match[2], 10) : null;
       if (match) {
-        anteNum = parseInt(match[2], 10);
-        let numClass = "anteNum";
-        if (anteNum >= 32) numClass += " anteNumRed";
-        else if (anteNum >= 22) numClass += " anteNumOrange";
-        else if (anteNum >= 12) numClass += " anteNumYellow";
-        titleEl.innerHTML = `${match[1]} <span class="${numClass}">${match[2]}</span>`;
-      } else {
-        titleEl.textContent = cleanTitle;
-      }
+        const numClass = `anteNum${anteNum >= 32 ? " anteNumRed" : anteNum >= 22 ? " anteNumOrange" : anteNum >= 12 ? " anteNumYellow" : ""}`;
+        titleEl.innerHTML = `${t("Ante")} <span class="${numClass}">${match[2]}</span>`;
+      } else titleEl.textContent = cleanTitle;
       metaColumn.appendChild(titleEl);
 
-      // Meta row (voucher, tags, boss)
+      // Helper for meta blocks with canvas
+      const makeMetaBlock = (label, items, containerClass, nameClass, canvasSize, renderFn) => {
+        const block = createElement("div", "metaBlock");
+        block.innerHTML = `<b>${label}</b>`;
+        const itemsContainer = createElement("div", containerClass);
+        const itemClassByContainer = {
+          voucherContainer: "voucherContainer",
+          tagsContainer: "tagContainer",
+          bossContainer: "bossContainer",
+        };
+        items.forEach((item) => {
+          const itemContainer = createElement("div", itemClassByContainer[containerClass] || containerClass);
+          const canvas = Object.assign(document.createElement("canvas"), { width: canvasSize[0], height: canvasSize[1] });
+          renderFn(canvas, item);
+          const localizedName = translateGameText(item);
+          const nameEl = createElement("div", nameClass, localizedName);
+          nameEl.dataset.enName = String(item || "");
+          nameEl.dataset.originalText = String(item || "");
+          const emojis = getSummaryEmojisForText?.(item) || [];
+          if (emojis.length) {
+            itemContainer.dataset.summaryEmojis = emojis.join(",");
+          }
+          itemContainer.append(canvas, nameEl);
+          itemsContainer.appendChild(itemContainer);
+        });
+        itemsContainer.dataset.searchText = items.join(" ");
+        block.appendChild(itemsContainer);
+        return block;
+      };
+
+      // Meta row
       const metaRow = createElement("div", "queueMetaRow");
-
-      // Voucher
-      const voucherBlock = createElement("div", "metaBlock");
-      voucherBlock.innerHTML = "<b>Voucher</b>";
-      if (voucher) {
-        const voucherContainer = createElement("div", "voucherContainer");
-        const voucherCanvas = document.createElement("canvas");
-        voucherCanvas.width = 84;
-        voucherCanvas.height = 112;
-        renderVoucher(voucherCanvas, voucher);
-        voucherContainer.append(voucherCanvas, createElement("div", "voucherName", voucher));
-        voucherBlock.appendChild(voucherContainer);
-      }
-      metaRow.appendChild(voucherBlock);
-
-      // Tags
-      const tagsBlock = createElement("div", "metaBlock");
-      tagsBlock.innerHTML = "<b>Tags</b>";
-      const tagsContainer = createElement("div", "tagsContainer");
-      tags.forEach((tag) => {
-        const tagContainer = createElement("div", "tagContainer");
-        const tagCanvas = document.createElement("canvas");
-        tagCanvas.width = 34;
-        tagCanvas.height = 34;
-        renderTag(tagCanvas, tag);
-        tagContainer.append(tagCanvas, createElement("div", "tagName", tag));
-        tagsContainer.appendChild(tagContainer);
-      });
-      tagsBlock.appendChild(tagsContainer);
-      metaRow.appendChild(tagsBlock);
-
-      // Boss
-      const bossBlock = createElement("div", "metaBlock");
-      bossBlock.innerHTML = "<b>Boss</b>";
-      if (boss) {
-        const bossContainer = createElement("div", "bossContainer");
-        const bossCanvas = document.createElement("canvas");
-        bossCanvas.width = 34;
-        bossCanvas.height = 34;
-        renderBoss(bossCanvas, boss);
-        bossContainer.append(bossCanvas, createElement("div", "bossName", boss));
-        bossBlock.appendChild(bossContainer);
-      }
-      metaRow.appendChild(bossBlock);
-
+      metaRow.appendChild(makeMetaBlock(t("Voucher"), voucher ? [voucher] : [], "voucherContainer", "voucherName", [84, 112], renderVoucher));
+      metaRow.appendChild(makeMetaBlock(t("Tags"), tags, "tagsContainer", "tagName", [34, 34], renderTag));
+      metaRow.appendChild(makeMetaBlock(t("Boss"), boss ? [boss] : [], "bossContainer", "bossName", [34, 34], renderBoss));
       metaColumn.appendChild(metaRow);
       info.appendChild(metaColumn);
 
-      // Mini summaries
-      if (anteNum !== null) {
-        renderMiniSummaries(anteNum, info);
-      }
-
+      if (anteNum !== null) renderMiniSummaries(anteNum, info, analyzedAntes);
       container.appendChild(info);
 
-      // Card set
+      // Card set with controls
       const cardSet = createElement("div", "cardSet");
       const cardSetHeader = createElement("div", "cardSetHeader");
-
-      // Build queue nodes
-      let queueNodes = cards.buildQueueNodes ? cards.buildQueueNodes(queue, { textOnly: false }) : [];
-
+      let queueNodes = cards.buildQueueNodes?.(queue, { textOnly: false }) || [];
       const cardList = createElement("div", "cardList scrollable no-select");
 
-      // Layout toggle
-      const layout = cards.createLayoutToggle ? cards.createLayoutToggle(cardList, () => {
-        if (cards.renderCardGroups) cards.renderCardGroups(cardList, queueNodes);
-        if (search.searchAndHighlight) search.searchAndHighlight();
-      }) : { button: createElement("button"), setMode: () => {}, getMode: () => "scroll" };
-      cardSetHeader.appendChild(layout.button);
+      const rerender = () => { cards.renderCardGroups?.(cardList, queueNodes); search.searchAndHighlight?.(); };
+      const layout = cards.createLayoutToggle?.(cardList, rerender) || { button: createElement("button"), setMode: () => {}, getMode: () => "scroll" };
+      cardSetHeader.append(layout.button, cards.createGroupControls?.(rerender) || createElement("div"));
 
-      // Group size controls
-      const groupControls = cards.createGroupControls ? cards.createGroupControls(() => {
-        if (cards.renderCardGroups) cards.renderCardGroups(cardList, queueNodes);
-        if (search.searchAndHighlight) search.searchAndHighlight();
-      }) : createElement("div");
-      cardSetHeader.appendChild(groupControls);
+      // Per-ante controls
+      const cardsInput = Object.assign(createElement("input"), { type: "number", min: "1", max: "9999", value: "1000", className: "anteCardsInput" });
+      const recalcBtn = Object.assign(createElement("button", "cardSetToggle anteRecalcButton", t("Re-run")), { type: "button" });
+      const restoreBtn = Object.assign(createElement("button", "cardSetToggle anteRestoreButton", t("Restore")), { type: "button" });
+      let hideNonHighlight = false;
+      const hideToggle = Object.assign(createElement("button", "cardSetToggle", t("Only groups with hits")), { type: "button" });
+      const applyFilter = () => cards.applyGroupHighlightFilter?.(cardList, hideNonHighlight);
 
-      // Per-ante recalc controls
       const recalcControls = createElement("div", "groupSizeControls");
-      const inputLabel = createElement("span", "groupSizeLabel", "Cards (this Ante):");
-      const cardsInput = createElement("input");
-      cardsInput.type = "number";
-      cardsInput.min = "1";
-      cardsInput.max = "9999";
-      cardsInput.value = "1000";
-      cardsInput.className = "anteCardsInput";
-
-      const recalcBtn = createElement("button", "cardSetToggle anteRecalcButton", "Re-run");
-      recalcBtn.type = "button";
-
-      const restoreBtn = createElement("button", "cardSetToggle anteRestoreButton", "Restore");
-      restoreBtn.type = "button";
-
-      // Group highlight filter toggle
-      let hideNonHighlightGroups = false;
-      const hideToggle = createElement("button", "cardSetToggle");
-      hideToggle.type = "button";
-      const updateHideLabel = () => {
-        hideToggle.textContent = hideNonHighlightGroups ? "Show all groups" : "Only groups with hits";
-      };
-      updateHideLabel();
-
-      recalcControls.append(inputLabel, cardsInput, recalcBtn, restoreBtn, hideToggle);
+      recalcControls.append(createElement("span", "groupSizeLabel", t("Cards (this Ante):")), cardsInput, recalcBtn, restoreBtn, hideToggle);
       cardSetHeader.appendChild(recalcControls);
-      cardSet.appendChild(cardSetHeader);
-      cardSet.appendChild(cardList);
+      cardSet.append(cardSetHeader, cardList);
       container.appendChild(cardSet);
 
-      // Register callbacks
-      const applyFilter = () => {
-        if (cards.applyGroupHighlightFilter) cards.applyGroupHighlightFilter(cardList, hideNonHighlightGroups);
-      };
-      if (cards.onGroupRender) cards.onGroupRender(() => {
-        if (cards.renderCardGroups) cards.renderCardGroups(cardList, queueNodes);
-      });
-      if (cards.onGroupFilterUpdate) cards.onGroupFilterUpdate(applyFilter);
-
-      // Render initial cards
-      if (cards.renderCardGroups) cards.renderCardGroups(cardList, queueNodes);
+      cards.onGroupRender?.(() => cards.renderCardGroups?.(cardList, queueNodes));
+      cards.onGroupFilterUpdate?.(applyFilter);
+      cards.renderCardGroups?.(cardList, queueNodes);
       applyFilter();
 
-      // Event handlers
-      hideToggle.addEventListener("click", () => {
-        hideNonHighlightGroups = !hideNonHighlightGroups;
-        updateHideLabel();
-        applyFilter();
-      });
+      hideToggle.addEventListener("click", () => { hideNonHighlight = !hideNonHighlight; hideToggle.textContent = hideNonHighlight ? t("Show all groups") : t("Only groups with hits"); applyFilter(); });
 
-      recalcBtn.addEventListener("click", () => {
-        if (recalcBtn.disabled || !anteNum) return;
-        const limit = Math.max(0, Number(cardsInput.value) || 0);
-        if (!limit || typeof global.computeSingleAnteQueue !== "function") return;
-
-        setButtonLoadingState(recalcBtn, true);
-        setTimeout(() => {
-          try {
-            const items = global.computeSingleAnteQueue(anteNum, limit) || [];
-            queueNodes = cards.buildQueueNodes ? cards.buildQueueNodes(items, { textOnly: true }) : [];
-            layout.setMode("grid");
-            if (cards.renderCardGroups) cards.renderCardGroups(cardList, queueNodes);
-            if (search.searchAndHighlight) search.searchAndHighlight();
-          } finally {
-            setButtonLoadingState(recalcBtn, false);
-          }
-        }, 0);
-      });
-
-      restoreBtn.addEventListener("click", () => {
-        if (restoreBtn.disabled || !anteNum) return;
-        const globalInput = document.getElementById("cardsPerAnte");
-        const limit = Math.max(0, Number(globalInput?.value) || 0);
-        if (!limit || typeof global.computeSingleAnteQueue !== "function") return;
-
-        setButtonLoadingState(restoreBtn, true);
-        setTimeout(() => {
-          try {
-            const items = global.computeSingleAnteQueue(anteNum, limit) || [];
-            queueNodes = cards.buildQueueNodes ? cards.buildQueueNodes(items, { textOnly: false }) : [];
-            layout.setMode("scroll");
-            if (cards.renderCardGroups) cards.renderCardGroups(cardList, queueNodes);
-            if (search.searchAndHighlight) search.searchAndHighlight();
-          } finally {
-            setButtonLoadingState(restoreBtn, false);
-          }
-        }, 0);
-      });
+      const runCompute = (btn, textOnly, mode) => {
+        if (btn.disabled || !anteNum) return;
+        const limit = Math.max(0, Number(textOnly ? cardsInput.value : document.getElementById("cardsPerAnte")?.value) || 0);
+        if (!limit || !global.computeSingleAnteQueue) return;
+        setButtonLoadingState?.(btn, true);
+        setTimeout(() => { try { queueNodes = cards.buildQueueNodes?.(global.computeSingleAnteQueue(anteNum, limit) || [], { textOnly }) || []; layout.setMode(mode); rerender(); } finally { setButtonLoadingState?.(btn, false); } }, 0);
+      };
+      recalcBtn.addEventListener("click", () => runCompute(recalcBtn, true, "grid"));
+      restoreBtn.addEventListener("click", () => runCompute(restoreBtn, false, "scroll"));
 
       // Packs section
       if (packsList.length > 0 && packs.createPackSection) {
@@ -403,124 +266,46 @@
       return container;
     }
 
-    /**
-     * Render current page of shop queues
-     */
+    /** Render current page of shop queues */
     function renderCurrentPage() {
       const totalPages = Math.ceil(allShopQueues.length / ANTES_PER_PAGE);
+      const analyzedAntes = getAnalyzedAnteNumbers();
       scrollingContainer.innerHTML = "";
-      if (cards.clearCallbacks) cards.clearCallbacks();
-
-      if (totalPages === 0) {
-        paginationContainer.innerHTML = "";
-        paginationContainer.style.display = "none";
-        return;
-      }
+      cards.clearCallbacks?.();
+      if (!totalPages) { paginationContainer.innerHTML = ""; paginationContainer.style.display = "none"; return; }
 
       paginationContainer.style.display = totalPages <= 1 ? "none" : "flex";
+      allShopQueues
+        .slice(currentPageIndex * ANTES_PER_PAGE, (currentPageIndex + 1) * ANTES_PER_PAGE)
+        .forEach((q) => scrollingContainer.appendChild(renderAnteQueue(q, analyzedAntes)));
 
-      const start = currentPageIndex * ANTES_PER_PAGE;
-      const end = start + ANTES_PER_PAGE;
-      const pageQueues = allShopQueues.slice(start, end);
-
-      pageQueues.forEach((queueData) => {
-        scrollingContainer.appendChild(renderAnteQueue(queueData));
-      });
-
-      // Scroll to results
-      const topOffset = scrollingContainer.getBoundingClientRect().top;
-      window.scrollTo({ top: window.scrollY + topOffset - 12, behavior: "smooth" });
-
-      // Setup drag scroll on all scrollable elements
+      window.scrollTo({ top: window.scrollY + scrollingContainer.getBoundingClientRect().top - 12, behavior: "smooth" });
       scrollingContainer.querySelectorAll(".scrollable").forEach(setupDragScroll);
+      search.searchAndHighlight?.();
+      global.applySummaryEmojiFilter?.();
 
-      // Initial search highlight
-      if (search.searchAndHighlight) search.searchAndHighlight();
-
-      // Apply emoji filter if available
-      if (typeof global.applySummaryEmojiFilter === "function") {
-        global.applySummaryEmojiFilter();
-      }
-
-      // Handle pending scroll
-      if (global.pendingScrollToResults) {
-        global.pendingScrollToResults = false;
-        requestAnimationFrame(() => {
-          scrollingContainer?.scrollIntoView({ behavior: "smooth", block: "start" });
-        });
-      }
+      if (global.pendingScrollToResults) { global.pendingScrollToResults = false; requestAnimationFrame(() => scrollingContainer?.scrollIntoView({ behavior: "smooth", block: "start" })); }
     }
 
-    /**
-     * Render pagination controls
-     */
+    /** Render pagination controls */
     function renderPaginationControls() {
       const totalPages = Math.ceil(allShopQueues.length / ANTES_PER_PAGE);
       paginationContainer.innerHTML = "";
+      paginationContainer.style.display = totalPages <= 1 ? "none" : "flex";
+      if (totalPages <= 1) return;
 
-      if (totalPages <= 1) {
-        paginationContainer.style.display = "none";
-        return;
-      }
+      const goToPage = (page) => { const p = Math.max(0, Math.min(page, totalPages - 1)); if (p !== currentPageIndex) { currentPageIndex = p; renderPaginationControls(); renderCurrentPage(); } };
+      global.goToAntePage = (ante) => { if (!Number.isFinite(ante) || !allShopQueues.length) return; const idx = allShopQueues.findIndex(({ title }) => new RegExp(`ANTE\\s+${ante}\\b`, "i").test(title || "")); if (idx !== -1) goToPage(Math.floor(idx / ANTES_PER_PAGE)); };
 
-      paginationContainer.style.display = "flex";
+      const makeBtn = (text, disabled, onClick) => { const btn = Object.assign(createElement("button", "paginationButton", text), { type: "button", disabled }); btn.addEventListener("click", () => { if (!btn.disabled) { setButtonLoadingState?.(btn, true); setTimeout(onClick, 0); } }); return btn; };
+      const prevBtn = makeBtn(t("Previous"), currentPageIndex === 0, () => goToPage(currentPageIndex - 1));
+      const nextBtn = makeBtn(t("Next"), currentPageIndex >= totalPages - 1, () => goToPage(currentPageIndex + 1));
 
-      const goToPage = (page) => {
-        const clamped = Math.max(0, Math.min(page, totalPages - 1));
-        if (clamped === currentPageIndex) return;
-        currentPageIndex = clamped;
-        renderPaginationControls();
-        renderCurrentPage();
-      };
-
-      // Expose for summary navigation
-      global.goToAntePage = (anteNumber) => {
-        if (!Number.isFinite(anteNumber) || !allShopQueues.length) return;
-        const idx = allShopQueues.findIndex(({ title }) =>
-          new RegExp(`ANTE\\s+${anteNumber}\\b`, "i").test(title || "")
-        );
-        if (idx === -1) return;
-        const page = Math.floor(idx / ANTES_PER_PAGE);
-        if (page !== currentPageIndex) {
-          currentPageIndex = page;
-          renderPaginationControls();
-          renderCurrentPage();
-        }
-      };
-
-      const prevBtn = createElement("button", "paginationButton", "Prev");
-      prevBtn.type = "button";
-      prevBtn.disabled = currentPageIndex === 0;
-      prevBtn.addEventListener("click", () => {
-        if (prevBtn.disabled) return;
-        setButtonLoadingState(prevBtn, true);
-        setTimeout(() => goToPage(currentPageIndex - 1), 0);
-      });
-
-      const nextBtn = createElement("button", "paginationButton", "Next");
-      nextBtn.type = "button";
-      nextBtn.disabled = currentPageIndex >= totalPages - 1;
-      nextBtn.addEventListener("click", () => {
-        if (nextBtn.disabled) return;
-        setButtonLoadingState(nextBtn, true);
-        setTimeout(() => goToPage(currentPageIndex + 1), 0);
-      });
+      const pageSelect = createElement("select", "paginationInfoSelect");
+      for (let i = 0; i < totalPages; i++) pageSelect.appendChild(Object.assign(createElement("option", null, `${t("Page")} ${i + 1}`), { value: i, selected: i === currentPageIndex }));
+      pageSelect.addEventListener("change", (e) => { const p = Number(e.target.value); if (p !== currentPageIndex) { pageSelect.disabled = true; setTimeout(() => goToPage(p), 0); } });
 
       const info = createElement("div", "paginationInfo");
-      const pageSelect = createElement("select", "paginationInfoSelect");
-      for (let i = 0; i < totalPages; i++) {
-        const option = createElement("option", null, `Page ${i + 1}`);
-        option.value = i;
-        if (i === currentPageIndex) option.selected = true;
-        pageSelect.appendChild(option);
-      }
-      pageSelect.addEventListener("change", (e) => {
-        const newPage = Number(e.target.value);
-        if (newPage === currentPageIndex) return;
-        pageSelect.disabled = true;
-        setTimeout(() => goToPage(newPage), 0);
-      });
-
       info.append(pageSelect, createElement("span", "paginationInfoTotal", `/ ${totalPages}`));
       paginationContainer.append(prevBtn, info, nextBtn);
     }

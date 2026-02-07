@@ -9,7 +9,7 @@ This fork keeps the original The Soul behavior, and adds:
 - Emoji-aware joker categories with color-coded highlights that link summaries, card lists, and search filters.
 - A floating summary window plus per-ante “Nearby Summaries” with emoji-based filtering and a color-on/off toggle.
 - Per-ante re-run controls that support text-only and image views, including a “Restore” button that returns to the global cards-per-ante image layout.
-- A “with English” option that switches summaries and nearby mini summaries between Chinese-only and mixed Chinese/English output.
+- Locale-based summary output (Chinese-only in `zh-CN`, English labels in `en-US`) with synchronized nearby mini summaries.
 
 ## Repository layout
 

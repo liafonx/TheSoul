@@ -36,6 +36,30 @@ const {
   KING_DISPLAY = {},
   SPECTRAL_PACK_PREFIXES = [],
   BUFFOON_PACK_PREFIXES = [],
+  translateKey = (_key, fallback) => fallback ?? _key,
+  isTrackedTag = (tagName) => Boolean(TAG_EMOJI[tagName]),
+  isTrackedVoucher = (voucherName) => Boolean(VOUCHER_EMOJI[voucherName]),
+  isTrackedBoss = (bossName) => ALERT_BOSSES.includes(bossName),
+  formatSummaryTag = (tagName, options = {}) => {
+    const { chineseOnly = false, isFirstTag = false } = options;
+    const emoji = TAG_EMOJI[tagName] || "";
+    const negPrefix = tagName === "Negative Tag" && isFirstTag ? "‼️" : "";
+    if (chineseOnly) return `${negPrefix}${emoji}${translateKey(tagName, tagName)}`;
+    return emoji ? `${negPrefix}${emoji}${tagName}` : tagName;
+  },
+  formatSummaryVoucher = (voucherName, options = {}) => {
+    const { chineseOnly = false } = options;
+    const emoji = VOUCHER_EMOJI[voucherName] || "";
+    if (!emoji) return voucherName || null;
+    if (chineseOnly) return `${emoji}${translateKey(voucherName, voucherName)}`;
+    return `${emoji}${voucherName}`;
+  },
+  formatSummaryBoss = (bossName, options = {}) => {
+    const { chineseOnly = false } = options;
+    if (!ALERT_BOSSES.includes(bossName)) return null;
+    if (chineseOnly) return `☠️${translateKey(bossName, bossName)}`;
+    return `☠️${bossName}`;
+  },
 } = sharedLists;
 
 // Pre-compiled regex patterns
@@ -93,12 +117,12 @@ function getKingVariants(cardText) {
 function formatKingDisplay(cardText, chineseOnly = false) {
   const variants = getKingVariants(cardText);
   if (!variants.length) return null;
+  const english = `${variants.join(" ")} King`;
+  if (!chineseOnly) return english;
 
   const prefix = variants.join(" ");
   const chinese = KING_DISPLAY[prefix];
-  if (!chinese) return null;
-
-  return chineseOnly ? chinese : `${chinese}(${prefix} King)`;
+  return chinese || english;
 }
 
 /**
@@ -145,7 +169,7 @@ class AnteData {
 
   addTag(tagName) {
     if (!this.tagOrder.includes(tagName)) this.tagOrder.push(tagName);
-    if (TAG_EMOJI[tagName] && !this.tagNames.includes(tagName)) {
+    if (isTrackedTag(tagName) && !this.tagNames.includes(tagName)) {
       this.tagNames.push(tagName);
     }
   }
@@ -157,19 +181,22 @@ class AnteData {
     this.kingCards.push(normalized);
   }
 
-  getTagDisplay() {
+  getTagDisplay(options = {}) {
+    const { chineseOnly = false } = options;
     const firstIsNegative = this.tagOrder[0] === "Negative Tag";
     return this.tagNames
       .map((tag) => {
-        const emoji = TAG_EMOJI[tag];
-        if (!emoji) return null;
-        return tag === "Negative Tag" && firstIsNegative ? `‼️${emoji}` : emoji;
+        return formatSummaryTag(tag, { chineseOnly, isFirstTag: firstIsNegative });
       })
       .filter(Boolean);
   }
 
   hasOutput() {
+    const hasTrackedBoss = Boolean(this.boss && isTrackedBoss(this.boss));
+    const hasTrackedVoucher = Boolean(this.voucher && isTrackedVoucher(this.voucher));
     return (
+      hasTrackedBoss ||
+      hasTrackedVoucher ||
       this.getTagDisplay().length > 0 ||
       this.jesterCards.length > 0 ||
       this.spectralCards.length > 0 ||
@@ -181,22 +208,31 @@ class AnteData {
   formatOutput(options = {}) {
     const { chineseOnly = false } = options;
     const parts = [];
+    const bossDisplay = this.boss && isTrackedBoss(this.boss)
+      ? formatSummaryBoss(this.boss, { chineseOnly })
+      : null;
+    const voucherDisplay = this.voucher && isTrackedVoucher(this.voucher)
+      ? formatSummaryVoucher(this.voucher, { chineseOnly })
+      : null;
 
     // Boss/voucher segment
-    let bossVoucher = "";
-    if (ALERT_BOSSES.includes(this.boss)) bossVoucher += "‼️☠️";
-    if (VOUCHER_EMOJI[this.voucher]) bossVoucher += VOUCHER_EMOJI[this.voucher];
-    if (bossVoucher) parts.push(bossVoucher);
+    if (chineseOnly) {
+      const headParts = [bossDisplay, voucherDisplay].filter(Boolean);
+      if (headParts.length) parts.push(headParts.join("、"));
+    } else {
+      const headParts = [bossDisplay, voucherDisplay].filter(Boolean);
+      if (headParts.length) parts.push(headParts.join("、"));
+    }
 
     // Tags
-    const tagDisplay = this.getTagDisplay();
+    const tagDisplay = this.getTagDisplay({ chineseOnly });
     if (tagDisplay.length) parts.push(tagDisplay.join("、"));
 
     // Spectrals
     if (this.spectralCards.length) {
       const spectrals = this.spectralCards.map((name) => {
-        const cn = SPECTRAL_TRANSLATIONS[name] || name;
-        return chineseOnly ? cn : `${cn}(${name})`;
+        const cn = translateKey(name, SPECTRAL_TRANSLATIONS[name] || name);
+        return chineseOnly ? cn : name;
       });
       parts.push(`💠${spectrals.join("、")}`);
     }
@@ -210,9 +246,9 @@ class AnteData {
     // Buffoon jokers
     if (this.buffoonJesters.length) {
       const buffoons = this.buffoonJesters.map((name, i) => {
-        const cn = JOKER_TRANSLATIONS[name] || name;
+        const cn = translateKey(name, JOKER_TRANSLATIONS[name] || name);
         const face = getFaceEmoji(name);
-        const base = chineseOnly ? cn : `${cn}(${name})`;
+        const base = chineseOnly ? cn : name;
         return i === 0 ? `👝${face}${base}` : `${face}${base}`;
       });
       parts.push(buffoons.join("、"));
@@ -224,12 +260,12 @@ class AnteData {
         .slice()
         .sort((a, b) => a.order - b.order)
         .map(({ name, negative, index }) => {
-          const cn = JOKER_TRANSLATIONS[name] || name;
+          const cn = translateKey(name, JOKER_TRANSLATIONS[name] || name);
           const face = getFaceEmoji(name);
           const neg = negative ? "‼️" : "";
           return chineseOnly
             ? `${face}${cn}${neg}#${index}`
-            : `${face}${cn}${neg}(${name} #${index})`;
+            : `${face}${name}${neg}#${index}`;
         });
       parts.push(jesters.join("、"));
     }

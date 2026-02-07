@@ -3,3 +3,13 @@
 
 # Generated analysis outputs
 outputs/
+
+.agent/
+.agents/
+.claude/
+.cursor/
+.playwright*/
+.vscode/
+.gemini/
+.antigravity/
+.github/

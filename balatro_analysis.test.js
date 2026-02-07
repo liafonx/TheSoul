@@ -89,7 +89,7 @@ function verifyFile(inputPath) {
       throw new Error(`Ante ${summary.number} missing in raw data for ${inputPath}`);
     }
 
-    (summary.tagOutputNames || []).forEach((tagName) => {
+    (summary.tagNames || []).forEach((tagName) => {
       if (!raw.tags.includes(tagName)) {
         throw new Error(
           `Ante ${summary.number}: expected tag "${tagName}" not found in raw data`
@@ -224,13 +224,13 @@ Standard Pack - Red Seal Gold King of Hearts
     }
   });
 
-  const summary = summarizeText(fixture.join("\n")).split("\n");
+  const summary = summarizeText(fixture.join("\n"), { chineseOnly: true }).split("\n");
   const expectedSnippets = [
-    "♔红封K(Red Seal King)",
-    "♔钢铁K(Steel King)",
-    "♔黄金K(Gold King)",
-    "♔红封钢K(Red Seal Steel King)",
-    "♔红封金K(Red Seal Gold King)",
+    "♔红封K",
+    "♔钢铁K",
+    "♔黄金K",
+    "♔红封钢K",
+    "♔红封金K",
   ];
 
   summary.forEach((line, idx) => {
@@ -245,10 +245,61 @@ Standard Pack - Red Seal Gold King of Hearts
   console.log("✓ King variant formatting verified");
 }
 
+function runTrackedSummaryTests() {
+  const fixture = normalizeText(`
+==ANTE 1==
+Boss: The Psychic
+Voucher: Director's Cut
+Tags: Negative Tag, Uncommon Tag
+Shop Queue:
+1) Blueprint
+Packs:
+
+==ANTE 2==
+Boss: The Mark
+Voucher: Seed Money
+Tags: Uncommon Tag, Foil Tag
+Shop Queue:
+1) Blueprint
+Packs:
+`);
+
+  const chinese = summarizeText(fixture, { chineseOnly: true }).split("\n");
+  if (chinese.length !== 2) {
+    throw new Error(`Expected 2 summary lines, got ${chinese.length}`);
+  }
+
+  if (!chinese[0].includes("灵媒")) {
+    throw new Error(`Tracked boss should appear in Chinese summary: ${chinese[0]}`);
+  }
+  if (!chinese[0].includes("导演剪辑版")) {
+    throw new Error(`Tracked voucher should appear in Chinese summary: ${chinese[0]}`);
+  }
+  if (!chinese[0].includes("负片标签")) {
+    throw new Error(`Tracked tag should appear in Chinese summary: ${chinese[0]}`);
+  }
+  if (chinese[0].includes("罕见标签")) {
+    throw new Error(`Untracked tag should not appear in Chinese summary: ${chinese[0]}`);
+  }
+
+  if (chinese[1].includes("标记")) {
+    throw new Error(`Untracked boss should not appear in Chinese summary: ${chinese[1]}`);
+  }
+  if (chinese[1].includes("种子基金")) {
+    throw new Error(`Untracked voucher should not appear in Chinese summary: ${chinese[1]}`);
+  }
+  if (chinese[1].includes("罕见标签") || chinese[1].includes("闪箔标签")) {
+    throw new Error(`Untracked tags should not appear in Chinese summary: ${chinese[1]}`);
+  }
+
+  console.log("✓ Tracked summary filtering verified");
+}
+
 
 function runAllTests() {
   runFixtureTests();
   runKingTests();
+  runTrackedSummaryTests();
 }
 
 if (require.main === module) {
@@ -263,5 +314,6 @@ if (require.main === module) {
 module.exports = {
   runFixtureTests,
   runKingTests,
+  runTrackedSummaryTests,
   runAllTests,
 };

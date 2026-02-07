@@ -5,6 +5,8 @@
 (function (global) {
   "use strict";
 
+  const t = (key) => global.BalatroI18n?.t ? global.BalatroI18n.t(key) : key;
+
   // Lazy getters for dependencies
   const getUtils = () => global.BalatroUtils || {};
   const getData = () => global.BalatroData || {};
@@ -14,9 +16,19 @@
 
   // Map joker filter buttons for emoji sync
   const jokerFilterButtons = new Map();
+  const allFilterButtons = new Set();
 
   // Callbacks for search changes
   const searchChangeCallbacks = new Set();
+  let pendingHighlightFrame = 0;
+
+  function scheduleSearchAndHighlight() {
+    if (pendingHighlightFrame) return;
+    pendingHighlightFrame = requestAnimationFrame(() => {
+      pendingHighlightFrame = 0;
+      searchAndHighlight();
+    });
+  }
 
   /**
    * Initialize active toggle terms from tracked items
@@ -49,6 +61,38 @@
     if (typeof callback === "function") searchChangeCallbacks.add(callback);
   }
 
+  function setToggleButtonState(button, isActive, terms) {
+    if (!button) return;
+    const next = Boolean(isActive);
+    const lower = button.dataset.termLower || "";
+    button.classList.toggle("active", next);
+    if (!lower || !terms) return;
+    if (next) terms.add(lower);
+    else terms.delete(lower);
+  }
+
+  function setEmojiIconFilterAll(isActive) {
+    const utils = getUtils();
+    const { summaryFaceEmojiMap } = utils;
+    const filter = global.summaryEmojiFilter || {};
+    Object.keys(summaryFaceEmojiMap || {}).forEach((emoji) => {
+      filter[emoji] = Boolean(isActive);
+    });
+
+    const filterContent = document.getElementById("summaryFilterContent");
+    if (filterContent) {
+      filterContent.querySelectorAll(".summaryFilterButton").forEach((btn) => {
+        const icon = btn.querySelector(".summaryFilterEmoji");
+        if (!icon) return;
+        const emoji = (icon.textContent || "").trim();
+        if (!(emoji in filter)) return;
+        btn.classList.toggle("active", filter[emoji] !== false);
+      });
+    }
+
+    global.applySummaryEmojiFilter?.();
+  }
+
   /**
    * Perform search and highlight on all searchable items
    */
@@ -58,11 +102,16 @@
     const terms = initActiveTerms();
 
     const searchInput = document.getElementById("searchInput");
+    const isCjkTerm = (term) => /[\u3400-\u9FFF]/.test(term);
     const manualTerms = searchInput
-      ? searchInput.value.split(",").map((t) => t.trim().toLowerCase()).filter((t) => t.length >= 3)
+      ? searchInput.value
+        .split(/[,\uFF0C]/)
+        .map((term) => term.trim().toLowerCase())
+        .filter((term) => term.length > 0 && (isCjkTerm(term) ? term.length >= 1 : term.length >= 3))
       : [];
 
     const searchTerms = [...manualTerms, ...terms];
+    const hasSearch = searchTerms.length > 0;
 
     const queueItems = document.querySelectorAll(
       ".queueItem, .packItem > div, .voucherContainer, .tagContainer, .bossContainer"
@@ -70,19 +119,27 @@
 
     queueItems.forEach((item) => {
       const isTextOnly = item.classList.contains("queueItemTextOnly");
-      let itemText = item.textContent.toLowerCase();
-      let nameEl = null;
-      let enName = null;
+      let nameEl = item.querySelector(".cardName, .standardCardName, .voucherName, .tagName, .bossName, .packName");
+      let enName = item.dataset.searchText || item.dataset.enName || "";
+      if (!enName && nameEl) enName = nameEl.dataset.enName || nameEl.dataset.originalText || "";
+
+      let itemText = item.dataset.searchCorpus || "";
+      if (!itemText) {
+        const localizedName = (nameEl?.textContent || "").trim();
+        itemText = `${enName || ""} ${localizedName} ${(item.textContent || "")}`.toLowerCase();
+        item.dataset.searchCorpus = itemText;
+      }
 
       if (isTextOnly) {
         nameEl = item.querySelector(".cardName");
         if (nameEl) {
           enName = nameEl.dataset.enName || nameEl.dataset.originalText || nameEl.textContent || "";
-          itemText = enName.toLowerCase();
+          itemText = item.dataset.searchCorpusTextOnly || `${enName} ${nameEl.dataset.defaultText || nameEl.textContent || ""}`.toLowerCase();
+          item.dataset.searchCorpusTextOnly = itemText;
         }
       }
 
-      const shouldHighlight = searchTerms.length > 0 && searchTerms.some((term) => itemText.includes(term));
+      const shouldHighlight = hasSearch && searchTerms.some((term) => itemText.includes(term));
 
       if (shouldHighlight) {
         const faceEmoji = item.dataset.faceEmoji || "";
@@ -123,7 +180,7 @@
           nameEl.textContent = displayText;
           nameEl.classList.add("cardName-cn");
         } else {
-          nameEl.textContent = nameEl.dataset.originalText || nameEl.textContent;
+          nameEl.textContent = nameEl.dataset.defaultText || nameEl.dataset.originalText || nameEl.textContent;
           nameEl.classList.remove("cardName-cn");
         }
       }
@@ -140,12 +197,7 @@
   function createSearchUI() {
     const utils = getUtils();
     const data = getData();
-    const createElement = utils.createElement || ((tag, cls, txt) => {
-      const el = document.createElement(tag);
-      if (cls) el.className = cls;
-      if (txt !== undefined) el.textContent = txt;
-      return el;
-    });
+    const createElement = utils.createElement || ((tag, cls, txt) => Object.assign(document.createElement(tag), cls && { className: cls }, txt !== undefined && { textContent: txt }));
 
     const {
       trackedJokers = [],
@@ -162,9 +214,9 @@
     const searchInput = createElement("input", null);
     searchInput.type = "text";
     searchInput.id = "searchInput";
-    searchInput.placeholder = "Enter search terms (comma-separated)";
+    searchInput.placeholder = t("Enter search terms (use , or ，)");
 
-    const searchLabel = createElement("label", null, "Press enter to search (comma separated, min 3 chars)");
+    const searchLabel = createElement("label", null, t("Press Enter to search (use , or ，; Chinese min 1 char, English min 3 chars)"));
     searchLabel.setAttribute("for", "searchInput");
 
     const searchContainer = createElement("div", "search-container");
@@ -173,11 +225,11 @@
     // Toggle buttons container
     const toggleContainer = createElement("div", "toggle-container");
     const toggleGroups = [
-      { title: "Jokers:", items: trackedJokers, category: "joker" },
-      { title: "Spectrals:", items: trackedSpectrals },
-      { title: "Vouchers:", items: trackedVouchers },
-      { title: "Tags:", items: trackedTags },
-      { title: "Bosses:", items: trackedBosses },
+      { title: t("Jokers:"), items: trackedJokers, category: "joker" },
+      { title: t("Spectrals:"), items: trackedSpectrals },
+      { title: t("Vouchers:"), items: trackedVouchers },
+      { title: t("Tags:"), items: trackedTags },
+      { title: t("Bosses:"), items: trackedBosses },
     ];
 
     toggleGroups.forEach((group) => {
@@ -186,9 +238,14 @@
       groupDiv.appendChild(titleSpan);
 
       group.items.forEach((term) => {
-        const button = createElement("button", "toggle-button active", term);
+        const localizedTerm = utils.isChineseLocale?.()
+          ? (utils.translateGameText ? utils.translateGameText(term) : term)
+          : term;
+        const button = createElement("button", "toggle-button active", localizedTerm);
         button.type = "button";
         const lower = term.toLowerCase();
+        button.dataset.termLower = lower;
+        allFilterButtons.add(button);
 
         if (group.category === "joker") {
           button.dataset.filterCategory = "joker";
@@ -198,13 +255,8 @@
 
         button.addEventListener("click", () => {
           const terms = initActiveTerms();
-          const isActive = button.classList.toggle("active");
-          if (isActive) {
-            terms.add(lower);
-          } else {
-            terms.delete(lower);
-          }
-          searchAndHighlight();
+          setToggleButtonState(button, !button.classList.contains("active"), terms);
+          scheduleSearchAndHighlight();
         });
 
         groupDiv.appendChild(button);
@@ -215,11 +267,31 @@
 
     // Filter panel (collapsible)
     const filterPanel = createElement("details", "filter-panel");
-    const filterSummary = createElement("summary", "filter-summary", "Search Filters");
-    filterPanel.append(filterSummary, toggleContainer);
+    const filterSummary = createElement("summary", "filter-summary", t("Search Filters"));
+    const filterActions = createElement("div", "filter-actions");
+    const selectAllButton = createElement("button", "filter-action-button", t("Select all"));
+    selectAllButton.type = "button";
+    const removeAllButton = createElement("button", "filter-action-button", t("Remove all"));
+    removeAllButton.type = "button";
+
+    const setAllFilterButtons = (isActive) => {
+      const terms = initActiveTerms();
+      allFilterButtons.forEach((button) => {
+        if (button.disabled) return;
+        setToggleButtonState(button, isActive, terms);
+      });
+      setEmojiIconFilterAll(isActive);
+      scheduleSearchAndHighlight();
+    };
+
+    selectAllButton.addEventListener("click", () => setAllFilterButtons(true));
+    removeAllButton.addEventListener("click", () => setAllFilterButtons(false));
+    filterActions.append(selectAllButton, removeAllButton);
+
+    filterPanel.append(filterSummary, filterActions, toggleContainer);
 
     // Event listeners
-    searchInput.addEventListener("input", searchAndHighlight);
+    searchInput.addEventListener("input", scheduleSearchAndHighlight);
     searchInput.addEventListener("keydown", (e) => {
       if (e.key === "Enter") {
         const highlighted = document.querySelector(".highlight");
@@ -256,15 +328,13 @@
       const currentlyActive = btn.classList.contains("active");
 
       if (shouldBeOn && !currentlyActive) {
-        btn.classList.add("active");
-        terms.add(lower);
+        setToggleButtonState(btn, true, terms);
       } else if (!shouldBeOn && currentlyActive) {
-        btn.classList.remove("active");
-        terms.delete(lower);
+        setToggleButtonState(btn, false, terms);
       }
     });
 
-    searchAndHighlight();
+    scheduleSearchAndHighlight();
   }
 
   /**
