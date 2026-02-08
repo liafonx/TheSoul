@@ -30,9 +30,3 @@ textarea {
   height: 100%;
   overflow: auto;
 }
-
-.clearfix::after {
-  content: "";
-  clear: both;
-  display: table;
-}

@@ -21,6 +21,48 @@
   // Callbacks for search changes
   const searchChangeCallbacks = new Set();
   let pendingHighlightFrame = 0;
+  let searchScope = null;
+  let searchItemsDirty = true;
+  let cachedSearchItems = [];
+  let cachedSearchRoot = null;
+
+  const SEARCHABLE_SELECTOR =
+    ".queueItem, .packCards > div, .voucherContainer, .tagContainer, .bossContainer";
+
+  function markSearchDomDirty() {
+    searchItemsDirty = true;
+  }
+
+  function setSearchScope(scopeEl) {
+    searchScope = scopeEl || null;
+    markSearchDomDirty();
+  }
+
+  function getSearchableItems() {
+    if (searchScope && !searchScope.isConnected) {
+      searchScope = null;
+      searchItemsDirty = true;
+    }
+
+    const root =
+      document.getElementById("scrollingContainer") ||
+      searchScope ||
+      document;
+
+    if (
+      !searchItemsDirty &&
+      cachedSearchRoot === root &&
+      cachedSearchItems.length &&
+      cachedSearchItems.every((item) => item?.isConnected)
+    ) {
+      return cachedSearchItems;
+    }
+
+    cachedSearchRoot = root;
+    cachedSearchItems = Array.from(root.querySelectorAll(SEARCHABLE_SELECTOR));
+    searchItemsDirty = false;
+    return cachedSearchItems;
+  }
 
   function scheduleSearchAndHighlight() {
     if (pendingHighlightFrame) return;
@@ -35,20 +77,7 @@
    */
   function initActiveTerms() {
     if (activeToggleTerms) return activeToggleTerms;
-
-    const data = getData();
-    const {
-      trackedJokers = [],
-      trackedSpectrals = [],
-      trackedTags = [],
-      trackedBosses = [],
-      trackedVouchers = [],
-    } = data;
-
-    activeToggleTerms = new Set(
-      [...trackedJokers, ...trackedSpectrals, ...trackedTags, ...trackedBosses, ...trackedVouchers]
-        .map((term) => term.toLowerCase())
-    );
+    activeToggleTerms = new Set();
 
     return activeToggleTerms;
   }
@@ -71,26 +100,42 @@
     else terms.delete(lower);
   }
 
-  function setEmojiIconFilterAll(isActive) {
-    const utils = getUtils();
-    const { summaryFaceEmojiMap } = utils;
+  function syncSummaryFilterButtons() {
     const filter = global.summaryEmojiFilter || {};
-    Object.keys(summaryFaceEmojiMap || {}).forEach((emoji) => {
-      filter[emoji] = Boolean(isActive);
+    const filterContent = document.getElementById("summaryFilterContent");
+    if (!filterContent) return;
+    filterContent.querySelectorAll(".summaryFilterButton").forEach((btn) => {
+      const icon = btn.querySelector(".summaryFilterEmoji");
+      if (!icon) return;
+      const emoji = (icon.textContent || "").trim();
+      if (!(emoji in filter)) return;
+      btn.classList.toggle("active", filter[emoji] !== false);
+    });
+  }
+
+  function syncSearchFiltersToEmoji() {
+    const utils = getUtils();
+    const { summaryFaceCardMap } = utils;
+    const filter = global.summaryEmojiFilter || {};
+    const terms = initActiveTerms();
+    if (!summaryFaceCardMap || !Object.keys(summaryFaceCardMap).length) return;
+
+    const emojiCards = {};
+    jokerFilterButtons.forEach((_btn, engName) => {
+      const info = summaryFaceCardMap[engName];
+      const emoji = info?.emoji;
+      if (!emoji) return;
+      if (!emojiCards[emoji]) emojiCards[emoji] = [];
+      emojiCards[emoji].push(engName);
     });
 
-    const filterContent = document.getElementById("summaryFilterContent");
-    if (filterContent) {
-      filterContent.querySelectorAll(".summaryFilterButton").forEach((btn) => {
-        const icon = btn.querySelector(".summaryFilterEmoji");
-        if (!icon) return;
-        const emoji = (icon.textContent || "").trim();
-        if (!(emoji in filter)) return;
-        btn.classList.toggle("active", filter[emoji] !== false);
-      });
-    }
+    Object.entries(emojiCards).forEach(([emoji, cards]) => {
+      filter[emoji] = cards.some((name) => terms.has(name.toLowerCase()));
+    });
 
+    syncSummaryFilterButtons();
     global.applySummaryEmojiFilter?.();
+    scheduleSearchAndHighlight();
   }
 
   /**
@@ -98,7 +143,7 @@
    */
   function searchAndHighlight() {
     const utils = getUtils();
-    const { summaryFaceEmojiMap, summaryFaceCardMap } = utils;
+    const { summaryFaceCardMap } = utils;
     const terms = initActiveTerms();
 
     const searchInput = document.getElementById("searchInput");
@@ -110,12 +155,11 @@
         .filter((term) => term.length > 0 && (isCjkTerm(term) ? term.length >= 1 : term.length >= 3))
       : [];
 
-    const searchTerms = [...manualTerms, ...terms];
-    const hasSearch = searchTerms.length > 0;
+    const trackedTerms = [...terms];
+    const hasManualSearch = manualTerms.length > 0;
+    const hasTrackedSearch = trackedTerms.length > 0;
 
-    const queueItems = document.querySelectorAll(
-      ".queueItem, .packItem > div, .voucherContainer, .tagContainer, .bossContainer"
-    );
+    const queueItems = getSearchableItems();
 
     queueItems.forEach((item) => {
       const isTextOnly = item.classList.contains("queueItemTextOnly");
@@ -139,26 +183,18 @@
         }
       }
 
-      const shouldHighlight = hasSearch && searchTerms.some((term) => itemText.includes(term));
+      const matchesManual = hasManualSearch && manualTerms.some((term) => itemText.includes(term));
+      const matchesTracked = hasTrackedSearch && trackedTerms.some((term) => itemText.includes(term));
+      const shouldHighlight = matchesManual || matchesTracked;
 
       if (shouldHighlight) {
-        const faceEmoji = item.dataset.faceEmoji || "";
-        const isNegativeFace = item.dataset.negativeFace === "1";
-        let color = "";
-        if (isNegativeFace) {
-          color = "#f5a5a5";
-        } else if (faceEmoji && summaryFaceEmojiMap?.[faceEmoji]) {
-          color = summaryFaceEmojiMap[faceEmoji].color || "";
-        }
-        if (color) {
-          item.style.setProperty("--highlight-color", color);
-        } else {
-          item.style.removeProperty("--highlight-color");
-        }
         item.classList.add("highlight");
+        item.classList.toggle("highlight-search", matchesManual);
+        item.classList.toggle("highlight-track", !matchesManual && matchesTracked);
       } else {
         item.classList.remove("highlight");
-        item.style.removeProperty("--highlight-color");
+        item.classList.remove("highlight-track");
+        item.classList.remove("highlight-search");
       }
 
       // Swap card name to Chinese when highlighted (text-only mode)
@@ -197,7 +233,10 @@
   function createSearchUI() {
     const utils = getUtils();
     const data = getData();
-    const createElement = utils.createElement || ((tag, cls, txt) => Object.assign(document.createElement(tag), cls && { className: cls }, txt !== undefined && { textContent: txt }));
+    const createElement = utils.createElement;
+    if (typeof createElement !== "function") {
+      throw new Error("BalatroUtils.createElement is unavailable.");
+    }
 
     const {
       trackedJokers = [],
@@ -241,7 +280,7 @@
         const localizedTerm = utils.isChineseLocale?.()
           ? (utils.translateGameText ? utils.translateGameText(term) : term)
           : term;
-        const button = createElement("button", "toggle-button active", localizedTerm);
+        const button = createElement("button", "toggle-button", localizedTerm);
         button.type = "button";
         const lower = term.toLowerCase();
         button.dataset.termLower = lower;
@@ -256,7 +295,7 @@
         button.addEventListener("click", () => {
           const terms = initActiveTerms();
           setToggleButtonState(button, !button.classList.contains("active"), terms);
-          scheduleSearchAndHighlight();
+          syncSearchFiltersToEmoji();
         });
 
         groupDiv.appendChild(button);
@@ -266,13 +305,16 @@
     });
 
     // Filter panel (collapsible)
-    const filterPanel = createElement("details", "filter-panel");
-    const filterSummary = createElement("summary", "filter-summary", t("Search Filters"));
+    const filterPanel = createElement("div", "filter-panel");
+    const filterSummary = createElement("button", "filter-summary", t("Search Filters"));
+    filterSummary.type = "button";
+    filterSummary.setAttribute("aria-expanded", "false");
     const filterActions = createElement("div", "filter-actions");
     const selectAllButton = createElement("button", "filter-action-button", t("Select all"));
     selectAllButton.type = "button";
     const removeAllButton = createElement("button", "filter-action-button", t("Remove all"));
     removeAllButton.type = "button";
+    const filterBody = createElement("div", "filter-panel-body");
 
     const setAllFilterButtons = (isActive) => {
       const terms = initActiveTerms();
@@ -280,27 +322,37 @@
         if (button.disabled) return;
         setToggleButtonState(button, isActive, terms);
       });
-      setEmojiIconFilterAll(isActive);
-      scheduleSearchAndHighlight();
+      syncSearchFiltersToEmoji();
     };
 
     selectAllButton.addEventListener("click", () => setAllFilterButtons(true));
     removeAllButton.addEventListener("click", () => setAllFilterButtons(false));
     filterActions.append(selectAllButton, removeAllButton);
 
-    filterPanel.append(filterSummary, filterActions, toggleContainer);
+    const setFilterPanelOpen = (isOpen) => {
+      const open = Boolean(isOpen);
+      filterPanel.classList.toggle("is-open", open);
+      filterSummary.setAttribute("aria-expanded", String(open));
+      filterBody.hidden = !open;
+    };
+
+    setFilterPanelOpen(false);
+    filterSummary.addEventListener("click", () => setFilterPanelOpen(!filterPanel.classList.contains("is-open")));
+    filterBody.append(filterActions, toggleContainer);
+    filterPanel.append(filterSummary, filterBody);
 
     // Event listeners
     searchInput.addEventListener("input", scheduleSearchAndHighlight);
     searchInput.addEventListener("keydown", (e) => {
       if (e.key === "Enter") {
-        const highlighted = document.querySelector(".highlight");
-        if (highlighted) {
-          highlighted.scrollIntoView({ behavior: "smooth", block: "center", inline: "center" });
-        }
+        e.preventDefault();
+        e.stopPropagation();
+        document.getElementById("searchFloatingWindow")?.classList.remove("visible");
+        searchInput.blur();
       }
     });
 
+    syncSearchFiltersToEmoji();
     return { container: searchContainer, filterPanel };
   }
 
@@ -316,25 +368,41 @@
 
     if (!summaryFaceCardMap || !Object.keys(summaryFaceCardMap).length) return;
 
+    const emojiCards = {};
     Object.entries(summaryFaceCardMap).forEach(([engName, info]) => {
-      const emoji = info.emoji;
+      const emoji = info?.emoji;
       if (!emoji || !(emoji in filter)) return;
-
-      const shouldBeOn = filter[emoji] !== false;
-      const btn = jokerFilterButtons.get(engName);
-      if (!btn) return;
-
-      const lower = engName.toLowerCase();
-      const currentlyActive = btn.classList.contains("active");
-
-      if (shouldBeOn && !currentlyActive) {
-        setToggleButtonState(btn, true, terms);
-      } else if (!shouldBeOn && currentlyActive) {
-        setToggleButtonState(btn, false, terms);
-      }
+      if (!emojiCards[emoji]) emojiCards[emoji] = [];
+      emojiCards[emoji].push(engName);
     });
 
+    let changed = false;
+    Object.entries(emojiCards).forEach(([emoji, cards]) => {
+      const shouldBeOn = filter[emoji] !== false;
+      const buttons = cards.map((name) => jokerFilterButtons.get(name)).filter(Boolean);
+      if (!buttons.length) return;
+
+      if (!shouldBeOn) {
+        buttons.forEach((btn) => {
+          if (btn.classList.contains("active")) {
+            setToggleButtonState(btn, false, terms);
+            changed = true;
+          }
+        });
+        return;
+      }
+
+      const allInactive = buttons.every((btn) => !btn.classList.contains("active"));
+      if (!allInactive) return;
+      buttons.forEach((btn) => {
+        setToggleButtonState(btn, true, terms);
+        changed = true;
+      });
+    });
+
+    syncSummaryFilterButtons();
     scheduleSearchAndHighlight();
+    return changed;
   }
 
   /**
@@ -344,13 +412,21 @@
     return initActiveTerms();
   }
 
+  function hasActiveTrackingTerms() {
+    return getActiveToggleTerms().size > 0;
+  }
+
   // Export search module
   global.BalatroSearch = {
     searchAndHighlight,
+    scheduleSearchAndHighlight,
     createSearchUI,
     onSearchChange,
     syncEmojiFilterToSearch,
     getActiveToggleTerms,
+    hasActiveTrackingTerms,
+    setSearchScope,
+    markSearchDomDirty,
     jokerFilterButtons,
   };
 })(window);

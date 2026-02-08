@@ -16,43 +16,43 @@
     generatedLocale = root.BalatroLocale_zhCN;
   }
 
-  function translateKey(key, fallback) {
+  function translateKey(key) {
     if (root?.BalatroI18n?.t) {
       const translated = root.BalatroI18n.t(key, "zh-CN");
       if (translated && translated !== key) return translated;
     }
     if (generatedLocale && generatedLocale[key]) return generatedLocale[key];
-    if (typeof fallback === "string" && fallback.length) return fallback;
     return key;
   }
 
   // Emoji categories for jokers used in summaries.
   // Each entry: emoji -> { color, cards, cardColors? }
   const SUMMARY_FACE_EMOJI = Object.freeze({
-    "👥": { color: "#76b1ff", cards: ["Blueprint", "Brainstorm", "Invisible Joker"] },
+    "👥": { color: "rgb(119, 198, 255)", cards: ["Blueprint", "Brainstorm", "Invisible Joker"] },
     "🎪": { color: "#ff7a7a", cards: ["Showman"] },
     "💿": { color: "#5fd4d4", cards: ["Seance", "Sixth Sense"] },
-    "👑": { color: "#ffd36a", cards: ["Baron", "Mime"] },
+    "👑": { color: "rgb(236, 194, 93)", cards: ["Baron", "Mime"] },
     "🥤": { color: "#ff7a8a", cards: ["Diet Cola"] },
     "🥊": { color: "", cards: ["Luchador"] },
-    "5️⃣": { color: "#e867b2ff", cards: ["Dusk", "Sock and Buskin", "The Idol"] },
+    "5️⃣": { color: "#e867b2ff", cards: ["Dusk", "Sock and Buskin", "The Idol", "Bloodstone"] },
     "🧬": { color: "#c689ff", cards: ["DNA"] },
     "🃏": {
-      color: "",
-      cards: ["Burglar", "Turtle Bean", "Juggler", "Troubadour"],
-      cardColors: { Burglar: "rgb(255, 122, 138)" },
+      color: "#79c15aff",
+      cards: ["Turtle Bean", "Troubadour"],
+      cardColors: {},
     },
-    "💴": { color: "#79c15aff", cards: ["Reserved Parking", "Golden Ticket"] },
-    "🧱": { color: "", cards: ["Photograph", "Hanging Chad"] },
-    "🪙": { color: "", cards: ["Certificate"] },
+    "💰": { color: "", cards: ["Reserved Parking", "Golden Ticket", "Mail-In Rebate"] }, // 
+    // "🧱": { color: "", cards: ["Photograph", "Hanging Chad"] },
+    "🪙": { color: "var(--ui-text-dim)", cards: ["Certificate"] },
+    "🥷": { color: "#ff7a8a", cards: ["Burglar"] },
   });
 
-  const LEGACY_SPECTRAL_TRANSLATIONS = Object.freeze({
-    Cryptid: "神秘生物",
-    "Deja Vu": "既视感(红封）",
-    Ectoplasm: "灵质(负片)",
-    "The Soul": "灵魂",
-  });
+  const TRACKED_SPECTRALS = Object.freeze([
+    "Cryptid",
+    "Deja Vu",
+    "Ectoplasm",
+    "The Soul",
+  ]);
 
   const TAG_EMOJI = Object.freeze({
     "Negative Tag": "🎞️",
@@ -77,46 +77,33 @@
     "Verdant Leaf",
   ]);
 
-  const LEGACY_JOKER_TRANSLATIONS = Object.freeze({
-    DNA: "DNA",
-    Blueprint: "蓝图",
-    Baron: "男爵",
-    Brainstorm: "头脑",
-    Mime: "哑剧",
-    Showman: "马戏团",
-    Burglar: "窃贼",
-    "Reserved Parking": "车位",
-    "Turtle Bean": "黑龟豆",
-    Seance: "通灵",
-    "Sixth Sense": "第六感",
-    "Diet Cola": "可乐",
-    "Invisible Joker": "隐形",
-    Photograph: "照片",
-    "Golden Ticket": "门票",
-    Certificate: "证书",
-    "Hanging Chad": "选票",
-    Dusk: "黄昏",
-    "Sock and Buskin": "喜与悲",
-    "The Idol": "偶像",
-    Luchador: "摔角手",
-    Juggler: "杂耍",
-    Troubadour: "吟游诗人",
-  });
+  const TRACKED_JOKERS = Object.freeze(
+    [...new Set(
+      Object.values(SUMMARY_FACE_EMOJI).flatMap((value) => {
+        if (!value || typeof value !== "object") return [];
+        if (Array.isArray(value.cards)) return value.cards;
+        if (value.cards && typeof value.cards === "object") {
+          return Object.keys(value.cards);
+        }
+        return [];
+      })
+    )]
+  );
 
   const JOKER_TRANSLATIONS = Object.freeze(
     Object.fromEntries(
-      Object.entries(LEGACY_JOKER_TRANSLATIONS).map(([name, fallback]) => [
+      TRACKED_JOKERS.map((name) => [
         name,
-        translateKey(name, fallback),
+        translateKey(name),
       ])
     )
   );
 
   const SPECTRAL_TRANSLATIONS = Object.freeze(
     Object.fromEntries(
-      Object.entries(LEGACY_SPECTRAL_TRANSLATIONS).map(([name, fallback]) => [
+      TRACKED_SPECTRALS.map((name) => [
         name,
-        translateKey(name, fallback),
+        translateKey(name),
       ])
     )
   );
@@ -165,7 +152,7 @@
     const emoji = TAG_EMOJI[tagName] || "";
     const negPrefix = tagName === "Negative Tag" && isFirstTag ? "‼️" : "";
     if (chineseOnly) {
-      const translated = translateKey(tagName, tagName);
+      const translated = translateKey(tagName);
       return `${negPrefix}${emoji}${translated}`;
     }
     return `${negPrefix}${emoji}${tagName}`;
@@ -176,7 +163,7 @@
     if (!isTrackedVoucher(voucherName)) return null;
     const emoji = VOUCHER_EMOJI[voucherName] || "";
     if (chineseOnly) {
-      const translated = translateKey(voucherName, voucherName);
+      const translated = translateKey(voucherName);
       return `${emoji}${translated}`;
     }
     return emoji ? `${emoji}${voucherName}` : voucherName;
@@ -187,7 +174,7 @@
     if (!isTrackedBoss(bossName)) return null;
     const alert = "☠️";
     if (chineseOnly) {
-      const translated = translateKey(bossName, bossName);
+      const translated = translateKey(bossName);
       return `${alert}${translated}`;
     }
     return `${alert}${bossName}`;
@@ -195,13 +182,13 @@
 
   function getTagDisplay(tagName) {
     const emoji = TAG_EMOJI[tagName] || "";
-    const translated = translateKey(tagName, tagName);
+    const translated = translateKey(tagName);
     return emoji ? `${emoji} ${translated}` : translated;
   }
 
   function getVoucherDisplay(voucherName) {
     const emoji = VOUCHER_EMOJI[voucherName] || "";
-    const translated = translateKey(voucherName, voucherName);
+    const translated = translateKey(voucherName);
     return emoji ? `${emoji} ${translated}` : translated;
   }
 
@@ -215,8 +202,10 @@
     KING_DISPLAY,
     SPECTRAL_PACK_PREFIXES,
     BUFFOON_PACK_PREFIXES,
-    JOKER_NAMES: Object.freeze(Object.keys(JOKER_TRANSLATIONS)),
-    SPECTRAL_NAMES: Object.freeze(Object.keys(SPECTRAL_TRANSLATIONS)),
+    TRACKED_JOKERS,
+    TRACKED_SPECTRALS,
+    JOKER_NAMES: TRACKED_JOKERS,
+    SPECTRAL_NAMES: TRACKED_SPECTRALS,
     TAG_NAMES: Object.freeze(Object.keys(TAG_EMOJI)),
     VOUCHER_NAMES: Object.freeze(Object.keys(VOUCHER_EMOJI)),
     BOSSES: ALERT_BOSSES,

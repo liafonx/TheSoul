@@ -11,55 +11,65 @@ if (hasNodeEnv) {
   try {
     sharedLists = require("./balatro_lists.js");
   } catch (err) {
-    console.warn("Failed to load balatro_lists.js:", err.message);
+    throw new Error(`Failed to load balatro_lists.js: ${err.message}`);
   }
 } else if (typeof globalThis !== "undefined" && globalThis.BalatroSharedLists) {
   sharedLists = globalThis.BalatroSharedLists;
 }
 
 if (!sharedLists) {
-  console.warn("BalatroSharedLists not found. Using empty defaults.");
-  sharedLists = {};
+  throw new Error("BalatroSharedLists not found.");
 }
 
+const REQUIRED_SHARED_KEYS = [
+  "JOKER_TRANSLATIONS",
+  "SPECTRAL_TRANSLATIONS",
+  "TAG_EMOJI",
+  "ALERT_BOSSES",
+  "VOUCHER_EMOJI",
+  "JOKER_NAMES",
+  "SPECTRAL_NAMES",
+  "TAG_NAMES",
+  "VOUCHER_NAMES",
+  "SUMMARY_FACE_EMOJI",
+  "KING_DISPLAY",
+  "SPECTRAL_PACK_PREFIXES",
+  "BUFFOON_PACK_PREFIXES",
+  "translateKey",
+  "isTrackedTag",
+  "isTrackedVoucher",
+  "isTrackedBoss",
+  "formatSummaryTag",
+  "formatSummaryVoucher",
+  "formatSummaryBoss",
+];
+REQUIRED_SHARED_KEYS.forEach((key) => {
+  if (!(key in sharedLists)) {
+    throw new Error(`BalatroSharedLists missing required key: ${key}`);
+  }
+});
+
 const {
-  JOKER_TRANSLATIONS = {},
-  SPECTRAL_TRANSLATIONS = {},
-  TAG_EMOJI = {},
-  ALERT_BOSSES = [],
-  VOUCHER_EMOJI = {},
-  JOKER_NAMES = [],
-  SPECTRAL_NAMES = [],
-  TAG_NAMES = [],
-  VOUCHER_NAMES = [],
-  SUMMARY_FACE_EMOJI = {},
-  KING_DISPLAY = {},
-  SPECTRAL_PACK_PREFIXES = [],
-  BUFFOON_PACK_PREFIXES = [],
-  translateKey = (_key, fallback) => fallback ?? _key,
-  isTrackedTag = (tagName) => Boolean(TAG_EMOJI[tagName]),
-  isTrackedVoucher = (voucherName) => Boolean(VOUCHER_EMOJI[voucherName]),
-  isTrackedBoss = (bossName) => ALERT_BOSSES.includes(bossName),
-  formatSummaryTag = (tagName, options = {}) => {
-    const { chineseOnly = false, isFirstTag = false } = options;
-    const emoji = TAG_EMOJI[tagName] || "";
-    const negPrefix = tagName === "Negative Tag" && isFirstTag ? "‼️" : "";
-    if (chineseOnly) return `${negPrefix}${emoji}${translateKey(tagName, tagName)}`;
-    return emoji ? `${negPrefix}${emoji}${tagName}` : tagName;
-  },
-  formatSummaryVoucher = (voucherName, options = {}) => {
-    const { chineseOnly = false } = options;
-    const emoji = VOUCHER_EMOJI[voucherName] || "";
-    if (!emoji) return voucherName || null;
-    if (chineseOnly) return `${emoji}${translateKey(voucherName, voucherName)}`;
-    return `${emoji}${voucherName}`;
-  },
-  formatSummaryBoss = (bossName, options = {}) => {
-    const { chineseOnly = false } = options;
-    if (!ALERT_BOSSES.includes(bossName)) return null;
-    if (chineseOnly) return `☠️${translateKey(bossName, bossName)}`;
-    return `☠️${bossName}`;
-  },
+  JOKER_TRANSLATIONS,
+  SPECTRAL_TRANSLATIONS,
+  TAG_EMOJI,
+  ALERT_BOSSES,
+  VOUCHER_EMOJI,
+  JOKER_NAMES,
+  SPECTRAL_NAMES,
+  TAG_NAMES,
+  VOUCHER_NAMES,
+  SUMMARY_FACE_EMOJI,
+  KING_DISPLAY,
+  SPECTRAL_PACK_PREFIXES,
+  BUFFOON_PACK_PREFIXES,
+  translateKey,
+  isTrackedTag,
+  isTrackedVoucher,
+  isTrackedBoss,
+  formatSummaryTag,
+  formatSummaryVoucher,
+  formatSummaryBoss,
 } = sharedLists;
 
 // Pre-compiled regex patterns
@@ -231,7 +241,7 @@ class AnteData {
     // Spectrals
     if (this.spectralCards.length) {
       const spectrals = this.spectralCards.map((name) => {
-        const cn = translateKey(name, SPECTRAL_TRANSLATIONS[name] || name);
+        const cn = translateKey(name);
         return chineseOnly ? cn : name;
       });
       parts.push(`💠${spectrals.join("、")}`);
@@ -246,7 +256,7 @@ class AnteData {
     // Buffoon jokers
     if (this.buffoonJesters.length) {
       const buffoons = this.buffoonJesters.map((name, i) => {
-        const cn = translateKey(name, JOKER_TRANSLATIONS[name] || name);
+        const cn = translateKey(name);
         const face = getFaceEmoji(name);
         const base = chineseOnly ? cn : name;
         return i === 0 ? `👝${face}${base}` : `${face}${base}`;
@@ -260,7 +270,7 @@ class AnteData {
         .slice()
         .sort((a, b) => a.order - b.order)
         .map(({ name, negative, index }) => {
-          const cn = translateKey(name, JOKER_TRANSLATIONS[name] || name);
+          const cn = translateKey(name);
           const face = getFaceEmoji(name);
           const neg = negative ? "‼️" : "";
           return chineseOnly

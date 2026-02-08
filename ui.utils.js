@@ -12,7 +12,7 @@
   const alertBosses = sharedLists.ALERT_BOSSES || [];
   const spectralNames = sharedLists.SPECTRAL_NAMES || [];
   const jokerTranslations = sharedLists.JOKER_TRANSLATIONS || {};
-  const translateKey = sharedLists.translateKey || ((key, fallback) => fallback ?? key);
+  const translateKey = sharedLists.translateKey || ((key) => key);
   const gameTranslations = sharedLists.GAME_TRANSLATIONS || {};
   const reverseGameTranslations = {};
   const CACHE_LIMIT = 4096;
@@ -63,8 +63,8 @@
     if (!cardMatch) return name;
     const rank = cardMatch[1];
     const suit = cardMatch[2];
-    const rankCn = translateKey(rank, rank);
-    const suitCn = translateKey(suit, suit);
+    const rankCn = translateKey(rank);
+    const suitCn = translateKey(suit);
     return `${suitCn}${rankCn}`;
   }
 
@@ -122,7 +122,7 @@
     const standard = localizeStandardCardName(normalized);
     if (standard !== normalized) return standard;
 
-    const direct = translateKey(normalized, normalized);
+    const direct = translateKey(normalized);
     if (direct !== normalized) return direct;
 
     return raw;
@@ -154,7 +154,7 @@
     summaryFaceEmojiMap[emoji] = { color, cards, cardColors };
     summaryEmojiMap[emoji] = { color, cards: [...cards], cardColors: { ...cardColors } };
     cards.forEach((name) => {
-      const cn = translateKey(name, jokerTranslations[name] || name);
+      const cn = translateKey(name);
       const cardColor = cardColors[name] || color;
       summaryFaceCardMap[name] = { emoji, color: cardColor, cn };
     });
@@ -180,28 +180,28 @@
     if (!emoji) return;
     tagNameEmojiMap[name] = emoji;
     addEmojiCard(emoji, name, "");
-    mappedEmojiEntries.push({ englishName: name, localizedName: translateKey(name, name), emoji });
+    mappedEmojiEntries.push({ englishName: name, localizedName: translateKey(name), emoji });
   });
 
   Object.entries(voucherEmojiMap).forEach(([name, emoji]) => {
     if (!emoji) return;
     voucherNameEmojiMap[name] = emoji;
     addEmojiCard(emoji, name, "");
-    mappedEmojiEntries.push({ englishName: name, localizedName: translateKey(name, name), emoji });
+    mappedEmojiEntries.push({ englishName: name, localizedName: translateKey(name), emoji });
   });
 
   alertBosses.forEach((name) => {
     if (!name) return;
     bossNameEmojiMap[name] = "☠️";
     addEmojiCard("☠️", name, "#ff7a7a");
-    mappedEmojiEntries.push({ englishName: name, localizedName: translateKey(name, name), emoji: "☠️" });
+    mappedEmojiEntries.push({ englishName: name, localizedName: translateKey(name), emoji: "☠️" });
   });
 
   spectralNames.forEach((name) => {
     if (!name) return;
     spectralNameEmojiMap[name] = "💠";
     addEmojiCard("💠", name, "#5fd4d4");
-    mappedEmojiEntries.push({ englishName: name, localizedName: translateKey(name, name), emoji: "💠" });
+    mappedEmojiEntries.push({ englishName: name, localizedName: translateKey(name), emoji: "💠" });
   });
 
   addEmojiCard("♔", "King Cards", "#ffd36a");

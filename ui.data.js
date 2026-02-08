@@ -319,34 +319,22 @@
 
   const sortedCopy = (list) => Array.from(list).sort((a, b) => a.localeCompare(b));
 
-  const jokersSource =
-    sharedLists.JOKER_NAMES ||
-    sharedLists.jokers ||
-    Object.keys(sharedLists.JOKER_TRANSLATIONS || {});
-  const spectralsSource =
-    sharedLists.SPECTRAL_NAMES ||
-    sharedLists.spectrals ||
-    Object.keys(sharedLists.SPECTRAL_TRANSLATIONS || {});
-  const tagsSource =
-    sharedLists.TAG_NAMES ||
-    sharedLists.tags ||
-    Object.keys(sharedLists.TAG_EMOJI || {});
-  const vouchersSource =
-    sharedLists.VOUCHER_NAMES ||
-    sharedLists.vouchers ||
-    Object.keys(sharedLists.VOUCHER_EMOJI || {});
-  const bossesSource =
-    sharedLists.BOSSES ||
-    sharedLists.ALERT_BOSSES ||
-    [];
+  const jokersSource = sharedLists.JOKER_NAMES;
+  const spectralsSource = sharedLists.SPECTRAL_NAMES;
+  const tagsSource = sharedLists.TAG_NAMES;
+  const vouchersSource = sharedLists.VOUCHER_NAMES;
+  const bossesSource = sharedLists.ALERT_BOSSES;
 
   if (
-    !jokersSource.length ||
-    !spectralsSource.length ||
-    !tagsSource.length ||
-    !bossesSource.length
+    !Array.isArray(jokersSource) || !jokersSource.length ||
+    !Array.isArray(spectralsSource) || !spectralsSource.length ||
+    !Array.isArray(tagsSource) || !tagsSource.length ||
+    !Array.isArray(vouchersSource) || !vouchersSource.length ||
+    !Array.isArray(bossesSource) || !bossesSource.length
   ) {
-    throw new Error("BalatroSharedLists is missing required entries.");
+    throw new Error(
+      "BalatroSharedLists is missing required canonical arrays (JOKER_NAMES/SPECTRAL_NAMES/TAG_NAMES/VOUCHER_NAMES/ALERT_BOSSES)."
+    );
   }
 
   BalatroData.trackedJokers = sortedCopy(jokersSource);
