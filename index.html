@@ -1,73 +1,73 @@
 <!DOCTYPE html>
 <html>
-  <script>
-    (function initializeLocalePreference() {
-      var fallbackLocale = "zh-CN";
-      try {
-        var saved = localStorage.getItem("balatro.locale");
-        window.__BALATRO_LOCALE__ = (saved === "en-US" || saved === "zh-CN") ? saved : fallbackLocale;
-      } catch (_err) {
-        window.__BALATRO_LOCALE__ = fallbackLocale;
-      }
-    })();
-
-    var Immolate = {
-      onRuntimeInitialized: function () {
-        if (window.instantAnalysis) {
-          performAnalysis();
-        }
-      },
-    };
-
-    // Helper function for vectors
-    function asVector(arr) {
-      var vectorInt = new Module.VectorStr();
-      for (var i = 0; i < arr.length; i++) {
-        vectorInt.push_back(arr[i]);
-      }
-      return vectorInt;
-    }
-  </script>
-  <script src="immolate.js"></script>
-  <script>
-    (function loadLocalizationScripts() {
-      var isLocal = /^(localhost|127\.0\.0\.1)$/.test(window.location.hostname);
-      var version = isLocal ? String(Date.now()) : "1";
-      window.__ASSET_VERSION__ = version;
-      [
-        "localization/generated/zh-CN.game.js",
-        "localization/ui-zh-CN.js",
-        "localization/i18n.global.js",
-        "balatro_lists.js",
-      ].forEach(function (src) {
-        document.write('<script src="' + src + "?v=" + version + '"><' + "/script>");
-      });
-    })();
-  </script>
-  <script>
-    (function loadUiScript() {
-      var version = window.__ASSET_VERSION__ || "1";
-      document.write('<script src="UI.js?v=' + version + '" defer><' + "/script>");
-    })();
-  </script>
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>The Soul</title>
-    <script>
-      (function loadStyleSheets() {
-        var version = window.__ASSET_VERSION__ || "1";
-        document.write('<link rel="stylesheet" href="base.css?v=' + version + '">');
-        document.write('<link rel="stylesheet" href="ui.css?v=' + version + '">');
-      })();
-    </script>
+    <link rel="preload" href="immolate.wasm" as="fetch" type="application/wasm" crossorigin="anonymous" />
+    <link rel="stylesheet" href="base.css" />
+    <link rel="stylesheet" href="ui.css" />
     <link rel="icon" type="image/png" href="images/icon.ico" />
+    <script>
+      (function initializeLocalePreference() {
+        var fallbackLocale = "zh-CN";
+        try {
+          var saved = localStorage.getItem("balatro.locale");
+          window.__BALATRO_LOCALE__ = (saved === "en-US" || saved === "zh-CN") ? saved : fallbackLocale;
+        } catch (_err) {
+          window.__BALATRO_LOCALE__ = fallbackLocale;
+        }
+      })();
+
+      (function initializeUiUaMode() {
+        var ua = navigator.userAgent || "";
+        var isMobileUa = /Android|iPhone|iPad|iPod|Mobile|Windows Phone|HarmonyOS/i.test(ua);
+        var supportsBackdrop = false;
+        try {
+          supportsBackdrop =
+            !!(window.CSS &&
+              CSS.supports &&
+              (CSS.supports("backdrop-filter: blur(1px)") ||
+                CSS.supports("-webkit-backdrop-filter: blur(1px)")));
+        } catch (_err) {
+          supportsBackdrop = false;
+        }
+
+        window.__UI_IS_MOBILE_UA__ = isMobileUa;
+        window.__UI_SUPPORTS_BACKDROP__ = supportsBackdrop;
+
+        var root = document.documentElement;
+        if (!root) return;
+        root.classList.add(isMobileUa ? "ua-mobile" : "ua-desktop");
+        root.classList.add(isMobileUa || !supportsBackdrop ? "ua-no-blur" : "ua-blur");
+      })();
+
+      (function setAssetVersion() {
+        var isLocal = /^(localhost|127\.0\.0\.1)$/.test(window.location.hostname);
+        var version = isLocal ? String(Date.now()) : "1";
+        window.__ASSET_VERSION__ = version;
+      })();
+
+      var Immolate = {
+        onRuntimeInitialized: function () {
+          if (window.instantAnalysis) {
+            performAnalysis();
+          }
+        },
+      };
+    </script>
+    <script src="immolate.js"></script>
+    <script src="localization/generated/zh-CN.game.js"></script>
+    <script src="localization/ui-zh-CN.js"></script>
+    <script src="localization/i18n.global.js"></script>
+    <script src="balatro_lists.js"></script>
+    <script src="UI.js" defer></script>
   </head>
   <body>
     <h1 class="site-title">
       <div id="localeToggleContainer">
         <button id="localeToggleButton" type="button" aria-label="Toggle language">EN</button>
-        <button id="emojiLegendButton" type="button" aria-label="Show emoji legend">Emoji Legend</button>
+        <button id="emojiLegendButton" type="button" aria-label="Show intro">Intro</button>
       </div>
       <img src="images/icon.ico" alt="The Soul icon" class="site-title-icon" width="48" height="48" />
       <span>The Soul</span>
@@ -169,13 +169,16 @@
     <div id="summaryFilterWindow">
       <div id="summaryFilterContent"></div>
     </div>
+    <div id="searchFloatingWindow"></div>
     <div id="emojiLegendWindow">
       <div id="emojiLegendContent"></div>
     </div>
     <div id="summaryButtons">
+      <button id="searchFloatingToggle" type="button" aria-label="Search">🔍</button>
       <button id="summaryFloatingToggle" type="button">Summary</button>
       <button id="summaryFilterToggle" type="button">Settings</button>
     </div>
+    <button id="scrollToTopButton" type="button" aria-label="Back to top">↑</button>
   </body>
   <script>
     // Unlocks configuration
@@ -258,7 +261,6 @@
     }
 
     openCheckboxesBtn.addEventListener("click", openOverlay);
-    window.addEventListener("click", (e) => e.target === checkboxesOverlay && closeOverlay());
     submitBtn.addEventListener("click", handleSubmit);
     lockBtn.addEventListener("click", handleLock);
     unlockBtn.addEventListener("click", handleUnlock);
@@ -281,20 +283,36 @@
     const copyLinkButton = document.getElementById("copyButton");
     const downloadButton = document.getElementById("downloadButton");
     const exportButton = document.getElementById("exportButton");
+    const searchFloatingToggle = document.getElementById("searchFloatingToggle");
     const summaryToggleButton = document.getElementById("summaryFloatingToggle");
     const summaryFilterToggle = document.getElementById("summaryFilterToggle");
     const summaryFloatingWindow = document.getElementById("summaryFloatingWindow");
     const summaryFloatingContent = document.getElementById("summaryFloatingContent");
     const summaryFilterWindow = document.getElementById("summaryFilterWindow");
     const summaryFilterContent = document.getElementById("summaryFilterContent");
+    const searchFloatingWindow = document.getElementById("searchFloatingWindow");
     const emojiLegendWindow = document.getElementById("emojiLegendWindow");
     const emojiLegendContent = document.getElementById("emojiLegendContent");
     const localeToggleButton = document.getElementById("localeToggleButton");
     const emojiLegendButton = document.getElementById("emojiLegendButton");
+    const scrollToTopButton = document.getElementById("scrollToTopButton");
 
     // Helper to get utils (loaded later by UI.js)
     const getUtils = () => window.BalatroUtils || {};
     const t = (key) => window.BalatroI18n?.t ? window.BalatroI18n.t(key) : key;
+    const isLocalHost = /^(localhost|127\.0\.0\.1)$/.test(window.location.hostname);
+
+    function registerServiceWorker() {
+      if (!("serviceWorker" in navigator)) return;
+      if (!(window.isSecureContext || isLocalHost)) return;
+      const swVersion = encodeURIComponent(window.__ASSET_VERSION__ || "1");
+      window.addEventListener("load", () => {
+        navigator.serviceWorker.register(`./sw.js?v=${swVersion}`).catch((err) => {
+          console.warn("Service worker registration failed:", err);
+        });
+      }, { once: true });
+    }
+    registerServiceWorker();
 
     function applyUiLocalization() {
       const settingsHeader = document.querySelector(".input-section h2");
@@ -326,6 +344,15 @@
       if (exportButton) exportButton.textContent = t("Copy Summary");
       if (summaryToggleButton) summaryToggleButton.textContent = t("Summary");
       if (summaryFilterToggle) summaryFilterToggle.textContent = t("Settings");
+      if (searchFloatingToggle) {
+        searchFloatingToggle.textContent = "🔍";
+        searchFloatingToggle.title = t("Search");
+      }
+      if (scrollToTopButton) {
+        scrollToTopButton.textContent = "↑";
+        scrollToTopButton.title = t("Back to top");
+        scrollToTopButton.setAttribute("aria-label", t("Back to top"));
+      }
 
       setText("#checkboxesPopup h2", t("Unlocked Items"));
       if (submitBtn) submitBtn.textContent = t("Submit");
@@ -346,8 +373,8 @@
         localeToggleButton.title = switchToEnglish ? "Switch to English" : "切换到中文";
       }
       if (emojiLegendButton) {
-        emojiLegendButton.textContent = t("Emoji Legend");
-        emojiLegendButton.title = t("Emoji Legend");
+        emojiLegendButton.textContent = t("Intro");
+        emojiLegendButton.title = t("Intro");
       }
       if (emojiLegendWindow?.classList.contains("visible")) {
         if (emojiLegendWindow.classList.contains("visible")) {
@@ -363,8 +390,16 @@
     // Summary window visibility
     const setSummaryFloatingVisible = (flag) => {
       if (!summaryFloatingWindow) return;
-      summaryFloatingWindow.classList.toggle("visible", Boolean(flag));
-      document.body.classList.toggle("summary-floating-open", Boolean(flag));
+      const nextVisible = Boolean(flag);
+      summaryFloatingWindow.classList.toggle("visible", nextVisible);
+      document.body.classList.toggle("summary-floating-open", nextVisible);
+      if (nextVisible && window.__RESET_SUMMARY_ON_NEXT_OPEN__) {
+        resetSummaryFloatingScrollPosition();
+        requestAnimationFrame(() => {
+          resetSummaryFloatingScrollPosition();
+          window.__RESET_SUMMARY_ON_NEXT_OPEN__ = false;
+        });
+      }
     };
 
     // Button loading state (uses shared util when available)
@@ -377,6 +412,13 @@
         btn.classList.toggle("is-loading", Boolean(flag));
       }
     };
+
+    const resetSummaryFloatingScrollPosition = () => {
+      if (summaryFloatingContent) summaryFloatingContent.scrollTop = 0;
+      if (summaryFloatingWindow) summaryFloatingWindow.scrollTop = 0;
+    };
+
+    window.__RESET_SUMMARY_ON_NEXT_OPEN__ = false;
 
     // Copy link functionality
     function copyLink() {
@@ -452,14 +494,36 @@
       return map;
     }
 
+    function hasActiveTrackingItems() {
+      const terms = window.BalatroSearch?.getActiveToggleTerms?.();
+      if (terms && typeof terms.size === "number") return terms.size > 0;
+      const appTrackingState = window.areTrackingTermsActive?.();
+      if (typeof appTrackingState === "boolean") return appTrackingState;
+      return true;
+    }
+
+    function renderSummaryEmpty(text) {
+      if (!summaryFloatingContent) return;
+      summaryFloatingContent.innerHTML = "";
+      summaryFloatingContent.appendChild(Object.assign(document.createElement("div"), {
+        className: "summaryEmpty",
+        textContent: text,
+      }));
+    }
+
     function renderSummaryList() {
       if (!summaryFloatingContent) return;
       const utils = getUtils();
       const map = window.lastSummariesByAnte;
       summaryFloatingContent.innerHTML = "";
 
+      if (!hasActiveTrackingItems()) {
+        renderSummaryEmpty(t("No tracking items"));
+        return;
+      }
+
       if (!map?.size) {
-        summaryFloatingContent.appendChild(Object.assign(document.createElement("div"), { className: "summaryEmpty", textContent: t("Summary will appear here after you click Analyze.") }));
+        renderSummaryEmpty(t("Summary will appear here after you click Analyze."));
         return;
       }
 
@@ -497,18 +561,15 @@
         const item = Object.assign(document.createElement("div"), { className: "summaryItem" });
         item.dataset.ante = String(anteNum);
         item.dataset.order = String(idx);
+        const cleanLine = (utils.cleanSummaryLine || ((x) => x))(rawLine) || rawLine;
 
         const anteLabel = Object.assign(document.createElement("button"), { type: "button", className: "summaryAnteButton", textContent: `Ante ${anteNum}` });
         const text = Object.assign(document.createElement("span"), { className: "summaryText" });
-        renderSegments((utils.cleanSummaryLine || ((x) => x))(rawLine) || rawLine, text);
+        renderSegments(cleanLine, text);
 
         anteLabel.addEventListener("click", () => {
-          window.goToAntePage?.(anteNum);
           setSummaryFloatingVisible(false);
-          requestAnimationFrame(() => {
-            const target = [...(document.getElementById("scrollingContainer")?.querySelectorAll(".queueContainer") || [])].find((qc) => qc.querySelector(".queueTitle.anteTitle")?.textContent?.match(/ANTE\s*(\d+)/i)?.[1] == anteNum);
-            target?.scrollIntoView({ behavior: "smooth", block: "start" });
-          });
+          window.goToAntePage?.(anteNum);
         });
 
         text.addEventListener("dblclick", () => {
@@ -528,7 +589,6 @@
     function buildSummaryFilterUI() {
       if (!summaryFilterContent) return;
       const utils = getUtils();
-      const allEmojiMap = utils.summaryEmojiMap || {};
       const faceEmojiMap = utils.summaryFaceEmojiMap || {};
       const emojiVisible = window.summaryEmojiVisible !== false;
       summaryFilterContent.innerHTML = "";
@@ -565,12 +625,16 @@
       nearbyBtn.type = "button";
       nearbyBtn.className = "summaryFilterButton";
       const updateNearbyBtn = () => {
-        const visible = window.summaryNearbyVisible !== false;
+        const trackingActive = hasActiveTrackingItems();
+        const visible = trackingActive && window.summaryNearbyVisible !== false;
         nearbyBtn.classList.toggle("active", visible);
         nearbyBtn.textContent = visible ? t("Nearby Summaries: visible") : t("Nearby Summaries: hidden");
+        nearbyBtn.disabled = !trackingActive;
+        nearbyBtn.title = !trackingActive ? t("No tracking items") : "";
       };
       updateNearbyBtn();
       nearbyBtn.addEventListener("click", () => {
+        if (!hasActiveTrackingItems()) return;
         const nextVisible = window.summaryNearbyVisible === false;
         window.summaryNearbyVisible = nextVisible;
         window.setNearbySummariesVisible?.(nextVisible);
@@ -579,7 +643,7 @@
       summaryFilterContent.appendChild(nearbyBtn);
 
       // Emoji filter buttons
-      Object.keys(allEmojiMap).forEach((emoji) => {
+      Object.keys(faceEmojiMap).forEach((emoji) => {
         if (!(emoji in window.summaryEmojiFilter)) {
           window.summaryEmojiFilter[emoji] = true;
         }
@@ -611,7 +675,7 @@
     function buildEmojiLegendUI() {
       if (!emojiLegendContent) return;
       const utils = getUtils();
-      const emojiMap = utils.summaryEmojiMap || {};
+      const emojiMap = utils.summaryFaceEmojiMap || {};
       const toDisplayName = (name) => {
         if (name === "Negative marker") return t("Negative marker");
         if (name === "King Cards") return t("King Cards");
@@ -619,39 +683,116 @@
         return localized;
       };
 
+      const buildLegendTab = (container) => {
+        Object.entries(emojiMap).forEach(([emoji, data]) => {
+          const row = document.createElement("div");
+          row.className = "emojiLegendRow";
+
+          const icon = document.createElement("span");
+          icon.className = "emojiLegendIcon";
+          icon.textContent = emoji;
+          if (data?.color) icon.style.color = data.color;
+
+          const text = document.createElement("span");
+          text.className = "emojiLegendText";
+          text.textContent = (data?.cards || []).map(toDisplayName).join(" / ");
+
+          row.append(icon, text);
+          container.appendChild(row);
+        });
+
+        const packRow = document.createElement("div");
+        packRow.className = "emojiLegendRow";
+        const packIcon = document.createElement("span");
+        packIcon.className = "emojiLegendIcon";
+        packIcon.textContent = "👝";
+        const packText = document.createElement("span");
+        packText.className = "emojiLegendText";
+        packText.textContent = t("In packs marker");
+        packRow.append(packIcon, packText);
+        container.appendChild(packRow);
+      };
+
+      const buildTipsTab = (container) => {
+        const tips = [
+          t("Click Ante badge in Summary to jump to that Ante in main page."),
+          t("Double-click a Summary row to mark it finished and move it to bottom; double-click again to restore."),
+          t("In Nearby Summaries, text can scroll left/right; click an entry to open its popup detail."),
+          t("In top-right Settings window, emoji icon buttons are Joker trackers."),
+          t("These icon buttons sync with Search Filters > Jokers (same cards, two entry points)."),
+          t("Search Filters: Select all / Remove all also toggles those Joker tracker icons."),
+          t("Hit-only groups (◎ / ◉) are based on current highlights: search input + active Search Filters."),
+        ];
+        tips.forEach((tipText) => {
+          const row = document.createElement("div");
+          row.className = "introTipRow";
+          const bullet = Object.assign(document.createElement("span"), { className: "introTipBullet", textContent: "•" });
+          const text = Object.assign(document.createElement("span"), { className: "introTipText", textContent: tipText });
+          row.append(bullet, text);
+          container.appendChild(row);
+        });
+
+        const iconTitle = Object.assign(document.createElement("div"), {
+          className: "emojiLegendTitle introSubTitle",
+          textContent: t("Icon-only buttons"),
+        });
+        container.appendChild(iconTitle);
+
+        const iconRows = [
+          [["🔍"], t("Open search window")],
+          [["▦", "↔"], t("Toggle card layout in each Ante (grid/carousel)")],
+          [["◎", "◉"], t("Toggle hit-only groups in each Ante")],
+        ];
+        iconRows.forEach(([icons, desc]) => {
+          const row = document.createElement("div");
+          row.className = "emojiLegendRow introIconRow";
+          const icon = document.createElement("span");
+          icon.className = `emojiLegendIcon introTextIcon${icons.length > 1 ? " introTextIconPair" : ""}`;
+          if (icons.length > 1) {
+            icons.forEach((iconText, idx) => {
+              const glyph = Object.assign(document.createElement("span"), { className: "introPairGlyph", textContent: iconText });
+              icon.appendChild(glyph);
+              if (idx < icons.length - 1) {
+                const sep = Object.assign(document.createElement("span"), { className: "introPairSep", textContent: "/" });
+                sep.setAttribute("aria-hidden", "true");
+                icon.appendChild(sep);
+              }
+            });
+          } else {
+            icon.textContent = icons[0] || "";
+          }
+          const text = Object.assign(document.createElement("span"), { className: "emojiLegendText", textContent: desc });
+          row.append(icon, text);
+          container.appendChild(row);
+        });
+      };
+
       emojiLegendContent.innerHTML = "";
-      const title = document.createElement("div");
-      title.className = "emojiLegendTitle";
-      title.textContent = t("Emoji Legend");
-      emojiLegendContent.appendChild(title);
 
-      Object.entries(emojiMap).forEach(([emoji, data]) => {
-        const row = document.createElement("div");
-        row.className = "emojiLegendRow";
+      const tabs = document.createElement("div");
+      tabs.className = "introTabs";
+      const legendTabBtn = Object.assign(document.createElement("button"), { type: "button", className: "introTabButton", textContent: t("Emoji Legend") });
+      const tipsTabBtn = Object.assign(document.createElement("button"), { type: "button", className: "introTabButton", textContent: t("UI Tips") });
+      tabs.append(legendTabBtn, tipsTabBtn);
+      emojiLegendContent.appendChild(tabs);
 
-        const icon = document.createElement("span");
-        icon.className = "emojiLegendIcon";
-        icon.textContent = emoji;
-        if (data?.color) icon.style.color = data.color;
+      const body = document.createElement("div");
+      body.className = "introTabBody";
+      emojiLegendContent.appendChild(body);
 
-        const text = document.createElement("span");
-        text.className = "emojiLegendText";
-        text.textContent = (data?.cards || []).map(toDisplayName).join(" / ");
+      const setTab = (tabName) => {
+        const showLegend = tabName === "legend";
+        legendTabBtn.classList.toggle("active", showLegend);
+        tipsTabBtn.classList.toggle("active", !showLegend);
+        body.innerHTML = "";
+        if (showLegend) buildLegendTab(body);
+        else buildTipsTab(body);
+        window.__INTRO_ACTIVE_TAB__ = tabName;
+      };
 
-        row.append(icon, text);
-        emojiLegendContent.appendChild(row);
-      });
-
-      const packRow = document.createElement("div");
-      packRow.className = "emojiLegendRow";
-      const packIcon = document.createElement("span");
-      packIcon.className = "emojiLegendIcon";
-      packIcon.textContent = "👝";
-      const packText = document.createElement("span");
-      packText.className = "emojiLegendText";
-      packText.textContent = t("In packs marker");
-      packRow.append(packIcon, packText);
-      emojiLegendContent.appendChild(packRow);
+      legendTabBtn.addEventListener("click", () => setTab("legend"));
+      tipsTabBtn.addEventListener("click", () => setTab("tips"));
+      setTab(window.__INTRO_ACTIVE_TAB__ === "tips" ? "tips" : "legend");
     }
 
     // Emoji filter application - optimized version
@@ -659,8 +800,16 @@
       const utils = getUtils();
       const emojiMap = utils.summaryEmojiMap || {};
       const faceEmojiMap = utils.summaryFaceEmojiMap || {};
+      const faceCardMap = utils.summaryFaceCardMap || {};
       const filter = window.summaryEmojiFilter || {};
+      const activeTerms = window.BalatroSearch?.getActiveToggleTerms?.() || null;
       const emojiVisible = window.summaryEmojiVisible !== false;
+      const faceMatchCache = new Map();
+      const faceMatchers = Object.entries(faceCardMap).map(([engName, info]) => ({
+        engName,
+        cnName: (info?.cn || "").trim(),
+      }));
+      const termTokenCache = new Map();
       const parseEmojis = (el) => {
         const raw = (el.dataset.summaryEmojis || "").trim();
         if (raw) {
@@ -670,6 +819,55 @@
         return face ? [face] : [];
       };
       const isFaceEntryVisible = (emoji) => !emoji || !(emoji in faceEmojiMap) || filter[emoji] !== false;
+      const getMatchedFaceCards = (text) => {
+        const source = String(text || "");
+        if (!source) return [];
+        if (faceMatchCache.has(source)) return faceMatchCache.get(source);
+        const matches = [];
+        faceMatchers.forEach(({ engName, cnName }) => {
+          if (source.includes(engName) || (cnName && source.includes(cnName))) {
+            matches.push(engName);
+          }
+        });
+        faceMatchCache.set(source, matches);
+        return matches;
+      };
+      const getTermTokens = (name) => {
+        const key = String(name || "");
+        if (!key) return [];
+        if (termTokenCache.has(key)) return termTokenCache.get(key);
+        const localized = utils.translateGameText ? utils.translateGameText(key) : key;
+        const tokens = [key.toLowerCase()];
+        if (localized) tokens.push(String(localized).toLowerCase());
+        const deduped = [...new Set(tokens.filter(Boolean))];
+        termTokenCache.set(key, deduped);
+        return deduped;
+      };
+      const getMatchedMappedCards = (text, emojis) => {
+        const source = String(text || "").toLowerCase();
+        if (!source || !Array.isArray(emojis) || !emojis.length) return [];
+        const matches = new Set();
+        emojis.forEach((emoji) => {
+          const cards = emojiMap?.[emoji]?.cards || [];
+          cards.forEach((cardName) => {
+            const tokens = getTermTokens(cardName);
+            if (tokens.some((token) => source.includes(token))) {
+              matches.add(cardName);
+            }
+          });
+        });
+        return [...matches];
+      };
+      const isSegmentTermVisible = (el, emojis) => {
+        if (!activeTerms || typeof activeTerms.has !== "function") return true;
+        const source = el.dataset.originalText ?? el.textContent ?? "";
+        const matchedCards = [
+          ...getMatchedFaceCards(source),
+          ...getMatchedMappedCards(source, emojis),
+        ];
+        if (!matchedCards.length) return true;
+        return matchedCards.some((name) => activeTerms.has(String(name).toLowerCase()));
+      };
 
       const applyEmojiVisibilityToSegment = (el) => {
         const emojis = parseEmojis(el);
@@ -708,13 +906,13 @@
 
       document.querySelectorAll(".summaryText > span[data-summary-emojis], .summaryFaceSegment, .miniSummaryItem").forEach(applyEmojiVisibilityToSegment);
 
-      // Per-icon filter (joker emoji icons) disables matching entries.
-      document.querySelectorAll("[data-face-emoji]").forEach((el) => {
-        const visible = isFaceEntryVisible(el.dataset.faceEmoji);
-        if (el.classList.contains("summaryFaceSegment") || el.classList.contains("miniSummaryItem")) {
-          if (!visible) el.style.display = "none";
-        } else if (el.classList.contains("queueItem") || el.parentElement?.classList.contains("packItem")) {
-          el.classList.toggle("emojiFilterOff", !visible);
+      // Per-icon filter (joker emoji icons) + active search filters control summary visibility.
+      document.querySelectorAll(".summaryText > span[data-summary-emojis], .summaryFaceSegment, .miniSummaryItem").forEach((el) => {
+        const emojis = parseEmojis(el);
+        const visibleByEmoji = !emojis.length || emojis.every((emoji) => isFaceEntryVisible(emoji));
+        const visibleByTerms = isSegmentTermVisible(el, emojis);
+        if (!visibleByEmoji || !visibleByTerms) {
+          el.style.display = "none";
         }
       });
 
@@ -725,14 +923,15 @@
       });
 
       // Update delimiters in text containers
-      const updateDelimiters = (container, delimClass) => {
+      const updateDelimiters = (container, delimClass, pipeClass) => {
         const children = [...container.children];
-        const isPipe = (n) => n.classList.contains("summaryPipe") || n.classList.contains("miniSummaryPipe");
-        const isContent = (n) => n?.nodeType === 1 && !n.classList.contains(delimClass) && !isPipe(n);
+        const isPipe = (n) => n?.classList?.contains(pipeClass);
+        const isDelimiter = (n) => n?.classList?.contains(delimClass) || isPipe(n);
+        const isContent = (n) => n?.nodeType === 1 && !isDelimiter(n);
         const isVisibleContent = (n) => isContent(n) && n.style.display !== "none";
 
         children.forEach((node, idx) => {
-          if (!node.classList?.contains(delimClass)) return;
+          if (!isDelimiter(node)) return;
           let prevVisible = false, hasAfter = false;
           for (let i = idx - 1; i >= 0 && !prevVisible; i--) if (isContent(children[i])) { prevVisible = isVisibleContent(children[i]); break; }
           for (let i = idx + 1; i < children.length && !hasAfter; i++) if (isVisibleContent(children[i])) { hasAfter = true; break; }
@@ -740,23 +939,51 @@
         });
       };
 
-      document.querySelectorAll(".summaryText").forEach((c) => updateDelimiters(c, "summaryDelimiter"));
-      document.querySelectorAll(".miniSummaryText, .miniSummaryTextFull").forEach((c) => updateDelimiters(c, "miniSummaryDelimiter"));
+      document.querySelectorAll(".summaryText").forEach((c) => updateDelimiters(c, "summaryDelimiter", "summaryPipe"));
+      document.querySelectorAll(".miniSummaryText, .miniSummaryTextFull").forEach((c) => updateDelimiters(c, "miniSummaryDelimiter", "miniSummaryPipe"));
 
-      window.syncEmojiFilterToSearch?.();
+      const syncChanged = window.syncEmojiFilterToSearch?.();
+      if (syncChanged) {
+        requestAnimationFrame(() => {
+          window.syncEmojiFilterToSearch?.();
+          window.applySummaryEmojiFilter?.();
+        });
+      }
     }
 
     window.applySummaryEmojiFilter = applySummaryEmojiFilter;
+    window.onTrackingTermsStateChange = () => {
+      renderSummaryList();
+      if (hasActiveTrackingItems()) {
+        applySummaryEmojiFilter();
+      }
+      if (summaryFilterWindow?.classList.contains("visible")) {
+        buildSummaryFilterUI();
+      }
+    };
+
+    function closeOtherFloatingWindows(exceptWindow) {
+      if (summaryFloatingWindow && summaryFloatingWindow !== exceptWindow) {
+        setSummaryFloatingVisible(false);
+      }
+      [summaryFilterWindow, searchFloatingWindow, emojiLegendWindow].forEach((win) => {
+        if (win && win !== exceptWindow) win.classList.remove("visible");
+      });
+    }
 
     // Summary toggle buttons
-    summaryToggleButton.addEventListener("click", () => {
-      setSummaryFloatingVisible(!summaryFloatingWindow.classList.contains("visible"));
+    summaryToggleButton.addEventListener("click", (e) => {
+      e.stopPropagation();
+      const nowVisible = !summaryFloatingWindow.classList.contains("visible");
+      if (nowVisible) closeOtherFloatingWindows(summaryFloatingWindow);
+      setSummaryFloatingVisible(nowVisible);
     });
 
     summaryFilterToggle?.addEventListener("click", (e) => {
       e.stopPropagation();
       if (!summaryFilterWindow) return;
       const nowVisible = !summaryFilterWindow.classList.contains("visible");
+      if (nowVisible) closeOtherFloatingWindows(summaryFilterWindow);
       summaryFilterWindow.classList.toggle("visible", nowVisible);
       if (nowVisible) buildSummaryFilterUI();
     });
@@ -765,10 +992,23 @@
       e.stopPropagation();
     });
 
+    searchFloatingToggle?.addEventListener("click", (e) => {
+      e.stopPropagation();
+      if (!searchFloatingWindow) return;
+      const nowVisible = !searchFloatingWindow.classList.contains("visible");
+      if (nowVisible) closeOtherFloatingWindows(searchFloatingWindow);
+      searchFloatingWindow.classList.toggle("visible", nowVisible);
+    });
+
+    searchFloatingWindow?.addEventListener("click", (e) => {
+      e.stopPropagation();
+    });
+
     emojiLegendButton?.addEventListener("click", (e) => {
       e.stopPropagation();
       if (!emojiLegendWindow) return;
       const nowVisible = !emojiLegendWindow.classList.contains("visible");
+      if (nowVisible) closeOtherFloatingWindows(emojiLegendWindow);
       emojiLegendWindow.classList.toggle("visible", nowVisible);
       if (nowVisible) buildEmojiLegendUI();
     });
@@ -777,10 +1017,68 @@
       e.stopPropagation();
     });
 
+    function closeFloatingWindows() {
+      let closedAny = false;
+      if (summaryFloatingWindow?.classList.contains("visible")) {
+        setSummaryFloatingVisible(false);
+        closedAny = true;
+      }
+      if (summaryFilterWindow?.classList.contains("visible")) {
+        summaryFilterWindow.classList.remove("visible");
+        closedAny = true;
+      }
+      if (searchFloatingWindow?.classList.contains("visible")) {
+        searchFloatingWindow.classList.remove("visible");
+        closedAny = true;
+      }
+      if (emojiLegendWindow?.classList.contains("visible")) {
+        emojiLegendWindow.classList.remove("visible");
+        closedAny = true;
+      }
+      if (checkboxesOverlay?.style.display === "block") {
+        closeOverlay();
+        closedAny = true;
+      }
+      return closedAny;
+    }
+
+    function updateScrollToTopButton() {
+      if (!scrollToTopButton) return;
+      const visible = window.scrollY > 320;
+      scrollToTopButton.classList.toggle("visible", visible);
+    }
+
+    scrollToTopButton?.addEventListener("click", () => {
+      window.scrollTo({ top: 0, behavior: "smooth" });
+    });
+    window.addEventListener("scroll", updateScrollToTopButton, { passive: true });
+    updateScrollToTopButton();
+
+    window.addEventListener("keydown", (e) => {
+      if (e.key !== "Escape") return;
+      if (closeFloatingWindows()) {
+        e.preventDefault();
+        e.stopPropagation();
+      }
+    });
+
     window.addEventListener("click", (e) => {
+      if (e.target === checkboxesOverlay) {
+        closeOverlay();
+      }
+      if (summaryFloatingWindow?.classList.contains("visible")) {
+        if (!(e.target === summaryFloatingWindow || summaryFloatingWindow.contains(e.target) || e.target === summaryToggleButton)) {
+          setSummaryFloatingVisible(false);
+        }
+      }
       if (summaryFilterWindow?.classList.contains("visible")) {
         if (!(e.target === summaryFilterWindow || summaryFilterWindow.contains(e.target) || e.target === summaryFilterToggle)) {
           summaryFilterWindow.classList.remove("visible");
+        }
+      }
+      if (searchFloatingWindow?.classList.contains("visible")) {
+        if (!(e.target === searchFloatingWindow || searchFloatingWindow.contains(e.target) || e.target === searchFloatingToggle)) {
+          searchFloatingWindow.classList.remove("visible");
         }
       }
       if (emojiLegendWindow?.classList.contains("visible")) {
@@ -838,6 +1136,7 @@
             window.lastSummariesByAnte = buildSummaryLookup(summary);
           }
           renderSummaryList();
+          resetSummaryFloatingScrollPosition();
           applySummaryEmojiFilter();
           window.refreshShopDisplay?.();
         })
@@ -846,6 +1145,7 @@
           window.lastSummary = rawText;
           window.lastSummariesByAnte = buildSummaryLookup(rawText);
           renderSummaryList();
+          resetSummaryFloatingScrollPosition();
           applySummaryEmojiFilter();
           window.refreshShopDisplay?.();
         })
@@ -928,6 +1228,8 @@
       const workload = ante * cardsPerAnteValue;
       setButtonLoadingState(analyzeButton, true);
       window.setGroupButtonsLoading?.(true);
+      window.__RESET_SUMMARY_ON_NEXT_OPEN__ = true;
+      resetSummaryFloatingScrollPosition();
 
       if (!Number.isFinite(ante) || ante < 1 || !Number.isFinite(cardsPerAnteValue) || cardsPerAnteValue < 0) {
         alert(t("Analyze failed. Check seed/version and try again."));
@@ -1098,27 +1400,40 @@
         return [];
       }
 
-      const inst = createImmolateInstance(seed, deck, stake, version);
-      inst.initUnlocks(anteNum, false);
-
+      let inst = null;
       const lines = [];
-      for (let q = 1; q <= limit; q++) {
-        const item = inst.nextShopItem(anteNum);
-        let line = `${q}) `;
-        if (item.type === "Joker" && item.jokerData) {
-          if (item.jokerData.stickers.eternal) line += "Eternal ";
-          if (item.jokerData.stickers.perishable) line += "Perishable ";
-          if (item.jokerData.stickers.rental) line += "Rental ";
-          if (item.jokerData.edition === "Negative") line += "‼️ ";
-          line += item.item;
-        } else {
-          line += item.item;
-        }
-        lines.push(line);
-        item.delete();
-      }
 
-      inst.delete();
+      try {
+        inst = createImmolateInstance(seed, deck, stake, version);
+        inst.initUnlocks(anteNum, false);
+
+        for (let q = 1; q <= limit; q++) {
+          const item = inst.nextShopItem(anteNum);
+          try {
+            let line = `${q}) `;
+            if (item.type === "Joker" && item.jokerData) {
+              if (item.jokerData.stickers.eternal) line += "Eternal ";
+              if (item.jokerData.stickers.perishable) line += "Perishable ";
+              if (item.jokerData.stickers.rental) line += "Rental ";
+              if (item.jokerData.edition === "Negative") line += "‼️ ";
+              line += item.item;
+            } else {
+              line += item.item;
+            }
+            lines.push(line);
+          } finally {
+            item.delete();
+          }
+        }
+      } finally {
+        if (inst) {
+          try {
+            inst.delete();
+          } catch (_err) {
+            // Ignore cleanup errors.
+          }
+        }
+      }
       return lines;
     }
 

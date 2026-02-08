@@ -9,6 +9,28 @@
     editionMap = {},
     stickerMap = {},
   } = data;
+  const JOKER_MAP = new Map(jokers.map((entry) => [entry.name, entry]));
+  const TAROT_PLANET_MAP = new Map(
+    tarotsAndPlanets.map((entry) => [entry.name, entry])
+  );
+  const TAG_MAP = new Map(tags.map((entry) => [entry.name, entry]));
+  const VOUCHER_MAP = new Map(vouchers.map((entry) => [entry.name, entry]));
+  const BOSS_MAP = new Map(bosses.map((entry) => [entry.name, entry]));
+  const MODIFIERS = Object.freeze([
+    "Foil",
+    "Holographic",
+    "Polychrome",
+    "Negative",
+  ]);
+  const STICKERS = Object.freeze(["Perishable", "Rental", "Eternal"]);
+  const MODIFIER_REGEXES = MODIFIERS.map((mod) => [
+    mod,
+    new RegExp(`\\b${mod}\\b`, "i"),
+  ]);
+  const STICKER_REGEXES = STICKERS.map((stick) => [
+    stick,
+    new RegExp(`\\b${stick}\\b`, "i"),
+  ]);
 
   // Image cache for preloaded spritesheets
   const imageCache = {};
@@ -25,6 +47,21 @@
     "images/tags.png",
     "images/Vouchers.png",
   ];
+  const PRIORITY_IMAGE_SOURCES = [
+    "images/Jokers.png",
+    "images/Tarots.png",
+    "images/BlindChips.png",
+    "images/tags.png",
+    "images/Vouchers.png",
+  ];
+  const DEFERRED_IMAGE_SOURCES = IMAGE_SOURCES.filter(
+    (src) => !PRIORITY_IMAGE_SOURCES.includes(src)
+  );
+  const isMobileUa =
+    Boolean(global.__UI_IS_MOBILE_UA__) ||
+    /Android|iPhone|iPad|iPod|Mobile|Windows Phone|webOS/i.test(
+      navigator.userAgent || ""
+    );
 
   /**
    * Preload all spritesheets into cache
@@ -35,6 +72,24 @@
       img.src = src;
       imageCache[src] = img;
     });
+  }
+
+  function preloadImageList(list) {
+    list.forEach((src) => {
+      if (imageCache[src]) return;
+      const img = new Image();
+      img.src = src;
+      imageCache[src] = img;
+    });
+  }
+
+  function scheduleDeferredPreload() {
+    const run = () => preloadImageList(DEFERRED_IMAGE_SOURCES);
+    if (typeof global.requestIdleCallback === "function") {
+      global.requestIdleCallback(run, { timeout: 2500 });
+    } else {
+      setTimeout(run, 800);
+    }
   }
 
   /**
@@ -77,8 +132,13 @@
     }
   }
 
-  // Start preloading immediately
-  preloadImages();
+  // Aggressive preload on desktop; phased preload on mobile to reduce startup pressure.
+  if (isMobileUa) {
+    preloadImageList(PRIORITY_IMAGE_SOURCES);
+    scheduleDeferredPreload();
+  } else {
+    preloadImages();
+  }
 
   function maskToCanvas(canvas, itemName, type, itemModifiers, itemStickers) {
     let itemData;
@@ -87,12 +147,12 @@
     let gridHeight;
 
     if (type === "joker") {
-      itemData = jokers.find((j) => j.name === itemName);
+      itemData = JOKER_MAP.get(itemName);
       imgSrc = "images/Jokers.png";
       gridWidth = 10;
       gridHeight = 16;
     } else if (type === "tarot" || type === "planet") {
-      itemData = tarotsAndPlanets.find((t) => t.name === itemName);
+      itemData = TAROT_PLANET_MAP.get(itemName);
       imgSrc = "images/Tarots.png";
       gridWidth = 10;
       gridHeight = 6;
@@ -231,11 +291,7 @@
 
     const { x: cardX, y: cardY } = getStandardCardPosition(rank, suit);
 
-    // Load both images, then render when both ready
-    const deckImg = getCachedImage("images/8BitDeck.png");
-    const enhancersImg = getCachedImage("images/Enhancers.png");
-
-    function drawCard() {
+    function drawCard(deckImg, enhancersImg) {
       const enhancerPos = getEnhancerPosition(modifiers);
       ctx.drawImage(
         enhancersImg,
@@ -284,23 +340,23 @@
       }
     }
 
-    // Check if both images are ready
-    const deckReady = deckImg.complete && deckImg.naturalWidth > 0;
-    const enhancersReady = enhancersImg.complete && enhancersImg.naturalWidth > 0;
+    let drawn = false;
+    let deckImage = null;
+    let enhancersImage = null;
+    const tryDraw = () => {
+      if (drawn || !deckImage || !enhancersImage) return;
+      drawn = true;
+      drawCard(deckImage, enhancersImage);
+    };
 
-    if (deckReady && enhancersReady) {
-      drawCard();
-    } else {
-      // Wait for both to load
-      let loaded = 0;
-      const checkBoth = () => {
-        loaded++;
-        if (loaded === 2) drawCard();
-      };
-      if (deckReady) loaded++; else deckImg.onload = checkBoth;
-      if (enhancersReady) loaded++; else enhancersImg.onload = checkBoth;
-      if (loaded === 2) drawCard();
-    }
+    withImage("images/8BitDeck.png", (img) => {
+      deckImage = img;
+      tryDraw();
+    });
+    withImage("images/Enhancers.png", (img) => {
+      enhancersImage = img;
+      tryDraw();
+    });
   }
 
   function getEnhancerPosition(modifiers) {
@@ -315,9 +371,7 @@
       Lucky: { x: 4, y: 1 },
     };
 
-    const enhancer = modifiers.find((mod) =>
-      Object.keys(enhancerMap).includes(mod)
-    );
+    const enhancer = modifiers.find((mod) => enhancerMap[mod]);
     return enhancer ? enhancerMap[enhancer] : { x: 1, y: 0 };
   }
 
@@ -387,7 +441,7 @@
   }
 
   function renderBoss(canvas, bossName) {
-    const bossData = bosses.find((boss) => boss.name === bossName);
+    const bossData = BOSS_MAP.get(bossName);
     if (!bossData) {
       console.error("Boss not found:", bossName);
       return;
@@ -413,7 +467,7 @@
   }
 
   function renderTag(canvas, tagName) {
-    const tagData = tags.find((tag) => tag.name === tagName);
+    const tagData = TAG_MAP.get(tagName);
     if (!tagData) {
       console.error("Tag not found:", tagName);
       return;
@@ -439,7 +493,7 @@
   }
 
   function renderVoucher(canvas, voucherName) {
-    const voucherData = vouchers.find((voucher) => voucher.name === voucherName);
+    const voucherData = VOUCHER_MAP.get(voucherName);
     if (!voucherData) {
       console.error("Voucher not found:", voucherName);
       return;
@@ -465,22 +519,18 @@
   }
 
   function parseCardItem(item) {
-    const modifiers = ["Foil", "Holographic", "Polychrome", "Negative"];
-    const stickers = ["Perishable", "Rental", "Eternal"];
-    let cardName = item.replace(/^\d+\)/, "").trim();
+    let cardName = String(item || "").replace(/^\d+\)/, "").trim();
     let itemModifiers = [];
     let itemStickers = [];
 
-    modifiers.forEach((mod) => {
-      const regex = new RegExp(`\\b${mod}\\b`, "i");
+    MODIFIER_REGEXES.forEach(([mod, regex]) => {
       if (regex.test(cardName)) {
         itemModifiers.push(mod);
         cardName = cardName.replace(regex, "").trim();
       }
     });
 
-    stickers.forEach((stick) => {
-      const regex = new RegExp(`\\b${stick}\\b`, "i");
+    STICKER_REGEXES.forEach(([stick, regex]) => {
       if (regex.test(cardName)) {
         itemStickers.push(stick);
         cardName = cardName.replace(regex, "").trim();
@@ -491,9 +541,9 @@
   }
 
   function determineItemType(itemName) {
-    if (jokers.find((j) => j.name === itemName)) {
+    if (JOKER_MAP.has(itemName)) {
       return "joker";
-    } else if (tarotsAndPlanets.find((tp) => tp.name === itemName)) {
+    } else if (TAROT_PLANET_MAP.has(itemName)) {
       return "tarot";
     } else {
       return "unknown";

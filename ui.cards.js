@@ -14,6 +14,16 @@
   // Group size state
   const GROUP_SIZES = [2, 3, 4];
   let currentGroupSize = GROUP_SIZES[0];
+  function resolveCardRenderScale() {
+    const root = document.documentElement;
+    if (root?.classList.contains("ua-desktop")) return 2;
+    if (root?.classList.contains("ua-mobile")) return 1.2;
+
+    const ua = navigator.userAgent || "";
+    const isMobile = /Android|iPhone|iPad|iPod|Mobile|Windows Phone|webOS|HarmonyOS/i.test(ua);
+    return isMobile ? 1.2 : 2;
+  }
+  const CARD_RENDER_SCALE = resolveCardRenderScale();
 
   // Callbacks for group size changes
   const groupSizeCallbacks = new Set();
@@ -82,12 +92,15 @@
   /** Helper: get createElement from utils */
   const createElement = (tag, className, text) => {
     const fn = getUtils().createElement;
-    if (fn) return fn(tag, className, text);
-    const el = document.createElement(tag);
-    if (className) el.className = className;
-    if (text !== undefined) el.textContent = text;
-    return el;
+    if (!fn) throw new Error("BalatroUtils.createElement is unavailable.");
+    return fn(tag, className, text);
   };
+
+  function setCanvasResolution(canvas, logicalWidth, logicalHeight) {
+    const scale = CARD_RENDER_SCALE;
+    canvas.width = Math.round(logicalWidth * scale);
+    canvas.height = Math.round(logicalHeight * scale);
+  }
 
   /**
    * Build queue item nodes from raw queue items
@@ -136,8 +149,7 @@
       if (!textOnly) {
         const canvasWrapper = createElement("div", "cardCanvasWrapper");
         const canvas = document.createElement("canvas");
-        canvas.width = 80;
-        canvas.height = 107;
+        setCanvasResolution(canvas, 80, 107);
 
         const itemType = determineItemType?.(baseName);
         if (itemType !== "unknown" && maskToCanvas) {
@@ -178,32 +190,17 @@
   }
 
   /**
-   * Build a card entry with group indicator
-   * @param {HTMLElement} node - Queue item node
-   * @param {number} groupIndex - Group number
-   * @param {number} positionInGroup - Position within group (0-based)
-   * @param {boolean} isLast - Is last in group
+   * Build a card entry container.
+   * @param {HTMLElement|null} node - Queue item node
    * @returns {HTMLElement}
    */
-  function buildCardEntry(node, groupIndex, positionInGroup, isLast) {
+  function buildCardEntry(node) {
     const entry = createElement("div", "cardGroupEntry");
-    if (positionInGroup === 0) entry.classList.add("cardGroupEntry-first");
-    if (isLast) entry.classList.add("cardGroupEntry-last");
-
-    const indicator = createElement("div", "group-indicator");
-
-    // Badge for first item in group
-    if (positionInGroup === 0) {
-      const badge = createElement("span", "group-badge", String(groupIndex));
-      indicator.appendChild(badge);
+    if (!node) return entry;
+    if (node.classList?.contains("queueItemTextOnly")) {
+      entry.classList.add("cardGroupEntry-textOnly");
     }
-
-    // Connecting line
-    const line = createElement("span", "group-line");
-    line.classList.add(positionInGroup % 2 === 0 ? "line-forward" : "line-reverse");
-    indicator.appendChild(line);
-
-    entry.append(indicator, node);
+    entry.append(node);
     return entry;
   }
 
@@ -214,7 +211,16 @@
    */
   function renderCardGroups(cardList, queueNodes) {
     cardList.innerHTML = "";
-    if (!queueNodes.length) return;
+    if (!queueNodes.length) {
+      cardList.classList.remove("cardList-text-only");
+      global.BalatroSearch?.markSearchDomDirty?.();
+      return;
+    }
+
+    const textOnlyMode = queueNodes.every((node) =>
+      node?.classList?.contains("queueItemTextOnly")
+    );
+    cardList.classList.toggle("cardList-text-only", textOnlyMode);
 
     const groupSize = currentGroupSize;
     const totalGroups = Math.ceil(queueNodes.length / groupSize);
@@ -222,19 +228,30 @@
     for (let i = 0; i < totalGroups; i++) {
       const wrapper = createElement("div", "cardGroup");
       wrapper.classList.add(i % 2 === 0 ? "group-style-yellow" : "group-style-grey");
+      wrapper.dataset.group = String(i + 1);
 
-      const groupItems = createElement("div", "cardGroupItems");
       const start = i * groupSize;
       const end = Math.min(start + groupSize, queueNodes.length);
+      const groupHeader = createElement("div", "cardGroupHeader");
+      const groupBadge = createElement("span", "group-badge", String(i + 1));
+      const groupRange = createElement("span", "group-range", `${start + 1}-${end}`);
+      groupHeader.append(groupBadge, groupRange);
+      wrapper.appendChild(groupHeader);
+
+      const groupItems = createElement("div", "cardGroupItems");
+      const cardsInGroup = Math.max(1, end - start);
+      wrapper.style.setProperty("--group-card-count", String(cardsInGroup));
+      groupItems.style.setProperty("--cards-per-row", String(cardsInGroup));
 
       for (let j = start; j < end; j++) {
-        const entry = buildCardEntry(queueNodes[j], i, j - start, j === end - 1);
+        const entry = buildCardEntry(queueNodes[j]);
         groupItems.appendChild(entry);
       }
 
       wrapper.appendChild(groupItems);
       cardList.appendChild(wrapper);
     }
+    global.BalatroSearch?.markSearchDomDirty?.();
   }
 
   /**
@@ -295,7 +312,7 @@
     const { setButtonLoadingState } = utils;
     let layoutMode = "scroll";
 
-    const button = createElement("button", "cardSetToggle", t("Switch to Grid"));
+    const button = createElement("button", "cardSetToggle cardSetIconToggle", "");
     button.type = "button";
 
     const setMode = (mode) => {
@@ -304,7 +321,10 @@
       cardList.classList.toggle("scrollable", !useGrid);
       cardList.classList.toggle("grid-layout", useGrid);
       cardList.classList.toggle("no-select", !useGrid);
-      button.textContent = useGrid ? t("Switch to Carousel") : t("Switch to Grid");
+      const actionLabel = useGrid ? t("Switch to Carousel") : t("Switch to Grid");
+      button.textContent = useGrid ? "↔" : "▦";
+      button.title = actionLabel;
+      button.setAttribute("aria-label", actionLabel);
     };
 
     button.addEventListener("click", () => {
@@ -312,12 +332,12 @@
       button.disabled = true;
       if (setButtonLoadingState) setButtonLoadingState(button, true);
 
-      setTimeout(() => {
+      requestAnimationFrame(() => {
         setMode(layoutMode === "scroll" ? "grid" : "scroll");
         onLayoutChange?.(layoutMode);
         button.disabled = false;
         if (setButtonLoadingState) setButtonLoadingState(button, false);
-      }, 300);
+      });
     });
 
     setMode(layoutMode);
@@ -330,8 +350,30 @@
    * @param {boolean} hideNonHighlighted - Whether to hide groups without highlights
    */
   function applyGroupHighlightFilter(cardList, hideNonHighlighted) {
+    const searchInput = document.getElementById("searchInput");
+    const manualTerms = (searchInput?.value || "")
+      .split(/[,\uFF0C]/)
+      .map((term) => term.trim().toLowerCase())
+      .filter((term) => term.length > 0);
+
     cardList.querySelectorAll(".cardGroup").forEach((group) => {
-      const hasHighlight = !!group.querySelector(".queueItem.highlight");
+      const hasHighlightClass = !!group.querySelector(
+        ".queueItem.highlight, .queueItem.highlight-search, .queueItem.highlight-track"
+      );
+      const hasSearchMatch = !hasHighlightClass && manualTerms.length > 0
+        ? [...group.querySelectorAll(".queueItem")]
+          .some((item) => {
+            const corpus = (
+              item.dataset.searchCorpusTextOnly ||
+              item.dataset.searchCorpus ||
+              item.dataset.searchText ||
+              item.textContent ||
+              ""
+            ).toLowerCase();
+            return manualTerms.some((term) => corpus.includes(term));
+          })
+        : false;
+      const hasHighlight = hasHighlightClass || hasSearchMatch;
       group.style.display = hideNonHighlighted && !hasHighlight ? "none" : "";
     });
   }

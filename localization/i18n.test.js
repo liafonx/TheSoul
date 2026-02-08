@@ -12,8 +12,8 @@ function run() {
   assert.strictEqual(locale.Baron, "男爵", "Baron translation");
   assert.strictEqual(locale.Retcon, "重构", "Retcon translation");
 
-  assert.strictEqual(shared.translateKey("Blueprint", "Blueprint"), "蓝图");
-  assert.strictEqual(shared.translateKey("NonExistentKey", "NonExistentKey"), "NonExistentKey");
+  assert.strictEqual(shared.translateKey("Blueprint"), "蓝图");
+  assert.strictEqual(shared.translateKey("NonExistentKey"), "NonExistentKey");
 
   assert.strictEqual(shared.JOKER_TRANSLATIONS.Blueprint, "蓝图");
   assert.strictEqual(shared.SPECTRAL_TRANSLATIONS["The Soul"], "灵魂");
@@ -33,4 +33,3 @@ if (require.main === module) {
 }
 
 module.exports = { run };
-

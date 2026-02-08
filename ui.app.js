@@ -5,11 +5,25 @@
 (function (global) {
   "use strict";
 
-  const ANTES_PER_PAGE = 4;
+  function getAntesPerPageByUa() {
+    const root = document.documentElement;
+    if (root?.classList.contains("ua-mobile")) return 4;
+    if (root?.classList.contains("ua-desktop")) return 8;
+
+    // Fallback when UA classes are unavailable.
+    const ua = navigator.userAgent || "";
+    const isMobile = /Android|iPhone|iPad|iPod|Mobile|Windows Phone|webOS/i.test(ua);
+    return isMobile ? 4 : 8;
+  }
+
+  const ANTES_PER_PAGE = getAntesPerPageByUa();
   let currentPageIndex = 0;
   let allShopQueues = [];
   let paginationContainer = null;
   let scrollingContainer = null;
+  let anteNavSection = null;
+  let anteNavButtons = null;
+  let trackingTermsActive = true;
   let lastQueueSource = null;
   let lastQueueParsed = [];
 
@@ -21,39 +35,106 @@
     const packs = global.BalatroPacks || {};
     const renderers = global.BalatroRenderers || {};
 
-    // Destructure utilities with inline fallbacks for robustness
-    const createElement = utils.createElement || ((tag, cls, txt) => Object.assign(document.createElement(tag), cls && { className: cls }, txt !== undefined && { textContent: txt }));
-    const cleanSummaryLine = utils.cleanSummaryLine || ((raw) => raw.replace(/^\s*ante\s*\d+\s*[：:]\s*/i, "").replace(/^\s*\d+\s*[：:]\s*/, "").trim() || raw);
-    const setupDragScroll = utils.setupDragScroll || (() => {});
-    const setButtonLoadingState = utils.setButtonLoadingState || ((btn, flag) => btn && (btn.disabled = Boolean(flag)));
-    const getFaceInfoForSegment = utils.getFaceInfoForSegment || (() => null);
-    const getSummaryEmojisForText = utils.getSummaryEmojisForText || (() => []);
-    const translateGameText = utils.translateGameText || ((text) => text);
-    const setupPointerDragScroll = utils.setupPointerDragScroll || (() => ({ isDragging: () => false }));
+    const {
+      createElement,
+      cleanSummaryLine,
+      setupDragScroll,
+      setButtonLoadingState,
+      getFaceInfoForSegment,
+      getSummaryEmojisForText,
+      translateGameText,
+      setupPointerDragScroll,
+    } = utils;
 
     const { renderBoss, renderTag, renderVoucher } = renderers;
-    if (!renderBoss || !renderTag || !renderVoucher || !search.createSearchUI) {
+    if (
+      !renderBoss ||
+      !renderTag ||
+      !renderVoucher ||
+      !search.createSearchUI ||
+      typeof createElement !== "function" ||
+      typeof cleanSummaryLine !== "function" ||
+      typeof setupDragScroll !== "function" ||
+      typeof getFaceInfoForSegment !== "function" ||
+      typeof getSummaryEmojisForText !== "function" ||
+      typeof translateGameText !== "function" ||
+      typeof setupPointerDragScroll !== "function"
+    ) {
       console.error("Critical dependencies missing; aborting UI init.");
       return;
     }
 
     // Create search UI
     const { container: searchContainer, filterPanel } = search.createSearchUI();
-    document.body.appendChild(searchContainer);
-    document.body.appendChild(filterPanel);
+    const searchFloatingWindow =
+      document.getElementById("searchFloatingWindow") || createElement("div");
+    searchFloatingWindow.id = "searchFloatingWindow";
+    if (!searchFloatingWindow.parentElement) {
+      document.body.appendChild(searchFloatingWindow);
+    }
+    searchFloatingWindow.replaceChildren(searchContainer, filterPanel);
+
+    // Create ante navigation section (between config and results)
+    document.getElementById("anteNavSection")?.remove();
+    anteNavSection = createElement("div", "anteNavSection");
+    anteNavSection.id = "anteNavSection";
+    const anteNavHeader = createElement("div", "anteNavHeader");
+    anteNavHeader.append(
+      createElement("span", "anteNavTitle", t("Ante Navigation")),
+      createElement("span", "anteNavHint", t("Tap to jump"))
+    );
+    anteNavButtons = createElement("div", "anteNavButtons");
+    anteNavSection.append(anteNavHeader, anteNavButtons);
+    const configContainer = document.querySelector(".container");
+    if (configContainer?.parentNode) {
+      configContainer.insertAdjacentElement("afterend", anteNavSection);
+    } else {
+      document.body.appendChild(anteNavSection);
+    }
 
     // Create main containers
+    document.getElementById("scrollingContainer")?.remove();
     scrollingContainer = createElement("div");
     scrollingContainer.id = "scrollingContainer";
-    document.body.appendChild(scrollingContainer);
+    if (anteNavSection?.parentNode) {
+      anteNavSection.insertAdjacentElement("afterend", scrollingContainer);
+    } else {
+      document.body.appendChild(scrollingContainer);
+    }
+    search.setSearchScope?.(scrollingContainer);
 
+    document.getElementById("paginationContainer")?.remove();
     paginationContainer = createElement("div");
     paginationContainer.id = "paginationContainer";
-    document.body.appendChild(paginationContainer);
+    if (scrollingContainer?.parentNode) {
+      scrollingContainer.insertAdjacentElement("afterend", paginationContainer);
+    } else {
+      document.body.appendChild(paginationContainer);
+    }
+
+    const getTrackingTermsActive = () => {
+      if (typeof search.hasActiveTrackingTerms === "function") {
+        return search.hasActiveTrackingTerms();
+      }
+      const terms = search.getActiveToggleTerms?.();
+      if (terms && typeof terms.size === "number") {
+        return terms.size > 0;
+      }
+      return true;
+    };
 
     // Connect search to card filter updates
-    if (search.onSearchChange && cards.triggerFilterUpdate) {
-      search.onSearchChange(() => cards.triggerFilterUpdate());
+    if (search.onSearchChange) {
+      trackingTermsActive = getTrackingTermsActive();
+      search.onSearchChange(() => {
+        cards.triggerFilterUpdate?.();
+        const nextTrackingState = getTrackingTermsActive();
+        if (nextTrackingState === trackingTermsActive) return;
+        trackingTermsActive = nextTrackingState;
+        global.onTrackingTermsStateChange?.(trackingTermsActive);
+        renderCurrentPage({ skipScroll: true });
+        renderAnteNavigation();
+      });
     }
 
     /**
@@ -87,18 +168,49 @@
       return queues;
     }
 
+    function getAnteNumberFromTitle(title) {
+      const match = String(title || "").match(/ANTE\s*(\d+)/i);
+      return match ? Number(match[1]) : NaN;
+    }
+
     function getAnalyzedAnteNumbers() {
       const analyzed = allShopQueues
-        .map(({ title }) => {
-          const match = String(title || "").match(/ANTE\s*(\d+)/i);
-          return match ? Number(match[1]) : NaN;
-        })
+        .map(({ title }) => getAnteNumberFromTitle(title))
         .filter(Number.isFinite);
       return [...new Set(analyzed)].sort((a, b) => a - b);
     }
 
     function isNearbySummariesEnabled() {
-      return global.summaryNearbyVisible !== false;
+      return global.summaryNearbyVisible !== false && trackingTermsActive;
+    }
+
+    function renderAnteNavigation() {
+      if (!anteNavSection || !anteNavButtons) return;
+      const anteList = [...new Set(
+        allShopQueues
+          .map((item) => getAnteNumberFromTitle(item?.title))
+          .filter(Number.isFinite)
+      )];
+      anteNavButtons.innerHTML = "";
+      if (!anteList.length) {
+        anteNavSection.style.display = "none";
+        return;
+      }
+      anteNavSection.style.display = "";
+      const pageAntes = new Set(
+        allShopQueues
+          .slice(currentPageIndex * ANTES_PER_PAGE, (currentPageIndex + 1) * ANTES_PER_PAGE)
+          .map((item) => getAnteNumberFromTitle(item?.title))
+          .filter(Number.isFinite)
+      );
+      anteList.forEach((anteNum) => {
+        const btn = Object.assign(createElement("button", "anteNavButton", `${t("Ante")} ${anteNum}`), {
+          type: "button",
+        });
+        btn.classList.toggle("is-current-page", pageAntes.has(anteNum));
+        btn.addEventListener("click", () => global.goToAntePage?.(anteNum));
+        anteNavButtons.appendChild(btn);
+      });
     }
 
     /** Render mini summaries for nearby antes */
@@ -107,13 +219,13 @@
       const wrapper = createElement("div", "miniSummaryWrapper");
       wrapper.appendChild(createElement("div", "miniSummaryLabel", t("Nearby Summaries")));
       const list = createElement("div", "miniSummaryList");
-      const anteKeys = analyzedAntes.length
-        ? analyzedAntes
-          .slice()
-          .sort((a, b) => (Math.abs(a - anteNum) - Math.abs(b - anteNum)) || (a - b))
-          .slice(0, 4)
+      const anteKeys = (() => {
+        const futureAntes = analyzedAntes
+          .filter((n) => Number.isFinite(n) && n > anteNum)
           .sort((a, b) => a - b)
-        : [anteNum];
+          .slice(0, 3);
+        return [anteNum, ...futureAntes];
+      })();
 
       // Helper to render text with segments and delimiters
       const renderSegments = (text, textSpan) => {
@@ -166,14 +278,14 @@
       const info = createElement("div", "queueInfo");
       const metaColumn = createElement("div", "queueMetaColumn");
 
-      // Title with color-coded ante number
+      // Title with consistent ante number color
       const titleEl = createElement("div", "queueTitle anteTitle");
       const cleanTitle = (title.match(/ANTE\s*\d+/i) || [title.replace(/=+/g, "").trim()])[0];
       const match = cleanTitle.match(/^(ANTE)\s*(\d+)/i);
       const anteNum = match ? parseInt(match[2], 10) : null;
       if (match) {
-        const numClass = `anteNum${anteNum >= 32 ? " anteNumRed" : anteNum >= 22 ? " anteNumOrange" : anteNum >= 12 ? " anteNumYellow" : ""}`;
-        titleEl.innerHTML = `${t("Ante")} <span class="${numClass}">${match[2]}</span>`;
+        titleEl.innerHTML = `${t("Ante")} <span class="anteNum">${match[2]}</span>`;
+        container.dataset.ante = String(anteNum);
       } else titleEl.textContent = cleanTitle;
       metaColumn.appendChild(titleEl);
 
@@ -226,18 +338,49 @@
 
       const rerender = () => { cards.renderCardGroups?.(cardList, queueNodes); search.searchAndHighlight?.(); };
       const layout = cards.createLayoutToggle?.(cardList, rerender) || { button: createElement("button"), setMode: () => {}, getMode: () => "scroll" };
-      cardSetHeader.append(layout.button, cards.createGroupControls?.(rerender) || createElement("div"));
+      const groupControls = cards.createGroupControls?.(rerender) || createElement("div");
+      const topControls = createElement("div", "cardSetTopControls");
+      const topLeft = createElement("div", "cardSetTopLeft");
+      const topRight = createElement("div", "cardSetTopRight");
+      layout.button.classList.add("cardSetLayoutToggle");
+      groupControls.classList.add("cardSetGroupControls");
+      let hideNonHighlight = false;
+      const hideToggle = Object.assign(createElement("button", "cardSetToggle cardSetIconToggle cardSetHitFilterToggle", ""), { type: "button" });
+      const applyFilter = () => cards.applyGroupHighlightFilter?.(cardList, hideNonHighlight);
+      const syncHideToggle = () => {
+        const filtered = hideNonHighlight;
+        hideToggle.textContent = filtered ? "◉" : "◎";
+        hideToggle.classList.toggle("active", filtered);
+        const actionLabel = filtered ? t("Show all groups") : t("Hide non-hit groups");
+        hideToggle.title = actionLabel;
+        hideToggle.setAttribute("aria-label", actionLabel);
+      };
+      syncHideToggle();
+
+      topLeft.append(layout.button, hideToggle);
+      topRight.append(groupControls);
+      topControls.append(topLeft, topRight);
+      cardSetHeader.appendChild(topControls);
 
       // Per-ante controls
       const cardsInput = Object.assign(createElement("input"), { type: "number", min: "1", max: "9999", value: "1000", className: "anteCardsInput" });
-      const recalcBtn = Object.assign(createElement("button", "cardSetToggle anteRecalcButton", t("Re-run")), { type: "button" });
+      const recalcBtn = Object.assign(createElement("button", "cardSetToggle anteRecalcButton", t("Cards (this Ante)")), { type: "button" });
       const restoreBtn = Object.assign(createElement("button", "cardSetToggle anteRestoreButton", t("Restore")), { type: "button" });
-      let hideNonHighlight = false;
-      const hideToggle = Object.assign(createElement("button", "cardSetToggle", t("Only groups with hits")), { type: "button" });
-      const applyFilter = () => cards.applyGroupHighlightFilter?.(cardList, hideNonHighlight);
+      const jumpBtn = Object.assign(createElement("button", "cardSetToggle anteJumpButton", t("Jump to card #")), { type: "button" });
+      const jumpInput = Object.assign(createElement("input"), { type: "number", min: "1", max: String(queue.length || 1), value: "1", className: "anteJumpInput" });
+      jumpBtn.title = t("Jump to card #");
+      jumpBtn.setAttribute("aria-label", t("Jump to card #"));
 
-      const recalcControls = createElement("div", "groupSizeControls");
-      recalcControls.append(createElement("span", "groupSizeLabel", t("Cards (this Ante):")), cardsInput, recalcBtn, restoreBtn, hideToggle);
+      const recalcControls = createElement("div", "cardSetRunControls");
+      const recalcLeft = createElement("div", "cardSetRunLeft");
+      const recalcRight = createElement("div", "cardSetRunRight");
+      const jumpCombo = createElement("div", "cardSetComboControl cardSetJumpCombo");
+      const recalcCombo = createElement("div", "cardSetComboControl cardSetRecalcCombo");
+      jumpCombo.append(jumpInput, jumpBtn);
+      recalcCombo.append(cardsInput, recalcBtn);
+      recalcLeft.append(jumpCombo);
+      recalcRight.append(createElement("span", "cardSetInlineLabel", t("Cards (this Ante):")), recalcCombo, restoreBtn);
+      recalcControls.append(recalcLeft, recalcRight);
       cardSetHeader.appendChild(recalcControls);
       cardSet.append(cardSetHeader, cardList);
       container.appendChild(cardSet);
@@ -247,14 +390,63 @@
       cards.renderCardGroups?.(cardList, queueNodes);
       applyFilter();
 
-      hideToggle.addEventListener("click", () => { hideNonHighlight = !hideNonHighlight; hideToggle.textContent = hideNonHighlight ? t("Show all groups") : t("Only groups with hits"); applyFilter(); });
+      const syncJumpRange = () => {
+        const max = Math.max(1, queueNodes.length);
+        jumpInput.max = String(max);
+        const current = Number(jumpInput.value) || 1;
+        if (current > max) jumpInput.value = String(max);
+      };
+      syncJumpRange();
+
+      const jumpToCardSequence = () => {
+        const rawSeq = Math.floor(Number(jumpInput.value));
+        if (!Number.isFinite(rawSeq) || rawSeq < 1) return;
+        const maxCards = Math.max(1, Number(jumpInput.max) || queueNodes.length || 1);
+        const seq = Math.min(Math.max(rawSeq, 1), maxCards);
+        if (seq !== rawSeq) jumpInput.value = String(seq);
+        const groupSize = Number(cards.getGroupSize?.()) || Number(cards.GROUP_SIZES?.[0]) || 2;
+        const targetIndex = Math.floor((seq - 1) / groupSize);
+        const groups = cardList.querySelectorAll(".cardGroup");
+        const target = groups[targetIndex];
+        if (!target) return;
+
+        if (cardList.classList.contains("scrollable")) {
+          const left = Math.max(0, target.offsetLeft - cardList.offsetLeft);
+          cardList.scrollTo({ left, behavior: "smooth" });
+          return;
+        }
+
+        target.scrollIntoView({ behavior: "smooth", block: "nearest", inline: "nearest" });
+      };
+
+      jumpBtn.addEventListener("click", jumpToCardSequence);
+      jumpInput.addEventListener("keydown", (e) => {
+        if (e.key !== "Enter") return;
+        e.preventDefault();
+        jumpToCardSequence();
+      });
+
+      hideToggle.addEventListener("click", () => {
+        hideNonHighlight = !hideNonHighlight;
+        syncHideToggle();
+        applyFilter();
+      });
 
       const runCompute = (btn, textOnly, mode) => {
         if (btn.disabled || !anteNum) return;
         const limit = Math.max(0, Number(textOnly ? cardsInput.value : document.getElementById("cardsPerAnte")?.value) || 0);
         if (!limit || !global.computeSingleAnteQueue) return;
         setButtonLoadingState?.(btn, true);
-        setTimeout(() => { try { queueNodes = cards.buildQueueNodes?.(global.computeSingleAnteQueue(anteNum, limit) || [], { textOnly }) || []; layout.setMode(mode); rerender(); } finally { setButtonLoadingState?.(btn, false); } }, 0);
+        setTimeout(() => {
+          try {
+            queueNodes = cards.buildQueueNodes?.(global.computeSingleAnteQueue(anteNum, limit) || [], { textOnly }) || [];
+            layout.setMode(mode);
+            rerender();
+            syncJumpRange();
+          } finally {
+            setButtonLoadingState?.(btn, false);
+          }
+        }, 0);
       };
       recalcBtn.addEventListener("click", () => runCompute(recalcBtn, true, "grid"));
       restoreBtn.addEventListener("click", () => runCompute(restoreBtn, false, "scroll"));
@@ -277,19 +469,28 @@
       const analyzedAntes = getAnalyzedAnteNumbers();
       scrollingContainer.innerHTML = "";
       cards.clearCallbacks?.();
-      if (!totalPages) { paginationContainer.innerHTML = ""; paginationContainer.style.display = "none"; return; }
+      if (!totalPages) {
+        paginationContainer.innerHTML = "";
+        paginationContainer.style.display = "none";
+        renderAnteNavigation();
+        return;
+      }
 
       paginationContainer.style.display = totalPages <= 1 ? "none" : "flex";
       allShopQueues
         .slice(currentPageIndex * ANTES_PER_PAGE, (currentPageIndex + 1) * ANTES_PER_PAGE)
         .forEach((q) => scrollingContainer.appendChild(renderAnteQueue(q, analyzedAntes)));
+      renderAnteNavigation();
+      search.markSearchDomDirty?.();
 
       if (!skipScroll) {
         window.scrollTo({ top: window.scrollY + scrollingContainer.getBoundingClientRect().top - 12, behavior: "smooth" });
       }
       scrollingContainer.querySelectorAll(".scrollable").forEach(setupDragScroll);
-      search.searchAndHighlight?.();
-      global.applySummaryEmojiFilter?.();
+      requestAnimationFrame(() => {
+        search.searchAndHighlight?.();
+        global.applySummaryEmojiFilter?.();
+      });
 
       if (global.pendingScrollToResults) { global.pendingScrollToResults = false; requestAnimationFrame(() => scrollingContainer?.scrollIntoView({ behavior: "smooth", block: "start" })); }
     }
@@ -299,17 +500,85 @@
       const totalPages = Math.ceil(allShopQueues.length / ANTES_PER_PAGE);
       paginationContainer.innerHTML = "";
       paginationContainer.style.display = totalPages <= 1 ? "none" : "flex";
-      if (totalPages <= 1) return;
+      const findAnteContainer = (ante) => {
+        const anteText = String(ante);
+        if (!scrollingContainer) return null;
+        return (
+          scrollingContainer.querySelector(`.queueContainer[data-ante="${anteText}"]`) ||
+          [...scrollingContainer.querySelectorAll(".queueContainer")].find((qc) => {
+            const textAnte = qc.querySelector(".queueTitle .anteNum")?.textContent?.trim();
+            return textAnte === anteText;
+          }) ||
+          null
+        );
+      };
 
-      const goToPage = (page) => { const p = Math.max(0, Math.min(page, totalPages - 1)); if (p !== currentPageIndex) { currentPageIndex = p; renderPaginationControls(); renderCurrentPage(); } };
-      global.goToAntePage = (ante) => { if (!Number.isFinite(ante) || !allShopQueues.length) return; const idx = allShopQueues.findIndex(({ title }) => new RegExp(`ANTE\\s+${ante}\\b`, "i").test(title || "")); if (idx !== -1) goToPage(Math.floor(idx / ANTES_PER_PAGE)); };
+      const scrollAnteIntoView = (ante, options = {}) => {
+        const behavior = options.behavior || "auto";
+        const target = findAnteContainer(ante);
+        if (!target) return false;
+        const targetTop = Math.max(0, window.scrollY + target.getBoundingClientRect().top);
+        window.scrollTo({ top: targetTop, behavior });
+        return true;
+      };
+
+      const goToPage = (page, options = {}) => {
+        const p = Math.max(0, Math.min(page, totalPages - 1));
+        const skipScroll = Boolean(options.skipScroll);
+        if (p !== currentPageIndex) {
+          currentPageIndex = p;
+          renderPaginationControls();
+          renderCurrentPage({ skipScroll });
+        } else if (!skipScroll) {
+          renderCurrentPage();
+        }
+      };
+
+      global.goToAntePage = (ante) => {
+        if (!Number.isFinite(ante) || !allShopQueues.length) return;
+        const idx = allShopQueues.findIndex(({ title }) => new RegExp(`ANTE\\s+${ante}\\b`, "i").test(title || ""));
+        if (idx === -1) return;
+        const pageIndex = Math.floor(idx / ANTES_PER_PAGE);
+        const samePage = pageIndex === currentPageIndex;
+        goToPage(pageIndex, { skipScroll: true });
+        const alignToTop = () => scrollAnteIntoView(ante, { behavior: "auto" });
+        if (!alignToTop()) {
+          setTimeout(alignToTop, 0);
+        }
+        if (!samePage) {
+          // Correction passes after page-switch layout work.
+          requestAnimationFrame(alignToTop);
+          setTimeout(alignToTop, 80);
+        }
+      };
+
+      if (totalPages <= 1) return;
 
       const makeBtn = (text, disabled, onClick) => { const btn = Object.assign(createElement("button", "paginationButton", text), { type: "button", disabled }); btn.addEventListener("click", () => { if (!btn.disabled) { setButtonLoadingState?.(btn, true); setTimeout(onClick, 0); } }); return btn; };
       const prevBtn = makeBtn(t("Previous"), currentPageIndex === 0, () => goToPage(currentPageIndex - 1));
       const nextBtn = makeBtn(t("Next"), currentPageIndex >= totalPages - 1, () => goToPage(currentPageIndex + 1));
 
       const pageSelect = createElement("select", "paginationInfoSelect");
-      for (let i = 0; i < totalPages; i++) pageSelect.appendChild(Object.assign(createElement("option", null, `${t("Page")} ${i + 1}`), { value: i, selected: i === currentPageIndex }));
+      for (let i = 0; i < totalPages; i++) {
+        const pageSlice = allShopQueues.slice(i * ANTES_PER_PAGE, (i + 1) * ANTES_PER_PAGE);
+        const anteNums = pageSlice
+          .map((item) => getAnteNumberFromTitle(item?.title))
+          .filter(Number.isFinite);
+        const startAnte = anteNums[0];
+        const endAnte = anteNums[anteNums.length - 1];
+        const rangeLabel = Number.isFinite(startAnte)
+          ? (startAnte === endAnte
+            ? ` (${t("Ante")} ${startAnte})`
+            : ` (${t("Ante")} ${startAnte}-${endAnte})`)
+          : "";
+
+        pageSelect.appendChild(
+          Object.assign(
+            createElement("option", null, `${t("Page")} ${i + 1}${rangeLabel}`),
+            { value: i, selected: i === currentPageIndex }
+          )
+        );
+      }
       pageSelect.addEventListener("change", (e) => { const p = Number(e.target.value); if (p !== currentPageIndex) { pageSelect.disabled = true; setTimeout(() => goToPage(p), 0); } });
 
       const info = createElement("div", "paginationInfo");
@@ -323,6 +592,8 @@
     function displayShopQueues() {
       const text = global.lastRawOutput || "";
       allShopQueues = extractShopQueues(text);
+      trackingTermsActive = getTrackingTermsActive();
+      global.onTrackingTermsStateChange?.(trackingTermsActive);
       currentPageIndex = 0;
       renderPaginationControls();
       renderCurrentPage();
@@ -336,6 +607,7 @@
       if (!allShopQueues.length) return;
       renderCurrentPage({ skipScroll: true });
     };
+    global.areTrackingTermsActive = () => trackingTermsActive;
 
     // Close popups on outside click
     document.addEventListener("click", () => {

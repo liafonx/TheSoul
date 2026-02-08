@@ -19,16 +19,29 @@
     { key: "ARCANA", label: "Arcana" },
     { key: "CELESTIAL", label: "Celestial" },
   ];
+  function resolveCardRenderScale() {
+    const root = document.documentElement;
+    if (root?.classList.contains("ua-desktop")) return 2;
+    if (root?.classList.contains("ua-mobile")) return 1.2;
+
+    const ua = navigator.userAgent || "";
+    const isMobile = /Android|iPhone|iPad|iPod|Mobile|Windows Phone|webOS|HarmonyOS/i.test(ua);
+    return isMobile ? 1.2 : 2;
+  }
+  const CARD_RENDER_SCALE = resolveCardRenderScale();
 
   /** Helper: get createElement from utils */
   const createElement = (tag, className, text) => {
     const fn = getUtils().createElement;
-    if (fn) return fn(tag, className, text);
-    const el = document.createElement(tag);
-    if (className) el.className = className;
-    if (text !== undefined) el.textContent = text;
-    return el;
+    if (!fn) throw new Error("BalatroUtils.createElement is unavailable.");
+    return fn(tag, className, text);
   };
+
+  function setCanvasResolution(canvas, logicalWidth, logicalHeight) {
+    const scale = CARD_RENDER_SCALE;
+    canvas.width = Math.round(logicalWidth * scale);
+    canvas.height = Math.round(logicalHeight * scale);
+  }
 
   /**
    * Determine which pack types are present in a list of packs
@@ -110,7 +123,7 @@
 
     const { cardName: parsedName, itemModifiers, itemStickers } = parseCardItem(cardName);
     const itemType = determineItemType?.(parsedName);
-    const container = createElement("div");
+    const container = createElement("div", "packContainer");
     container.dataset.searchText = [parsedName, ...itemModifiers, ...itemStickers].join(" ");
 
     // Set face info
@@ -133,8 +146,7 @@
       // Known card type (joker, tarot, etc.)
       const canvasWrapper = createElement("div", "cardCanvasWrapper");
       const canvas = document.createElement("canvas");
-      canvas.width = 80;
-      canvas.height = 107;
+      setCanvasResolution(canvas, 80, 107);
       if (maskToCanvas) {
         maskToCanvas(canvas, parsedName, itemType, itemModifiers, itemStickers);
       }
@@ -174,8 +186,7 @@
       if (parsed) {
         const { rank, suit, modifiers, seal } = parsed;
         const canvas = document.createElement("canvas");
-        canvas.width = 80;
-        canvas.height = 107;
+        setCanvasResolution(canvas, 80, 107);
         if (renderStandardCard) {
           renderStandardCard(canvas, rank, suit, modifiers, seal);
         }
@@ -244,7 +255,12 @@
     // Header row
     const headerRow = createElement("div", "packHeaderRow");
     const title = createElement("div", "queueTitle packTitle", t("Packs"));
+    const toggleIndicator = createElement("span", "packToggleIndicator", "▾");
+    toggleIndicator.setAttribute("aria-hidden", "true");
+    title.appendChild(toggleIndicator);
     headerRow.appendChild(title);
+    headerRow.setAttribute("role", "button");
+    headerRow.setAttribute("tabindex", "0");
 
     // Filter toggles
     const toggles = createElement("div", "pack-filter pack-inline");
@@ -289,6 +305,7 @@
       if (onRenderRaf) cancelAnimationFrame(onRenderRaf);
       onRenderRaf = requestAnimationFrame(() => {
         onRenderRaf = 0;
+        global.BalatroSearch?.markSearchDomDirty?.();
         onRender?.();
       });
     }
@@ -311,12 +328,15 @@
         nameEl.dataset.originalText = packName;
         packItem.appendChild(nameEl);
 
+        const cardsWrap = createElement("div", "packCards");
+
         // Pack cards
         packCards.forEach((cardNameStr) => {
           const cardEl = renderPackCard(cardNameStr, packType);
-          packItem.appendChild(cardEl);
+          cardsWrap.appendChild(cardEl);
         });
 
+        packItem.appendChild(cardsWrap);
         container.appendChild(packItem);
         packItems.push({ packName, element: packItem });
       });
@@ -333,20 +353,29 @@
 
     // Auto-expand when packs contain tracked items
     let collapsed = !hasTrackedPackItem;
-    toggles.style.display = "none";
-    container.style.display = "none";
 
-    if (!collapsed) {
-      toggles.style.display = "";
-      container.style.display = "";
-      renderPacks();
-    }
-
-    headerRow.addEventListener("click", () => {
-      collapsed = !collapsed;
+    function applyCollapsedState() {
+      headerRow.classList.toggle("collapsed", collapsed);
+      headerRow.setAttribute("aria-expanded", String(!collapsed));
+      toggleIndicator.textContent = collapsed ? "▸" : "▾";
       toggles.style.display = collapsed ? "none" : "";
       container.style.display = collapsed ? "none" : "";
+    }
+
+    applyCollapsedState();
+    if (!collapsed) renderPacks();
+
+    function toggleCollapsed() {
+      collapsed = !collapsed;
+      applyCollapsedState();
       if (!collapsed) renderPacks();
+    }
+
+    headerRow.addEventListener("click", toggleCollapsed);
+    headerRow.addEventListener("keydown", (event) => {
+      if (event.key !== "Enter" && event.key !== " ") return;
+      event.preventDefault();
+      toggleCollapsed();
     });
 
     return { header: headerRow, toggles, container };
