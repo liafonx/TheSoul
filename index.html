@@ -2,7 +2,12 @@
 <html>
   <head>
     <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+    <meta name="theme-color" content="#20242d" />
+    <meta name="theme-color" content="#20242d" media="(prefers-color-scheme: light)" />
+    <meta name="theme-color" content="#171b24" media="(prefers-color-scheme: dark)" />
+    <meta name="apple-mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
     <title>The Soul</title>
     <link rel="preload" href="immolate.wasm" as="fetch" type="application/wasm" crossorigin="anonymous" />
     <link rel="stylesheet" href="base.css" />
@@ -597,7 +602,7 @@
       emojiToggleBtn.type = "button";
       emojiToggleBtn.className = "summaryFilterButton";
       emojiToggleBtn.classList.toggle("active", emojiVisible);
-      emojiToggleBtn.textContent = emojiVisible ? t("Emojis: visible") : t("Emojis: hidden");
+      emojiToggleBtn.textContent = emojiVisible ? t("Emojis in summary: visible") : t("Emojis in summary: hidden");
       emojiToggleBtn.addEventListener("click", () => {
         window.summaryEmojiVisible = !emojiVisible;
         applySummaryEmojiFilter();
@@ -611,7 +616,7 @@
       colorBtn.className = "summaryFilterButton";
       const updateColorBtn = () => {
         colorBtn.classList.toggle("active", !window.summaryColorOff);
-        colorBtn.textContent = window.summaryColorOff ? t("Text Color: default") : t("Text Color: colorful");
+        colorBtn.textContent = window.summaryColorOff ? t("Summary text color: default") : t("Summary text color: colorful");
       };
       updateColorBtn();
       colorBtn.addEventListener("click", () => {
