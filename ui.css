@@ -79,6 +79,8 @@
 html {
   -webkit-text-size-adjust: 100%;
   text-size-adjust: 100%;
+  background-color: #171b24;
+  color-scheme: dark;
 }
 
 body {
@@ -555,16 +557,25 @@ label[for="omitBeforeAnte9"] {
 #scrollToTopButton {
   position: fixed;
   right: 12px;
-  bottom: 14px;
-  width: 34px;
-  min-width: 34px;
-  min-height: 34px;
+  bottom: calc(14px + env(safe-area-inset-bottom));
+  width: 44px;
+  min-width: 44px;
+  min-height: 44px;
   padding: 0;
   display: none;
   align-items: center;
   justify-content: center;
   z-index: 1200;
-  font-size: 14px;
+  background-color: var(--ui-glass-button-bg);
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+  color: var(--ui-accent);
+  border: 1px solid rgba(var(--ui-accent-rgb), 0.4);
+  border-radius: 12px;
+  cursor: pointer;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.4);
+  font-size: 22px;
+  font-weight: 700;
   line-height: 1;
 }
 
@@ -588,8 +599,7 @@ label[for="omitBeforeAnte9"] {
 #emojiLegendButton,
 #searchFloatingToggle,
 #summaryFloatingToggle,
-#summaryFilterToggle,
-#scrollToTopButton {
+#summaryFilterToggle {
   background-color: var(--ui-glass-button-bg);
   backdrop-filter: blur(8px);
   -webkit-backdrop-filter: blur(8px);
@@ -1384,16 +1394,17 @@ button.is-loading::after,
   #emojiLegendButton,
   #searchFloatingToggle,
   #summaryFloatingToggle,
-  #summaryFilterToggle,
-  #scrollToTopButton {
+  #summaryFilterToggle {
     min-height: 30px;
     padding: 0 10px;
     font-size: 11px;
   }
 
   #scrollToTopButton {
-    width: 30px;
-    min-width: 30px;
+    width: 42px;
+    min-width: 42px;
+    min-height: 42px;
+    font-size: 20px;
     padding: 0;
   }
 
@@ -1851,33 +1862,21 @@ html.ua-no-blur #emojiLegendWindow {
   .cardSetTopRight {
     gap: 6px;
   }
-
-  .cardSetTopRight {
-    margin-left: 0;
-    justify-self: end;
-    justify-content: flex-end;
-  }
 }
 
 @media (max-width: 560px) {
   .cardSetTopControls {
-    grid-template-columns: minmax(0, 1fr) auto;
     column-gap: 6px;
-    row-gap: 6px;
   }
 
   .cardSetTopLeft,
   .cardSetTopRight {
     width: auto;
     flex-wrap: nowrap;
-    justify-content: flex-start;
   }
 
-  .cardSetTopRight {
-    width: auto;
-    margin-left: 0;
-    justify-self: end;
-    justify-content: flex-end;
+  .cardSetTopLeft {
+    justify-content: flex-start;
   }
 
   .cardSetGroupControls {
@@ -2040,7 +2039,8 @@ html.ua-no-blur #emojiLegendWindow {
 
 .packToggleIndicator {
   color: var(--ui-accent-cool-strong);
-  font-size: 12px;
+  font-size: 18px;
+  font-weight: 700;
   line-height: 1;
   opacity: 0.95;
 }
@@ -2631,11 +2631,18 @@ html.ua-no-blur #emojiLegendWindow {
 .packCards .cardName,
 .packCards .standardCardName,
 .voucherName,
-.tagName,
-.bossName {
+.tagName {
   font-size: 10px;
   margin-bottom: 2px;
   margin-top: 3px;
+  word-wrap: break-word;
+  color: var(--ui-text-soft);
+}
+
+.bossName {
+  font-size: 10px;
+  margin-bottom: 2px;
+  margin-top: 0;
   word-wrap: break-word;
   color: var(--ui-text-soft);
 }
@@ -2738,8 +2745,7 @@ html.ua-no-blur #emojiLegendWindow {
   box-sizing: border-box;
 }
 
-.voucherContainer,
-.tagContainer {
+.voucherContainer {
   display: flex;
   flex-direction: column;
   align-items: center;
@@ -2765,6 +2771,9 @@ html.ua-no-blur #emojiLegendWindow {
   display: flex;
   flex-direction: row;
   align-items: center;
+  text-align: center;
+  font-size: 10px;
+  margin-right: 5px;
   gap: 8px;
   margin-bottom: 2px;
 }
@@ -2781,8 +2790,4 @@ html.ua-no-blur #emojiLegendWindow {
 .bossContainer canvas {
   margin-bottom: 3px;
   pointer-events: none;
-}
-
-.bossName {
-  margin-top: 0;
 }
