@@ -80,8 +80,8 @@
     anteNavSection.id = "anteNavSection";
     const anteNavHeader = createElement("div", "anteNavHeader");
     anteNavHeader.append(
-      createElement("span", "anteNavTitle", t("Ante Navigation")),
-      createElement("span", "anteNavHint", t("Tap to jump"))
+      createElement("span", "anteNavTitle", t("ui.ante_navigation")),
+      createElement("span", "anteNavHint", t("ui.tap_to_jump"))
     );
     anteNavButtons = createElement("div", "anteNavButtons");
     anteNavSection.append(anteNavHeader, anteNavButtons);
@@ -131,9 +131,11 @@
         const nextTrackingState = getTrackingTermsActive();
         if (nextTrackingState === trackingTermsActive) return;
         trackingTermsActive = nextTrackingState;
+        var savedScrollY = global.scrollY;
         global.onTrackingTermsStateChange?.(trackingTermsActive);
         renderCurrentPage({ skipScroll: true });
         renderAnteNavigation();
+        if (global.scrollY !== savedScrollY) global.scrollTo(0, savedScrollY);
       });
     }
 
@@ -181,7 +183,8 @@
     }
 
     function isNearbySummariesEnabled() {
-      return global.summaryNearbyVisible !== false && trackingTermsActive;
+      var hasManualSearch = (document.getElementById("searchInput")?.value?.trim().length > 0) && (global.lastAugmentedSummary?.size > 0);
+      return global.summaryNearbyVisible !== false && (trackingTermsActive || hasManualSearch);
     }
 
     function renderAnteNavigation() {
@@ -204,7 +207,7 @@
           .filter(Number.isFinite)
       );
       anteList.forEach((anteNum) => {
-        const btn = Object.assign(createElement("button", "anteNavButton", `${t("Ante")} ${anteNum}`), {
+        const btn = Object.assign(createElement("button", "anteNavButton", `${t("ui.ante")} ${anteNum}`), {
           type: "button",
         });
         btn.classList.toggle("is-current-page", pageAntes.has(anteNum));
@@ -217,7 +220,7 @@
     function renderMiniSummaries(anteNum, container, analyzedAntes) {
       const summaryLookup = global.lastSummariesByAnte instanceof Map ? global.lastSummariesByAnte : null;
       const wrapper = createElement("div", "miniSummaryWrapper");
-      wrapper.appendChild(createElement("div", "miniSummaryLabel", t("Nearby Summaries")));
+      wrapper.appendChild(createElement("div", "miniSummaryLabel", t("ui.nearby_summaries")));
       const list = createElement("div", "miniSummaryList");
       const anteKeys = (() => {
         const futureAntes = analyzedAntes
@@ -227,36 +230,17 @@
         return [anteNum, ...futureAntes];
       })();
 
-      // Helper to render text with segments and delimiters
-      const renderSegments = (text, textSpan) => {
-        cleanSummaryLine(text).split("、").forEach((seg, idx, arr) => {
-          const trimmed = seg.trim();
-          if (!trimmed) return;
-          trimmed.split(/(\|)/).forEach((chunk) => {
-            if (!chunk) return;
-            if (chunk === "|") { textSpan.appendChild(createElement("span", "miniSummaryPipe", " | ")); return; }
-            const part = createElement("span", "miniSummaryItem", chunk);
-            part.dataset.originalText = chunk;
-            const info = getFaceInfoForSegment?.(chunk);
-            if (info) {
-              part.dataset.faceEmoji = info.emoji;
-              chunk.includes("‼️") ? part.classList.add("negativeFace") : info.color && (part.style.color = info.color);
-            }
-            const emojis = getSummaryEmojisForText?.(chunk) || [];
-            if (emojis.length) {
-              part.dataset.summaryEmojis = emojis.join(",");
-            }
-            textSpan.appendChild(part);
-          });
-          if (idx < arr.length - 1) { textSpan.appendChild(createElement("span", "miniSummaryDelimiter", "、")); textSpan.appendChild(document.createTextNode(" ")); }
-        });
-      };
-
       anteKeys.forEach((anteKey) => {
         const row = createElement("div", "miniSummaryEntry");
-        const anteSpan = createElement("span", "miniSummaryAnte", `${t("Ante")} ${anteKey}`);
+        const anteSpan = createElement("span", "miniSummaryAnte", `${t("ui.ante")} ${anteKey}`);
         const textSpan = createElement("span", "miniSummaryText");
-        renderSegments(summaryLookup?.get(anteKey) || `${t("Ante")} ${anteKey}: ${t("No summary yet")}`, textSpan);
+        const lookupText = summaryLookup?.get(anteKey);
+        const rawText = lookupText ? (cleanSummaryLine(lookupText) || lookupText) : t("ui.no_summary_yet");
+        if (typeof global.renderSummarySegments === "function") {
+          global.renderSummarySegments(rawText, textSpan, "miniSummary");
+        } else {
+          textSpan.textContent = rawText;
+        }
 
         row.append(anteSpan, textSpan);
         const popup = createElement("div", "miniSummaryPopup");
@@ -284,7 +268,7 @@
       const match = cleanTitle.match(/^(ANTE)\s*(\d+)/i);
       const anteNum = match ? parseInt(match[2], 10) : null;
       if (match) {
-        titleEl.innerHTML = `${t("Ante")} <span class="anteNum">${match[2]}</span>`;
+        titleEl.innerHTML = `${t("ui.ante")} <span class="anteNum">${match[2]}</span>`;
         container.dataset.ante = String(anteNum);
       } else titleEl.textContent = cleanTitle;
       metaColumn.appendChild(titleEl);
@@ -321,13 +305,20 @@
 
       // Meta row
       const metaRow = createElement("div", "queueMetaRow");
-      metaRow.appendChild(makeMetaBlock(t("Voucher"), voucher ? [voucher] : [], "voucherContainer", "voucherName", [84, 112], renderVoucher));
-      metaRow.appendChild(makeMetaBlock(t("Tags"), tags, "tagsContainer", "tagName", [34, 34], renderTag));
-      metaRow.appendChild(makeMetaBlock(t("Boss"), boss ? [boss] : [], "bossContainer", "bossName", [34, 34], renderBoss));
+      metaRow.appendChild(makeMetaBlock(t("ui.voucher"), voucher ? [voucher] : [], "voucherContainer", "voucherName", [84, 112], renderVoucher));
+      metaRow.appendChild(makeMetaBlock(t("ui.tags"), tags, "tagsContainer", "tagName", [34, 34], renderTag));
+      metaRow.appendChild(makeMetaBlock(t("ui.boss"), boss ? [boss] : [], "bossContainer", "bossName", [34, 34], renderBoss));
       metaColumn.appendChild(metaRow);
       info.appendChild(metaColumn);
 
-      if (anteNum !== null && isNearbySummariesEnabled()) renderMiniSummaries(anteNum, info, analyzedAntes);
+      if (anteNum !== null) {
+        renderMiniSummaries(anteNum, info, analyzedAntes);
+        // Hide wrapper when nearby summaries are not enabled; DOM stays for in-place refresh
+        if (!isNearbySummariesEnabled()) {
+          const w = info.querySelector(".miniSummaryWrapper");
+          if (w) w.style.display = "none";
+        }
+      }
       container.appendChild(info);
 
       // Card set with controls
@@ -351,7 +342,7 @@
         const filtered = hideNonHighlight;
         hideToggle.textContent = filtered ? "◉" : "◎";
         hideToggle.classList.toggle("active", filtered);
-        const actionLabel = filtered ? t("Show all groups") : t("Hide non-hit groups");
+        const actionLabel = filtered ? t("ui.show_all_groups") : t("ui.hide_non_hit");
         hideToggle.title = actionLabel;
         hideToggle.setAttribute("aria-label", actionLabel);
       };
@@ -364,12 +355,12 @@
 
       // Per-ante controls
       const cardsInput = Object.assign(createElement("input"), { type: "number", min: "1", max: "9999", value: "1000", className: "anteCardsInput" });
-      const recalcBtn = Object.assign(createElement("button", "cardSetToggle anteRecalcButton", t("Cards (this Ante)")), { type: "button" });
-      const restoreBtn = Object.assign(createElement("button", "cardSetToggle anteRestoreButton", t("Restore")), { type: "button" });
-      const jumpBtn = Object.assign(createElement("button", "cardSetToggle anteJumpButton", t("Jump to card #")), { type: "button" });
+      const recalcBtn = Object.assign(createElement("button", "cardSetToggle anteRecalcButton", t("ui.cards_this_ante")), { type: "button" });
+      const restoreBtn = Object.assign(createElement("button", "cardSetToggle anteRestoreButton", t("ui.restore")), { type: "button" });
+      const jumpBtn = Object.assign(createElement("button", "cardSetToggle anteJumpButton", t("ui.jump_to_card")), { type: "button" });
       const jumpInput = Object.assign(createElement("input"), { type: "number", min: "1", max: String(queue.length || 1), value: "1", className: "anteJumpInput" });
-      jumpBtn.title = t("Jump to card #");
-      jumpBtn.setAttribute("aria-label", t("Jump to card #"));
+      jumpBtn.title = t("ui.jump_to_card");
+      jumpBtn.setAttribute("aria-label", t("ui.jump_to_card"));
 
       const recalcControls = createElement("div", "cardSetRunControls");
       const recalcLeft = createElement("div", "cardSetRunLeft");
@@ -379,7 +370,7 @@
       jumpCombo.append(jumpInput, jumpBtn);
       recalcCombo.append(cardsInput, recalcBtn);
       recalcLeft.append(jumpCombo);
-      recalcRight.append(createElement("span", "cardSetInlineLabel", t("Cards (this Ante):")), recalcCombo, restoreBtn);
+      recalcRight.append(createElement("span", "cardSetInlineLabel", t("ui.cards_this_ante_label")), recalcCombo, restoreBtn);
       recalcControls.append(recalcLeft, recalcRight);
       cardSetHeader.appendChild(recalcControls);
       cardSet.append(cardSetHeader, cardList);
@@ -488,8 +479,12 @@
       }
       scrollingContainer.querySelectorAll(".scrollable").forEach(setupDragScroll);
       requestAnimationFrame(() => {
+        var rafScrollY = skipScroll ? global.scrollY : null;
         search.searchAndHighlight?.();
         global.applySummaryEmojiFilter?.();
+        if (rafScrollY !== null && global.scrollY !== rafScrollY) {
+          global.scrollTo(0, rafScrollY);
+        }
       });
 
       if (global.pendingScrollToResults) { global.pendingScrollToResults = false; requestAnimationFrame(() => scrollingContainer?.scrollIntoView({ behavior: "smooth", block: "start" })); }
@@ -528,7 +523,7 @@
         if (p !== currentPageIndex) {
           currentPageIndex = p;
           renderPaginationControls();
-          renderCurrentPage({ skipScroll });
+          renderCurrentPage({ skipScroll: false }); // Always scroll when changing pages
         } else if (!skipScroll) {
           renderCurrentPage();
         }
@@ -555,8 +550,8 @@
       if (totalPages <= 1) return;
 
       const makeBtn = (text, disabled, onClick) => { const btn = Object.assign(createElement("button", "paginationButton", text), { type: "button", disabled }); btn.addEventListener("click", () => { if (!btn.disabled) { setButtonLoadingState?.(btn, true); setTimeout(onClick, 0); } }); return btn; };
-      const prevBtn = makeBtn(t("Previous"), currentPageIndex === 0, () => goToPage(currentPageIndex - 1));
-      const nextBtn = makeBtn(t("Next"), currentPageIndex >= totalPages - 1, () => goToPage(currentPageIndex + 1));
+      const prevBtn = makeBtn(t("ui.previous"), currentPageIndex === 0, () => goToPage(currentPageIndex - 1));
+      const nextBtn = makeBtn(t("ui.next"), currentPageIndex >= totalPages - 1, () => goToPage(currentPageIndex + 1));
 
       const pageSelect = createElement("select", "paginationInfoSelect");
       for (let i = 0; i < totalPages; i++) {
@@ -568,13 +563,13 @@
         const endAnte = anteNums[anteNums.length - 1];
         const rangeLabel = Number.isFinite(startAnte)
           ? (startAnte === endAnte
-            ? ` (${t("Ante")} ${startAnte})`
-            : ` (${t("Ante")} ${startAnte}-${endAnte})`)
+            ? ` (${t("ui.ante")} ${startAnte})`
+            : ` (${t("ui.ante")} ${startAnte}-${endAnte})`)
           : "";
 
         pageSelect.appendChild(
           Object.assign(
-            createElement("option", null, `${t("Page")} ${i + 1}${rangeLabel}`),
+            createElement("option", null, `${t("ui.page")} ${i + 1}${rangeLabel}`),
             { value: i, selected: i === currentPageIndex }
           )
         );

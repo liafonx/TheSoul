@@ -5,76 +5,105 @@
     root.BalatroSharedLists = factory(root, false);
   }
 })(typeof globalThis !== "undefined" ? globalThis : this, function (root, isNode) {
-  let generatedLocale = {};
+  // Load locale maps for key-based lookups
+  let enLocale = {};
+  let zhLocale = {};
+  let nameToKeyMap = {};
+
   if (isNode) {
     try {
-      generatedLocale = require("./localization/generated/zh-CN.game.json");
+      enLocale = require("./localization/generated/en-US.game.json");
+      zhLocale = require("./localization/generated/zh-CN.game.json");
+      nameToKeyMap = require("./localization/generated/name-to-key.json");
     } catch (_err) {
-      generatedLocale = {};
+      enLocale = {};
+      zhLocale = {};
+      nameToKeyMap = {};
     }
-  } else if (root && typeof root.BalatroLocale_zhCN === "object") {
-    generatedLocale = root.BalatroLocale_zhCN;
+  } else if (root) {
+    enLocale = root.BalatroLocale_enUS || {};
+    zhLocale = root.BalatroLocale_zhCN || {};
+    nameToKeyMap = root.BalatroNameToKey || {};
   }
 
+  /**
+   * Translate an internal key to the current locale.
+   * @param {string} key - Internal key (e.g., "j_seeing_double")
+   * @returns {string} Translated display name
+   */
   function translateKey(key) {
     if (root?.BalatroI18n?.t) {
-      const translated = root.BalatroI18n.t(key, "zh-CN");
+      const translated = root.BalatroI18n.t(key);
       if (translated && translated !== key) return translated;
     }
-    if (generatedLocale && generatedLocale[key]) return generatedLocale[key];
+    // Fallback to direct locale lookup
+    const locale = root?.BalatroI18n?.getLocale?.() || "zh-CN";
+    const map = locale === "zh-CN" ? zhLocale : enLocale;
+    if (map && map[key]) return map[key];
     return key;
   }
 
+  /**
+   * Convert English name to internal key.
+   * @param {string} englishName - English display name
+   * @returns {string} Internal key or original name
+   */
+  function nameToKey(englishName) {
+    if (root?.BalatroI18n?.nameToKey) {
+      return root.BalatroI18n.nameToKey(englishName);
+    }
+    return nameToKeyMap[englishName] || englishName;
+  }
+
   // Emoji categories for jokers used in summaries.
-  // Each entry: emoji -> { color, cards, cardColors? }
+  // Each entry: emoji -> { color, cards (internal keys), cardColors? }
   const SUMMARY_FACE_EMOJI = Object.freeze({
-    "👥": { color: "rgb(119, 198, 255)", cards: ["Blueprint", "Brainstorm", "Invisible Joker"] },
-    "🎪": { color: "#ff7a7a", cards: ["Showman"] },
-    "💿": { color: "#5fd4d4", cards: ["Seance", "Sixth Sense"] },
-    "👑": { color: "rgb(236, 194, 93)", cards: ["Baron", "Mime"] },
-    "🥤": { color: "#ff7a8a", cards: ["Diet Cola"] },
-    "🥊": { color: "", cards: ["Luchador"] },
-    "5️⃣": { color: "#e867b2ff", cards: ["Dusk", "Sock and Buskin", "The Idol", "Bloodstone"] },
-    "🧬": { color: "#c689ff", cards: ["DNA"] },
+    "👥": { color: "rgb(119, 198, 255)", cards: ["j_blueprint", "j_brainstorm", "j_invisible"] },
+    "🎪": { color: "#ff7a7a", cards: ["j_ring_master"] },
+    "💿": { color: "#5fd4d4", cards: ["j_seance", "j_sixth_sense"] },
+    "👑": { color: "rgb(236, 194, 93)", cards: ["j_baron", "j_mime"] },
+    "🥤": { color: "#ff7a8a", cards: ["j_diet_cola"] },
+    "🥊": { color: "", cards: ["j_luchador"] },
+    "5️⃣": { color: "#e867b2ff", cards: ["j_dusk", "j_sock_and_buskin", "j_idol", "j_bloodstone"] },
+    "🧬": { color: "#c689ff", cards: ["j_dna"] },
     "🃏": {
       color: "#79c15aff",
-      cards: ["Turtle Bean", "Troubadour"],
+      cards: ["j_turtle_bean", "j_troubadour"],
       cardColors: {},
     },
-    "💰": { color: "", cards: ["Reserved Parking", "Golden Ticket", "Mail-In Rebate"] }, // 
-    // "🧱": { color: "", cards: ["Photograph", "Hanging Chad"] },
-    "🪙": { color: "var(--ui-text-dim)", cards: ["Certificate"] },
-    "🥷": { color: "#ff7a8a", cards: ["Burglar"] },
+    "💰": { color: "", cards: ["j_reserved_parking", "j_ticket", "j_mail"] },
+    "🪙": { color: "var(--ui-text-dim)", cards: ["j_certificate"] },
+    "🥷": { color: "#ff7a8a", cards: ["j_burglar"] },
   });
 
   const TRACKED_SPECTRALS = Object.freeze([
-    "Cryptid",
-    "Deja Vu",
-    "Ectoplasm",
-    "The Soul",
+    "c_cryptid",
+    "c_deja_vu",
+    "c_ectoplasm",
+    "c_soul",
   ]);
 
   const TAG_EMOJI = Object.freeze({
-    "Negative Tag": "🎞️",
-    "Double Tag": "🖇️",
-    "Voucher Tag": "🎟️",
+    "tag_negative": "🎞️",
+    "tag_double": "🖇️",
+    "tag_voucher": "🎟️",
   });
 
   const VOUCHER_EMOJI = Object.freeze({
-    "Director's Cut": "🔄",
-    Retcon: "🔄",
-    Blank: "📄",
-    Antimatter: "🩻",
+    "v_directors_cut": "🔄",
+    "v_retcon": "🔄",
+    "v_blank": "📄",
+    "v_antimatter": "🩻",
   });
 
   const ALERT_BOSSES = Object.freeze([
-    "The Ox",
-    "The Psychic",
-    "The Plant",
-    "The Hook",
-    "The Needle",
-    "Crimson Heart",
-    "Verdant Leaf",
+    "bl_ox",
+    "bl_psychic",
+    "bl_plant",
+    "bl_hook",
+    "bl_needle",
+    "bl_final_heart",
+    "bl_final_leaf",
   ]);
 
   const TRACKED_JOKERS = Object.freeze(
@@ -92,18 +121,18 @@
 
   const JOKER_TRANSLATIONS = Object.freeze(
     Object.fromEntries(
-      TRACKED_JOKERS.map((name) => [
-        name,
-        translateKey(name),
+      TRACKED_JOKERS.map((key) => [
+        key,
+        translateKey(key),
       ])
     )
   );
 
   const SPECTRAL_TRANSLATIONS = Object.freeze(
     Object.fromEntries(
-      TRACKED_SPECTRALS.map((name) => [
-        name,
-        translateKey(name),
+      TRACKED_SPECTRALS.map((key) => [
+        key,
+        translateKey(key),
       ])
     )
   );
@@ -130,65 +159,54 @@
     "Mega Buffoon Pack -",
   ]);
 
-  const TAG_NAME_SET = new Set(Object.keys(TAG_EMOJI));
-  const VOUCHER_NAME_SET = new Set(Object.keys(VOUCHER_EMOJI));
+  const TAG_KEY_SET = new Set(Object.keys(TAG_EMOJI));
+  const VOUCHER_KEY_SET = new Set(Object.keys(VOUCHER_EMOJI));
   const ALERT_BOSS_SET = new Set(ALERT_BOSSES);
 
-  function isTrackedTag(tagName) {
-    return TAG_NAME_SET.has(tagName);
+  function isTrackedTag(tagKey) {
+    return TAG_KEY_SET.has(tagKey);
   }
 
-  function isTrackedVoucher(voucherName) {
-    return VOUCHER_NAME_SET.has(voucherName);
+  function isTrackedVoucher(voucherKey) {
+    return VOUCHER_KEY_SET.has(voucherKey);
   }
 
-  function isTrackedBoss(bossName) {
-    return ALERT_BOSS_SET.has(bossName);
+  function isTrackedBoss(bossKey) {
+    return ALERT_BOSS_SET.has(bossKey);
   }
 
-  function formatSummaryTag(tagName, options = {}) {
+  function formatSummaryTag(tagKey, options = {}) {
     const { chineseOnly = false, isFirstTag = false } = options;
-    if (!isTrackedTag(tagName)) return null;
-    const emoji = TAG_EMOJI[tagName] || "";
-    const negPrefix = tagName === "Negative Tag" && isFirstTag ? "‼️" : "";
-    if (chineseOnly) {
-      const translated = translateKey(tagName);
-      return `${negPrefix}${emoji}${translated}`;
-    }
-    return `${negPrefix}${emoji}${tagName}`;
+    if (!isTrackedTag(tagKey)) return null;
+    const emoji = TAG_EMOJI[tagKey] || "";
+    const negPrefix = tagKey === "tag_negative" && isFirstTag ? "‼️" : "";
+    const translated = translateKey(tagKey);
+    return `${negPrefix}${emoji}${translated}`;
   }
 
-  function formatSummaryVoucher(voucherName, options = {}) {
-    const { chineseOnly = false } = options;
-    if (!isTrackedVoucher(voucherName)) return null;
-    const emoji = VOUCHER_EMOJI[voucherName] || "";
-    if (chineseOnly) {
-      const translated = translateKey(voucherName);
-      return `${emoji}${translated}`;
-    }
-    return emoji ? `${emoji}${voucherName}` : voucherName;
+  function formatSummaryVoucher(voucherKey, options = {}) {
+    if (!isTrackedVoucher(voucherKey)) return null;
+    const emoji = VOUCHER_EMOJI[voucherKey] || "";
+    const translated = translateKey(voucherKey);
+    return emoji ? `${emoji}${translated}` : translated;
   }
 
-  function formatSummaryBoss(bossName, options = {}) {
-    const { chineseOnly = false } = options;
-    if (!isTrackedBoss(bossName)) return null;
+  function formatSummaryBoss(bossKey, options = {}) {
+    if (!isTrackedBoss(bossKey)) return null;
     const alert = "☠️";
-    if (chineseOnly) {
-      const translated = translateKey(bossName);
-      return `${alert}${translated}`;
-    }
-    return `${alert}${bossName}`;
+    const translated = translateKey(bossKey);
+    return `${alert}${translated}`;
   }
 
-  function getTagDisplay(tagName) {
-    const emoji = TAG_EMOJI[tagName] || "";
-    const translated = translateKey(tagName);
+  function getTagDisplay(tagKey) {
+    const emoji = TAG_EMOJI[tagKey] || "";
+    const translated = translateKey(tagKey);
     return emoji ? `${emoji} ${translated}` : translated;
   }
 
-  function getVoucherDisplay(voucherName) {
-    const emoji = VOUCHER_EMOJI[voucherName] || "";
-    const translated = translateKey(voucherName);
+  function getVoucherDisplay(voucherKey) {
+    const emoji = VOUCHER_EMOJI[voucherKey] || "";
+    const translated = translateKey(voucherKey);
     return emoji ? `${emoji} ${translated}` : translated;
   }
 
@@ -209,8 +227,9 @@
     TAG_NAMES: Object.freeze(Object.keys(TAG_EMOJI)),
     VOUCHER_NAMES: Object.freeze(Object.keys(VOUCHER_EMOJI)),
     BOSSES: ALERT_BOSSES,
-    GAME_TRANSLATIONS: Object.freeze(generatedLocale || {}),
+    GAME_TRANSLATIONS: Object.freeze(zhLocale || {}),
     translateKey,
+    nameToKey,
     getTagDisplay,
     getVoucherDisplay,
     isTrackedTag,

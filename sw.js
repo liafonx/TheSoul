@@ -1,4 +1,4 @@
-const CACHE_NAME = "the-soul-static-v2";
+const CACHE_NAME = "the-soul-static-v3";
 const CORE_PRECACHE = [
   "/",
   "/index.html",

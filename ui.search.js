@@ -44,6 +44,7 @@
       searchItemsDirty = true;
     }
 
+    // Fix 5: Lightweight root check instead of O(N) .every(isConnected)
     const root =
       document.getElementById("scrollingContainer") ||
       searchScope ||
@@ -52,8 +53,7 @@
     if (
       !searchItemsDirty &&
       cachedSearchRoot === root &&
-      cachedSearchItems.length &&
-      cachedSearchItems.every((item) => item?.isConnected)
+      cachedSearchItems.length
     ) {
       return cachedSearchItems;
     }
@@ -142,6 +142,7 @@
    * Perform search and highlight on all searchable items
    */
   function searchAndHighlight() {
+    const savedScrollY = global.scrollY;
     const utils = getUtils();
     const { summaryFaceCardMap } = utils;
     const terms = initActiveTerms();
@@ -155,9 +156,10 @@
         .filter((term) => term.length > 0 && (isCjkTerm(term) ? term.length >= 1 : term.length >= 3))
       : [];
 
-    const trackedTerms = [...terms];
+    // Fix 7: Reuse cached expanded terms from ui.search-integration.js
+    const expandedTrackedTerms = global.getExpandedTrackingTerms?.() || [];
     const hasManualSearch = manualTerms.length > 0;
-    const hasTrackedSearch = trackedTerms.length > 0;
+    const hasTrackedSearch = expandedTrackedTerms.length > 0;
 
     const queueItems = getSearchableItems();
 
@@ -184,7 +186,7 @@
       }
 
       const matchesManual = hasManualSearch && manualTerms.some((term) => itemText.includes(term));
-      const matchesTracked = hasTrackedSearch && trackedTerms.some((term) => itemText.includes(term));
+      const matchesTracked = hasTrackedSearch && expandedTrackedTerms.some((term) => itemText.includes(term));
       const shouldHighlight = matchesManual || matchesTracked;
 
       if (shouldHighlight) {
@@ -204,9 +206,10 @@
         if (!enName) {
           enName = nameEl.dataset.enName || nameEl.dataset.originalText || nameEl.textContent || "";
         }
-        if (!enName || !summaryFaceCardMap?.[enName]) return;
+        const faceKey = utils.nameToKey?.(enName) || enName;
+        if (!faceKey || !summaryFaceCardMap?.[faceKey]) return;
 
-        const faceInfo = summaryFaceCardMap[enName];
+        const faceInfo = summaryFaceCardMap[faceKey];
         const baseChinese = faceInfo.cn || enName;
         const faceEmoji = faceInfo.emoji || "";
         const hasNegative = nameEl.dataset.negativeTag === "1";
@@ -221,6 +224,11 @@
         }
       }
     });
+
+    // Restore scroll position after DOM modifications
+    if (global.scrollY !== savedScrollY) {
+      global.scrollTo(0, savedScrollY);
+    }
 
     // Notify listeners
     searchChangeCallbacks.forEach((cb) => cb());
@@ -253,9 +261,9 @@
     const searchInput = createElement("input", null);
     searchInput.type = "text";
     searchInput.id = "searchInput";
-    searchInput.placeholder = t("Enter search terms (use , or ，)");
+    searchInput.placeholder = t("ui.search_placeholder");
 
-    const searchLabel = createElement("label", null, t("Press Enter to search (use , or ，; Chinese min 1 char, English min 3 chars)"));
+    const searchLabel = createElement("label", null, t("ui.search_hint"));
     searchLabel.setAttribute("for", "searchInput");
 
     const searchContainer = createElement("div", "search-container");
@@ -264,11 +272,11 @@
     // Toggle buttons container
     const toggleContainer = createElement("div", "toggle-container");
     const toggleGroups = [
-      { title: t("Jokers:"), items: trackedJokers, category: "joker" },
-      { title: t("Spectrals:"), items: trackedSpectrals },
-      { title: t("Vouchers:"), items: trackedVouchers },
-      { title: t("Tags:"), items: trackedTags },
-      { title: t("Bosses:"), items: trackedBosses },
+      { title: t("ui.jokers"), items: trackedJokers, category: "joker" },
+      { title: t("ui.spectrals"), items: trackedSpectrals },
+      { title: t("ui.vouchers"), items: trackedVouchers },
+      { title: t("ui.tags_label"), items: trackedTags },
+      { title: t("ui.bosses"), items: trackedBosses },
     ];
 
     toggleGroups.forEach((group) => {
@@ -277,9 +285,7 @@
       groupDiv.appendChild(titleSpan);
 
       group.items.forEach((term) => {
-        const localizedTerm = utils.isChineseLocale?.()
-          ? (utils.translateGameText ? utils.translateGameText(term) : term)
-          : term;
+        const localizedTerm = utils.translateGameText ? utils.translateGameText(term) : term;
         const button = createElement("button", "toggle-button", localizedTerm);
         button.type = "button";
         const lower = term.toLowerCase();
@@ -306,13 +312,13 @@
 
     // Filter panel (collapsible)
     const filterPanel = createElement("div", "filter-panel");
-    const filterSummary = createElement("button", "filter-summary", t("Search Filters"));
+    const filterSummary = createElement("button", "filter-summary", t("ui.search_filters"));
     filterSummary.type = "button";
     filterSummary.setAttribute("aria-expanded", "false");
     const filterActions = createElement("div", "filter-actions");
-    const selectAllButton = createElement("button", "filter-action-button", t("Select all"));
+    const selectAllButton = createElement("button", "filter-action-button", t("ui.select_all"));
     selectAllButton.type = "button";
-    const removeAllButton = createElement("button", "filter-action-button", t("Remove all"));
+    const removeAllButton = createElement("button", "filter-action-button", t("ui.remove_all"));
     removeAllButton.type = "button";
     const filterBody = createElement("div", "filter-panel-body");
 
