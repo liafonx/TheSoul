@@ -52,45 +52,31 @@
       .then(function (balatro) {
         var anteMap = balatro.summarizeToAnteMap?.(rawText, summaryOptions);
         if (anteMap?.size) {
-          window.SummaryState.baseSummary = anteMap;
-          window.SummaryState.rawOutput = rawText;
-          window.SummaryState.invalidate();
-
           window.lastBaseSummariesByAnte = new Map(anteMap);
-          window.lastSummariesByAnte = window.SummaryState.finalSummary;
+          window.lastSummariesByAnte = new Map(anteMap);
           window.lastSummary = Array.from(anteMap.values()).join("\n");
         } else {
           var summary = balatro.summarizeText(rawText, summaryOptions) || rawText;
           var summaryMap = window.buildSummaryLookup(summary);
-
-          window.SummaryState.baseSummary = summaryMap;
-          window.SummaryState.rawOutput = rawText;
-          window.SummaryState.invalidate();
-
           window.lastBaseSummariesByAnte = new Map(summaryMap);
-          window.lastSummariesByAnte = window.SummaryState.finalSummary;
+          window.lastSummariesByAnte = new Map(summaryMap);
           window.lastSummary = summary;
         }
         window.renderSummaryList();
         window.resetSummaryFloatingScrollPosition();
-        window.applySummaryEmojiFilter();
+        window.applyEmojiFilter();
         window.refreshShopDisplay?.();
       })
       .catch(function (err) {
         console.error("Failed to run balatro_analysis:", err);
         var summaryMap = window.buildSummaryLookup(rawText);
-
-        window.SummaryState.baseSummary = summaryMap;
-        window.SummaryState.rawOutput = rawText;
-        window.SummaryState.invalidate();
-
         window.lastBaseSummariesByAnte = new Map(summaryMap);
-        window.lastSummariesByAnte = window.SummaryState.finalSummary;
+        window.lastSummariesByAnte = new Map(summaryMap);
         window.lastSummary = rawText;
 
         window.renderSummaryList();
         window.resetSummaryFloatingScrollPosition();
-        window.applySummaryEmojiFilter();
+        window.applyEmojiFilter();
         window.refreshShopDisplay?.();
       })
       .finally(function () {

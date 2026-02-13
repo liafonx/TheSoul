@@ -26,7 +26,7 @@
     emojiToggleBtn.textContent = emojiVisible ? t("ui.emojis_visible") : t("ui.emojis_hidden");
     emojiToggleBtn.addEventListener("click", function () {
       window.summaryEmojiVisible = !emojiVisible;
-      window.applySummaryEmojiFilter?.();
+      window.applyEmojiFilter();
       buildSummaryFilterUI();
     });
     summaryFilterContent.appendChild(emojiToggleBtn);
@@ -89,25 +89,27 @@
         var nowOn = !btn.classList.contains("active");
         btn.classList.toggle("active", nowOn);
 
-        // Update SummaryState with new filter state
-        if (nowOn) {
-          window.SummaryState.activeEmojiFilters.add(emoji);
-        } else {
-          window.SummaryState.activeEmojiFilters.delete(emoji);
+        window._emojiSyncActive = true;
+        try {
+          window.summaryEmojiFilter[emoji] = nowOn;
+          window.syncEmojiFilterToSearch?.();
+          if (typeof window.invalidateTrackingCache === "function") {
+            window.invalidateTrackingCache();
+          }
+          window.extractTrackingItems?.();
+          window.renderSummaryList?.();
+          window.applyEmojiFilter();
+          if (typeof window.refreshNearbySummaries === "function") {
+            window.refreshNearbySummaries();
+            window.applyEmojiFilter();
+          }
+          window.BalatroSearch?.searchAndHighlight?.();
+          if (typeof window.updateNearbySummaryButton === "function") {
+            window.updateNearbySummaryButton();
+          }
+        } finally {
+          window._emojiSyncActive = false;
         }
-        window.SummaryState.invalidate();
-
-        console.log("[Filter] Emoji filter changed:", emoji, nowOn, "Active filters:", Array.from(window.SummaryState.activeEmojiFilters));
-
-        window.lastSummariesByAnte = window.SummaryState.finalSummary;
-
-        window.renderSummaryList?.();
-
-        if (typeof window.updateNearbySummaryButton === "function") {
-          window.updateNearbySummaryButton();
-        }
-
-        window.summaryEmojiFilter[emoji] = nowOn;
       });
 
       var emojiSpan = document.createElement("span");

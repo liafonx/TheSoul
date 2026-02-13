@@ -113,14 +113,7 @@
     }
 
     const getTrackingTermsActive = () => {
-      if (typeof search.hasActiveTrackingTerms === "function") {
-        return search.hasActiveTrackingTerms();
-      }
-      const terms = search.getActiveToggleTerms?.();
-      if (terms && typeof terms.size === "number") {
-        return terms.size > 0;
-      }
-      return true;
+      return global.hasActiveTrackingItems?.() || false;
     };
 
     // Connect search to card filter updates
@@ -128,6 +121,8 @@
       trackingTermsActive = getTrackingTermsActive();
       search.onSearchChange(() => {
         cards.triggerFilterUpdate?.();
+        // Skip when emoji click handler is managing the full pipeline
+        if (global._emojiSyncActive) return;
         const nextTrackingState = getTrackingTermsActive();
         if (nextTrackingState === trackingTermsActive) return;
         trackingTermsActive = nextTrackingState;
@@ -481,7 +476,7 @@
       requestAnimationFrame(() => {
         var rafScrollY = skipScroll ? global.scrollY : null;
         search.searchAndHighlight?.();
-        global.applySummaryEmojiFilter?.();
+        global.applyEmojiFilter?.();
         if (rafScrollY !== null && global.scrollY !== rafScrollY) {
           global.scrollTo(0, rafScrollY);
         }
@@ -602,7 +597,6 @@
       if (!allShopQueues.length) return;
       renderCurrentPage({ skipScroll: true });
     };
-    global.areTrackingTermsActive = () => trackingTermsActive;
 
     // Close popups on outside click
     document.addEventListener("click", () => {

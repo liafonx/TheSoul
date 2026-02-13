@@ -1,6 +1,6 @@
 # AGENT.md
 
-Last updated: 2026-02-12
+Last updated: 2026-02-13
 
 ## Purpose
 This repository is a browser-based Balatro seed analyzer. The top priority for UI changes is perceived performance and interaction stability on both desktop and mobile.
@@ -9,29 +9,24 @@ This repository is a browser-based Balatro seed analyzer. The top priority for U
 
 ### Root files
 - `index.html`: App shell (HTML structure only), top bar, body DOM, inline head scripts (locale/UA/asset-version init, Immolate bootstrap).
-- `sw.js`: Service worker for static asset caching (stale-while-revalidate) and navigation fallback. Must stay at root for scope.
-- `immolate.js` / `immolate.wasm`: WASM analysis engine, compiled from `include/`. Must stay at root for WASM loader path resolution.
-
-### src/ (application code)
-- `src/UI.js`: Ordered UI module loader (dynamically loads ui.data → ui.renderers → ui.utils → ui.search → ui.cards → ui.packs → ui.app).
-- `src/ui.css`: CSS reset + design tokens, responsive layout, button/window styles, card/packs/search/floating-window styling.
-- `src/ui.state.js`: Global state variables, SummaryState manager, pure data processing functions (computeTrackingItems/SearchMatches/FinalSummary), state query helpers.
-- `src/ui.unlocks.js`: Unlock checkbox overlay (options array, selectedOptions, checkbox management).
-- `src/ui.summary.js`: Summary rendering (renderSummaryList, applySummaryEmojiFilter, extractTrackingItems), setSummaryFloatingVisible, copySummaryToClipboard, onTrackingTermsStateChange.
-- `src/ui.filters.js`: Settings panel (buildSummaryFilterUI) and Intro panel (buildEmojiLegendUI).
-- `src/ui.search-integration.js`: Raw output parsing (parseRawOutputByAnte), search extraction (extractSearchResults), tracking extraction (extractTrackingResults), summary augmentation (augmentSummaryWithSearch).
-- `src/ui.floating.js`: Floating window management (open/close/toggle coordination, Esc, outside-click, scroll-to-top).
-- `src/ui.analysis.js`: WASM analysis engine interface (createImmolateInstance, performAnalysis, computeSingleAnteQueue, summarizeOutput).
-- `src/ui.locale.js`: UI localization (applyUiLocalization) and locale toggle.
-- `src/ui.init.js`: Initialization (service worker, URL params, input validation, button wiring, search callback registration).
-- `src/ui.app.js`: Main orchestrator for queue rendering, pagination, and cross-module wiring.
-- `src/ui.search.js`: Search input, filter panel, active term management, highlight assignment.
-- `src/ui.cards.js`: Card group rendering and card-item display.
-- `src/ui.packs.js`: Pack section rendering, pack header/toggle behavior, pack filters.
-- `src/balatro_analysis.js`: Analyzer logic (browser + Node use).
-- `src/balatro_lists.js`: Shared lists, emoji metadata, label mappings.
-
-### docs/
+- `UI.js`: Ordered UI module loader (dynamically loads ui.data → ui.renderers → ui.utils → ui.search → ui.cards → ui.packs → ui.app).
+- `ui.css`: Design tokens, responsive layout, button/window styles, card/packs/search/floating-window styling.
+- `ui.state.js`: Global state variables (`lastRawOutput`, `lastSummariesByAnte`, `lastBaseSummariesByAnte`, `lastTrackingSummariesByAnte`), `_emojiSyncActive` guard flag, state query helpers (`hasActiveTrackingItems`, `hasActiveSearchOrTracking`), `applyEmojiFilter` shorthand, `buildSummaryLookup`, `clampAnteValue`.
+- `ui.unlocks.js`: Unlock checkbox overlay (options array, selectedOptions, checkbox management).
+- `ui.summary.js`: Summary rendering (renderSummaryList, applySummaryEmojiFilter, extractTrackingItems), setSummaryFloatingVisible, copySummaryToClipboard, onTrackingTermsStateChange.
+- `ui.filters.js`: Settings panel (buildSummaryFilterUI) and Intro panel (buildEmojiLegendUI).
+- `ui.search-integration.js`: Raw output parsing (parseRawOutputByAnte, internal), search extraction (extractSearchResults, internal), tracking extraction (extractTrackingResults), summary augmentation (augmentSummaryWithSearch), tracking cache (getExpandedTrackingTerms, invalidateTrackingCache), getAnalyzedAnteNumbers.
+- `ui.floating.js`: Floating window management (open/close/toggle coordination, Esc, outside-click, scroll-to-top).
+- `ui.analysis.js`: WASM analysis engine (createImmolateInstance, performAnalysis, computeSingleAnteQueue, summarizeOutput).
+- `ui.locale.js`: UI localization (applyUiLocalization) and locale toggle.
+- `ui.init.js`: Initialization (service worker, URL params, input validation, button wiring, search callback registration).
+- `ui.app.js`: Main orchestrator for queue rendering, pagination, and cross-module wiring.
+- `ui.search.js`: Search input, filter panel, active term management, highlight assignment.
+- `ui.cards.js`: Card group rendering and card-item display.
+- `ui.packs.js`: Pack section rendering, pack header/toggle behavior, pack filters.
+- `sw.js`: Service worker for static asset caching (stale-while-revalidate) and navigation fallback.
+- `balatro_analysis.js`: Analyzer logic (browser + Node use).
+- `balatro_lists.js`: Shared lists, emoji metadata, label mappings.
 - `docs/knowledge-base.md`: Prediction model summary (seed/config determinism, data flow).
 
 ### tests/
@@ -184,10 +179,30 @@ This repository is a browser-based Balatro seed analyzer. The top priority for U
 ## Tracking and search data flow
 
 ### Architecture (data-based, not DOM-based)
-- **Search results** (`extractSearchResults` in `ui.search-integration.js`): Parses `window.lastRawOutput` directly. Matches manual search terms against ALL antes' Boss/Voucher/Tags/ShopItems. Returns `Map<anteNum, Array<displayName>>`.
+- **Search results** (`extractSearchResults` in `ui.search-integration.js`, internal): Parses `window.lastRawOutput` directly. Matches manual search terms against ALL antes' Boss/Voucher/Tags/ShopItems. Returns `Map<anteNum, Array<displayName>>`.
 - **Tracking results** (`extractTrackingResults` in `ui.search-integration.js`): Same raw-output parsing approach. Matches active toggle terms (expanded to include English + Chinese display names) against all antes. Shop items include `#slot` suffix (e.g. `"Blueprint#3"`).
 - **Summary augmentation** (`augmentSummaryWithSearch`): Combines search + tracking results into `window.lastAugmentedSummary`. Search hits get `🔍:` prefix; tracking hits are appended after base summary.
 - **DOM highlighting** (`searchAndHighlight` in `ui.search.js`): Separate from data extraction. Assigns `.highlight-search` (manual) or `.highlight-track` (tracked, only when not also manual-matched) to visible queue items.
+
+### Pipeline entry points
+There are three ways the summary/search pipeline runs:
+1. **Toggle button click** → `syncSearchFiltersToEmoji()` → `scheduleSearchAndHighlight()` → `searchChangeCallbacks` → `ui.init.js` callback runs full pipeline: `invalidateTrackingCache` → `extractTrackingItems` → `renderSummaryList` → `refreshNearbySummaries` → `applyEmojiFilter`.
+2. **Emoji icon click** (`ui.filters.js`) → sets `_emojiSyncActive=true` → runs full linear pipeline directly (emoji filter → sync toggle buttons → invalidate cache → extract → render → highlight). The `_emojiSyncActive` guard prevents `searchChangeCallbacks` from duplicating work.
+3. **Boolean state transition** (first toggle on / last toggle off) → `ui.app.js` `onSearchChange` callback calls `onTrackingTermsStateChange` → `extractTrackingItems` → `renderSummaryList` → `renderCurrentPage` → `renderAnteNavigation`.
+
+### Key globals
+- `window.summaryEmojiFilter` — object, canonical source for emoji visibility (true/false per emoji).
+- `window.lastBaseSummariesByAnte` — Map, base summary from analyzer (set once per analysis).
+- `window.lastTrackingSummariesByAnte` — Map, tracking results (refreshed by `extractTrackingItems`).
+- `window.lastAugmentedSummary` — Map, combined search+tracking+base (set by `augmentSummaryWithSearch`).
+- `window.lastSummariesByAnte` — Map, the active summary map used for rendering (points to augmented or base).
+- `window._emojiSyncActive` — boolean guard, prevents redundant callback execution during emoji click pipeline.
+
+### Canonical tracking check
+`window.hasActiveTrackingItems()` (defined in `ui.state.js`) is the single canonical function for checking if any tracking toggle is active. All callers use this — do not create alternative implementations.
+
+### applyEmojiFilter shorthand
+`window.applyEmojiFilter()` (defined in `ui.state.js`) calls `applySummaryEmojiFilterSync`. Use this instead of the old verbose fallback pattern `(window.applySummaryEmojiFilterSync || window.applySummaryEmojiFilter)?.()`.
 
 ### Caution: DO NOT use DOM-based extraction for tracking/search data
 Previous implementation scanned `.highlight-track` elements from rendered DOM. This caused:
@@ -195,7 +210,7 @@ Previous implementation scanned `.highlight-track` elements from rendered DOM. T
 2. Items matching both search + tracking got `.highlight-search` but NOT `.highlight-track`, so they were missed.
 3. Shop slot `#number` was lost (not in DOM text).
 
-Always use `parseRawOutputByAnte(window.lastRawOutput)` for data extraction.
+Always use raw-output parsing (via `extractTrackingResults` / `augmentSummaryWithSearch`) for data extraction. `parseRawOutputByAnte` is internal to `ui.search-integration.js` and cached — do not export or call it directly.
 
 ### Caution: Emoji filter maps are NOT identical
 - `summaryFaceCardMap` / `faceEmojiMap`: Only maps joker-category face card emojis (👥, 👑, 🃏, etc.) to their card entries.
@@ -204,9 +219,11 @@ Always use `parseRawOutputByAnte(window.lastRawOutput)` for data extraction.
 - `isSegmentTermVisible`: When tracking is active and a segment has emojis but matches no tracked card, it returns `false` (hides it). This prevents unrelated face card segments (e.g. ♔钢铁K) from appearing when only specific jokers are tracked.
 
 ### Caution: Avoid circular callbacks
-- `applySummaryEmojiFilter` must NOT call `extractTrackingItems` (was causing infinite loops).
-- `onTrackingTermsStateChange` is the correct entry point: extract data → render → filter.
+- `_applySummaryEmojiFilterCore` is a pure DOM filter — it must NOT call `syncEmojiFilterToSearch`, `extractTrackingItems`, or `searchAndHighlight`.
+- `syncEmojiFilterToSearch` (in `ui.search.js`) must NOT call `scheduleSearchAndHighlight` — the caller is responsible for triggering search after the full pipeline.
+- `onTrackingTermsStateChange` is the correct entry point for boolean state transitions: extract data → render → filter.
 - `searchAndHighlight` fires `searchChangeCallbacks` — listeners must not re-trigger search.
+- The `_emojiSyncActive` guard (set by emoji click handler in `ui.filters.js`) prevents `searchChangeCallbacks` in `ui.init.js` and `ui.app.js` from running redundant work during the emoji pipeline.
 
 ### Scroll preservation
 - `renderCurrentPage` with `skipScroll: true` preserves scroll position via `requestAnimationFrame` wrapper.
@@ -218,6 +235,8 @@ Always use `parseRawOutputByAnte(window.lastRawOutput)` for data extraction.
 - `window.summaryEmojiFilter` controls summary/mini-summary face visibility and joker tracker sync state (no card dimming side effects).
 - Do not merge these states.
 - Do not reintroduce removed summary-language toggles (summary language follows locale).
+- Do not reintroduce `SummaryState` computed layer (was removed — all summary data flows through `lastBaseSummariesByAnte` → `extractTrackingItems` → `augmentSummaryWithSearch` → `lastSummariesByAnte`).
+- Do not create alternative "is tracking active" functions — use the single canonical `window.hasActiveTrackingItems()` from `ui.state.js`.
 
 ## Performance rules (UI)
 - Prefer class toggles over frequent inline style writes.
