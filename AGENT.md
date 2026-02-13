@@ -1,33 +1,43 @@
 # AGENT.md
 
-Last updated: 2026-02-11
+Last updated: 2026-02-12
 
 ## Purpose
 This repository is a browser-based Balatro seed analyzer. The top priority for UI changes is perceived performance and interaction stability on both desktop and mobile.
 
 ## Project map
 
-### Core files
+### Root files
 - `index.html`: App shell (HTML structure only), top bar, body DOM, inline head scripts (locale/UA/asset-version init, Immolate bootstrap).
-- `UI.js`: Ordered UI module loader (dynamically loads ui.data → ui.renderers → ui.utils → ui.search → ui.cards → ui.packs → ui.app).
-- `ui.css`: Design tokens, responsive layout, button/window styles, card/packs/search/floating-window styling.
-- `ui.state.js`: Global state variables, SummaryState manager, pure data processing functions (computeTrackingItems/SearchMatches/FinalSummary), state query helpers.
-- `ui.unlocks.js`: Unlock checkbox overlay (options array, selectedOptions, checkbox management).
-- `ui.summary.js`: Summary rendering (renderSummaryList, applySummaryEmojiFilter, extractTrackingItems), setSummaryFloatingVisible, copySummaryToClipboard, onTrackingTermsStateChange.
-- `ui.filters.js`: Settings panel (buildSummaryFilterUI) and Intro panel (buildEmojiLegendUI).
-- `ui.search-integration.js`: Raw output parsing (parseRawOutputByAnte), search extraction (extractSearchResults), tracking extraction (extractTrackingResults), summary augmentation (augmentSummaryWithSearch).
-- `ui.floating.js`: Floating window management (open/close/toggle coordination, Esc, outside-click, scroll-to-top).
-- `ui.analysis.js`: WASM analysis engine (createImmolateInstance, performAnalysis, computeSingleAnteQueue, summarizeOutput).
-- `ui.locale.js`: UI localization (applyUiLocalization) and locale toggle.
-- `ui.init.js`: Initialization (service worker, URL params, input validation, button wiring, search callback registration).
-- `ui.app.js`: Main orchestrator for queue rendering, pagination, and cross-module wiring.
-- `ui.search.js`: Search input, filter panel, active term management, highlight assignment.
-- `ui.cards.js`: Card group rendering and card-item display.
-- `ui.packs.js`: Pack section rendering, pack header/toggle behavior, pack filters.
-- `sw.js`: Service worker for static asset caching (stale-while-revalidate) and navigation fallback.
-- `balatro_analysis.js`: Analyzer logic (browser + Node use).
-- `balatro_lists.js`: Shared lists, emoji metadata, label mappings.
+- `sw.js`: Service worker for static asset caching (stale-while-revalidate) and navigation fallback. Must stay at root for scope.
+- `immolate.js` / `immolate.wasm`: WASM analysis engine, compiled from `include/`. Must stay at root for WASM loader path resolution.
+
+### src/ (application code)
+- `src/UI.js`: Ordered UI module loader (dynamically loads ui.data → ui.renderers → ui.utils → ui.search → ui.cards → ui.packs → ui.app).
+- `src/ui.css`: CSS reset + design tokens, responsive layout, button/window styles, card/packs/search/floating-window styling.
+- `src/ui.state.js`: Global state variables, SummaryState manager, pure data processing functions (computeTrackingItems/SearchMatches/FinalSummary), state query helpers.
+- `src/ui.unlocks.js`: Unlock checkbox overlay (options array, selectedOptions, checkbox management).
+- `src/ui.summary.js`: Summary rendering (renderSummaryList, applySummaryEmojiFilter, extractTrackingItems), setSummaryFloatingVisible, copySummaryToClipboard, onTrackingTermsStateChange.
+- `src/ui.filters.js`: Settings panel (buildSummaryFilterUI) and Intro panel (buildEmojiLegendUI).
+- `src/ui.search-integration.js`: Raw output parsing (parseRawOutputByAnte), search extraction (extractSearchResults), tracking extraction (extractTrackingResults), summary augmentation (augmentSummaryWithSearch).
+- `src/ui.floating.js`: Floating window management (open/close/toggle coordination, Esc, outside-click, scroll-to-top).
+- `src/ui.analysis.js`: WASM analysis engine interface (createImmolateInstance, performAnalysis, computeSingleAnteQueue, summarizeOutput).
+- `src/ui.locale.js`: UI localization (applyUiLocalization) and locale toggle.
+- `src/ui.init.js`: Initialization (service worker, URL params, input validation, button wiring, search callback registration).
+- `src/ui.app.js`: Main orchestrator for queue rendering, pagination, and cross-module wiring.
+- `src/ui.search.js`: Search input, filter panel, active term management, highlight assignment.
+- `src/ui.cards.js`: Card group rendering and card-item display.
+- `src/ui.packs.js`: Pack section rendering, pack header/toggle behavior, pack filters.
+- `src/balatro_analysis.js`: Analyzer logic (browser + Node use).
+- `src/balatro_lists.js`: Shared lists, emoji metadata, label mappings.
+
+### docs/
 - `docs/knowledge-base.md`: Prediction model summary (seed/config determinism, data flow).
+
+### tests/
+- `tests/balatro_analysis.test.js`: JS test runner (verifies analyzer against fixtures in `outputs/`).
+- `tests/balatro_analysis_test.py`: Python parity test.
+- `tests/i18n.test.js`: Localization unit tests.
 
 ### Localization
 - `localization/i18n.global.js`: Central i18n module. Loads all locale maps, provides `t(key)`, `nameToKey(englishName)`, `setLocale()`, `getLocale()`. Both en-US and zh-CN do real lookups (English is NOT special-cased).
@@ -38,10 +48,13 @@ This repository is a browser-based Balatro seed analyzer. The top priority for U
 - `localization/generated/name-to-key.js`: Reverse map English name → internal key (`window.BalatroNameToKey = {"Seeing Double": "j_seeing_double", ...}`).
 - `localization/generated/meta.json`: Build metadata from convert-localization.
 - `tools/convert-localization.js`: Parses vanilla Lua locale files, outputs key-based game locale JS/JSON + name-to-key reverse map.
+- `tools/build.bat`: Windows Emscripten build script for WASM.
+- `tools/serve.py`: Local dev HTTP server with BrokenPipe handling.
+- `tools/validate-localization.js`: Validates localization completeness.
 
 ## Runtime and caching contracts
 - `index.html` must keep valid document structure: scripts/styles are declared inside `<head>`; do not reintroduce inline script blocks after `<body>`.
-- All app logic lives in external `defer` JS files (ui.state.js through ui.init.js). Only early bootstrapping (locale, UA detection, Immolate init) stays inline in `<head>`.
+- All app logic lives in external `defer` JS files under `src/` (ui.state.js through ui.init.js). Only early bootstrapping (locale, UA detection, Immolate init) stays inline in `<head>`.
 - Localization script load order (before `defer` modules): `generated/en-US.game.js` → `generated/zh-CN.game.js` → `generated/name-to-key.js` → `en-US.ui.js` → `ui-zh-CN.js` → `i18n.global.js`.
 - `defer` script load order matters: ui.state → ui.unlocks → ui.summary → ui.filters → ui.search-integration → ui.floating → ui.analysis → ui.locale → ui.init → UI.js.
 - Cross-module communication uses `window.*` exports. Each module defines its public API via `window.functionName = ...`.
@@ -254,26 +267,26 @@ Always use `parseRawOutputByAnte(window.lastRawOutput)` for data extraction.
 
 ## Local verification commands
 ```bash
-python3 serve.py --port 4173
+python3 tools/serve.py --port 4173
 ```
 Open `http://127.0.0.1:4173/index.html`.
 
 ```bash
-node balatro_analysis.test.js
-node -c balatro_analysis.js
-node -c ui.state.js
-node -c ui.unlocks.js
-node -c ui.summary.js
-node -c ui.filters.js
-node -c ui.search-integration.js
-node -c ui.floating.js
-node -c ui.analysis.js
-node -c ui.locale.js
-node -c ui.init.js
-node -c ui.search.js
-node -c ui.cards.js
-node -c ui.packs.js
-node -c ui.app.js
+node tests/balatro_analysis.test.js
+node -c src/balatro_analysis.js
+node -c src/ui.state.js
+node -c src/ui.unlocks.js
+node -c src/ui.summary.js
+node -c src/ui.filters.js
+node -c src/ui.search-integration.js
+node -c src/ui.floating.js
+node -c src/ui.analysis.js
+node -c src/ui.locale.js
+node -c src/ui.init.js
+node -c src/ui.search.js
+node -c src/ui.cards.js
+node -c src/ui.packs.js
+node -c src/ui.app.js
 node -c sw.js
 node -c localization/i18n.global.js
 node -c localization/generated/en-US.game.js

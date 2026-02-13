@@ -4,6 +4,13 @@
 # Generated analysis outputs
 outputs/
 
+# Local data / config dumps
+*.yml
+
+# Balatro Lua locale source files (input for tools/convert-localization.js)
+localization/source/
+
+# IDE and agent metadata
 .agent/
 .agents/
 .claude/

@@ -124,7 +124,7 @@
     var cleanFn = utils.cleanSummaryLine || (function (x) { return x; });
 
     sortedAntes.forEach(function (anteNum, idx) {
-      var rawLine = map?.get(anteNum);
+      var rawLine = map?.get(anteNum) || baseMap?.get(anteNum);
       var item = Object.assign(document.createElement("div"), { className: "summaryItem" });
       item.dataset.ante = String(anteNum);
       item.dataset.order = String(idx);

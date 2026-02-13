@@ -9,8 +9,8 @@ import unittest
 from pathlib import Path
 
 
-ROOT_DIR = Path(__file__).resolve().parent
-JS_SCRIPT = ROOT_DIR / "balatro_analysis.js"
+ROOT_DIR = Path(__file__).resolve().parent.parent
+JS_SCRIPT = ROOT_DIR / "src" / "balatro_analysis.js"
 OUTPUTS_DIR = ROOT_DIR / "outputs"
 
 

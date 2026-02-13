@@ -18,7 +18,7 @@
       balatroAnalysisPromise = new Promise(function (resolve, reject) {
         var script = document.createElement("script");
         var version = window.__ASSET_VERSION__ || "1";
-        script.src = "balatro_analysis.js?v=" + version;
+        script.src = "src/balatro_analysis.js?v=" + version;
         script.onload = function () {
           window.BalatroAnalysis?.summarizeText ? resolve(window.BalatroAnalysis) : reject(new Error("BalatroAnalysis missing after load."));
         };

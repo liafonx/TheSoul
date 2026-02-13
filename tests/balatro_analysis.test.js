@@ -3,7 +3,7 @@
 
 const fs = require("fs");
 const path = require("path");
-const { collectAnteDetails, summarizeText } = require("./balatro_analysis");
+const { collectAnteDetails, summarizeText } = require("../src/balatro_analysis");
 // Run via: `node balatro_analysis.test.js`
 
 function normalizeText(value) {
@@ -127,7 +127,7 @@ function verifyFile(inputPath) {
 }
 
 function runFixtureTests() {
-  const outputsDir = path.join(__dirname, "outputs");
+  const outputsDir = path.join(__dirname, "..", "outputs");
   if (!fs.existsSync(outputsDir)) {
     console.error(`Outputs directory not found: ${outputsDir}`);
     process.exit(1);

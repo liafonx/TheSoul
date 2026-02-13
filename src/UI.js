@@ -16,13 +16,13 @@
 
   const assetVersion = window.__ASSET_VERSION__ || "1";
   const scripts = [
-    "ui.data.js",
-    "ui.renderers.js",
-    "ui.utils.js",
-    "ui.search.js",
-    "ui.cards.js",
-    "ui.packs.js",
-    "ui.app.js",
+    "src/ui.data.js",
+    "src/ui.renderers.js",
+    "src/ui.utils.js",
+    "src/ui.search.js",
+    "src/ui.cards.js",
+    "src/ui.packs.js",
+    "src/ui.app.js",
   ];
 
   let index = 0;

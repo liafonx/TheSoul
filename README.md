@@ -13,10 +13,12 @@ This fork keeps the original The Soul behavior, and adds:
 
 ## Repository layout
 
-- `index.html`, `UI.js`, `ui.*.js`, `ui.css`, `base.css` power the user interface.
+- `index.html` is the app entry point; `sw.js` is the service worker (both must stay at root).
+- `src/` contains all application JS modules (`UI.js`, `ui.*.js`), CSS (`ui.css`), the shared analyzer (`balatro_analysis.js`, `balatro_lists.js`), and the app font.
 - `immolate.js` / `immolate.wasm` are generated with Emscripten from `include/immolate.cpp`.
-- `balatro_analysis.js` contains the shared analyzer logic (browser + Node CLI).
-- `balatro_analysis.test.js` and `balatro_analysis_test.py` verify analyzer output against fixtures in `outputs/`.
+- `localization/` holds i18n runtime files and `generated/` output from the conversion tool.
+- `tools/` contains dev/build utilities (`serve.py`, `build.bat`, localization converters).
+- `tests/` contains JS and Python test runners that verify analyzer output against fixtures in `outputs/`.
 
 ## Run locally
 
@@ -25,7 +27,7 @@ Because browsers block `file://` fetches for `.wasm`, serve the repo through any
 ```bash
 git clone https://github.com/spectralpack/TheSoul.git
 cd TheSoul
-python3 -m http.server 4173
+python3 tools/serve.py --port 4173
 ```
 
 Open `http://localhost:4173` and the UI will load from `index.html`. Use a different port if `4173` is taken.
@@ -38,7 +40,7 @@ The checked-in `immolate.js`/`immolate.wasm` pair is produced with Emscripten. R
 em++ -O3 --closure 1 -lembind -o immolate.js include/immolate.cpp -s EXPORT_NAME="'Immolate'"
 ```
 
-On Windows you can double-click `build.bat`, which runs the same command. Commit the updated `.js` and `.wasm` so Vercel (or any static host) can serve them.
+On Windows you can run `tools\build.bat`, which runs the same command. Commit the updated `.js` and `.wasm` so Vercel (or any static host) can serve them.
 
 ## CLI usage & tests
 
@@ -46,13 +48,13 @@ The analyzer can also run against raw Balatro output files.
 
 ```bash
 # Summarize raw text files
-node balatro_analysis.js outputs/example_analysis.txt
+node src/balatro_analysis.js outputs/example_analysis.txt
 
 # Verify shop/tag parsing for every fixture in outputs/
-node balatro_analysis.test.js
+node tests/balatro_analysis.test.js
 
 # Python parity test (optional, uses stdlib only)
-python3 balatro_analysis_test.py
+python3 tests/balatro_analysis_test.py
 ```
 
 Both test runners assume the `outputs/` directory is populated with `*_analysis.txt` fixtures.
