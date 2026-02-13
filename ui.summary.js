@@ -113,16 +113,18 @@
     }
 
     var baseMap = window.lastBaseSummariesByAnte;
-    if (!map?.size && !baseMap?.size) {
+    var analyzedAntes = window.getAnalyzedAnteNumbers?.() || [];
+    if (!map?.size && !baseMap?.size && !analyzedAntes.length) {
       renderSummaryEmpty(t("ui.summary_placeholder"));
       return;
     }
 
-    // Show all analyzed antes, not just those with hits
-    var allAntes = new Set([...(map ? map.keys() : []), ...(baseMap ? baseMap.keys() : [])]);
+    // Show all analyzed antes (including those without hits)
+    var allAntes = new Set([...(map ? map.keys() : []), ...(baseMap ? baseMap.keys() : []), ...analyzedAntes]);
     var sortedAntes = [...allAntes].sort(function (a, b) { return a - b; });
     var cleanFn = utils.cleanSummaryLine || (function (x) { return x; });
 
+    var frag = document.createDocumentFragment();
     sortedAntes.forEach(function (anteNum, idx) {
       var rawLine = map?.get(anteNum);
       var item = Object.assign(document.createElement("div"), { className: "summaryItem" });
@@ -152,8 +154,9 @@
       });
 
       item.append(anteLabel, text);
-      summaryFloatingContent.appendChild(item);
+      frag.appendChild(item);
     });
+    summaryFloatingContent.appendChild(frag);
   }
 
   // Set initial summary text
@@ -163,7 +166,29 @@
 
   // ---- Emoji filter application ----
 
-  function applySummaryEmojiFilter() {
+  var _pendingEmojiFilterFrame = 0;
+
+  /**
+   * Schedule applySummaryEmojiFilter to run once in the next animation frame.
+   * Multiple calls within the same frame are coalesced into a single execution.
+   */
+  function scheduleApplySummaryEmojiFilter() {
+    if (_pendingEmojiFilterFrame) return;
+    _pendingEmojiFilterFrame = requestAnimationFrame(function () {
+      _pendingEmojiFilterFrame = 0;
+      applySummaryEmojiFilterSync();
+    });
+  }
+
+  var _inEmojiFilter = false;
+
+  function applySummaryEmojiFilterSync() {
+    if (_inEmojiFilter) return;
+    _inEmojiFilter = true;
+    try { _applySummaryEmojiFilterCore(); } finally { _inEmojiFilter = false; }
+  }
+
+  function _applySummaryEmojiFilterCore() {
     var savedScrollY = window.scrollY;
     var utils = getUtils();
     var emojiMap = utils.summaryEmojiMap || {};
@@ -291,9 +316,19 @@
       }
     };
 
-    // Fix 2: Merged DOM pass — apply emoji visibility + term filtering in one loop
-    document.querySelectorAll(".summaryText > span[data-summary-emojis], .summaryFaceSegment, .miniSummaryItem").forEach(function (el) {
-      if (el.dataset.searchResult === "true") return;
+    // Scope queries to known containers to avoid full-document traversal
+    var scrollRoot = document.getElementById("scrollingContainer");
+    var summaryRoot = summaryFloatingContent;
+
+    // Collect all filterable segments from both roots in a single pass
+    var segmentSelector = ".summaryText > span[data-summary-emojis], .summaryFaceSegment, .miniSummaryItem";
+    var allSegments = [];
+    if (summaryRoot) allSegments.push.apply(allSegments, summaryRoot.querySelectorAll(segmentSelector));
+    if (scrollRoot) allSegments.push.apply(allSegments, scrollRoot.querySelectorAll(segmentSelector));
+
+    for (var si = 0; si < allSegments.length; si++) {
+      var el = allSegments[si];
+      if (el.dataset.searchResult === "true") continue;
       applyEmojiVisibilityToSegment(el);
       var emojis = parseEmojis(el);
       var visibleByEmoji = !emojis.length || emojis.every(function (emoji) { return isFaceEntryVisible(emoji); });
@@ -301,13 +336,21 @@
       if (!visibleByEmoji || !visibleByTerms) {
         el.style.display = "none";
       }
-    });
+    }
 
-    document.querySelectorAll(".miniSummaryEntry").forEach(function (row) {
+    // Process mini summary entries (only in scrollRoot)
+    var miniEntries = scrollRoot ? scrollRoot.querySelectorAll(".miniSummaryEntry") : [];
+    for (var mi = 0; mi < miniEntries.length; mi++) {
+      var row = miniEntries[mi];
       // Check inline items
       var textSpan = row.querySelector(".miniSummaryText:not(.miniSummaryTextFull)");
       var inlineItems = textSpan ? textSpan.querySelectorAll(".miniSummaryItem") : [];
-      var anyVisible = !inlineItems.length || [...inlineItems].some(function (i) { return i.style.display !== "none"; });
+      var anyVisible = !inlineItems.length;
+      if (!anyVisible) {
+        for (var ii = 0; ii < inlineItems.length; ii++) {
+          if (inlineItems[ii].style.display !== "none") { anyVisible = true; break; }
+        }
+      }
 
       // Toggle inline text vs no-hit placeholder
       var noHit = row.querySelector(".miniSummaryNoHit");
@@ -342,42 +385,55 @@
       }
 
       row.style.display = "";
-    });
+    }
 
     // Hide entire nearby summary when no search and no tracking active
     var hasSearch = document.getElementById("searchInput")?.value?.trim().length > 0;
     var hasTracking = window.hasActiveTrackingItems?.() || false;
-    document.querySelectorAll(".miniSummaryWrapper").forEach(function (w) {
-      w.style.display = (hasSearch || hasTracking) ? "" : "none";
-    });
+    var wrapperDisplay = (hasSearch || hasTracking) ? "" : "none";
+    var miniWrappers = scrollRoot ? scrollRoot.querySelectorAll(".miniSummaryWrapper") : [];
+    for (var wi = 0; wi < miniWrappers.length; wi++) {
+      miniWrappers[wi].style.display = wrapperDisplay;
+    }
 
     var updateDelimiters = function (container, delimClass, pipeClass) {
-      var children = [...container.children];
-      var isPipe = function (n) { return n?.classList?.contains(pipeClass); };
-      var isDelimiter = function (n) { return n?.classList?.contains(delimClass) || isPipe(n); };
-      var isContent = function (n) { return n?.nodeType === 1 && !isDelimiter(n); };
-      var isVisibleContent = function (n) { return isContent(n) && n.style.display !== "none"; };
-
-      children.forEach(function (node, idx) {
-        if (!isDelimiter(node)) return;
+      var children = container.children;
+      var len = children.length;
+      // Build visibility array in a single forward pass
+      var isContentArr = new Array(len);
+      var isVisibleArr = new Array(len);
+      var isDelimArr = new Array(len);
+      for (var di = 0; di < len; di++) {
+        var node = children[di];
+        var cls = node.classList;
+        var isDelim = cls.contains(delimClass) || cls.contains(pipeClass);
+        isDelimArr[di] = isDelim;
+        isContentArr[di] = !isDelim && node.nodeType === 1;
+        isVisibleArr[di] = isContentArr[di] && node.style.display !== "none";
+      }
+      for (var di = 0; di < len; di++) {
+        if (!isDelimArr[di]) continue;
         var prevVisible = false, hasAfter = false;
-        for (var i = idx - 1; i >= 0 && !prevVisible; i--) if (isContent(children[i])) { prevVisible = isVisibleContent(children[i]); break; }
-        for (var i = idx + 1; i < children.length && !hasAfter; i++) if (isVisibleContent(children[i])) { hasAfter = true; break; }
-        node.style.display = prevVisible && hasAfter ? "" : "none";
-      });
+        for (var j = di - 1; j >= 0; j--) { if (isContentArr[j]) { prevVisible = isVisibleArr[j]; break; } }
+        for (var j = di + 1; j < len; j++) { if (isVisibleArr[j]) { hasAfter = true; break; } }
+        children[di].style.display = prevVisible && hasAfter ? "" : "none";
+      }
     };
 
-    document.querySelectorAll(".summaryText").forEach(function (c) { updateDelimiters(c, "summaryDelimiter", "summaryPipe"); });
-    document.querySelectorAll(".miniSummaryText, .miniSummaryTextFull").forEach(function (c) { updateDelimiters(c, "miniSummaryDelimiter", "miniSummaryPipe"); });
+    // Update delimiters scoped to known roots
+    var summaryTexts = summaryRoot ? summaryRoot.querySelectorAll(".summaryText") : [];
+    for (var sti = 0; sti < summaryTexts.length; sti++) {
+      updateDelimiters(summaryTexts[sti], "summaryDelimiter", "summaryPipe");
+    }
+    var miniTexts = scrollRoot ? scrollRoot.querySelectorAll(".miniSummaryText, .miniSummaryTextFull") : [];
+    for (var mti = 0; mti < miniTexts.length; mti++) {
+      updateDelimiters(miniTexts[mti], "miniSummaryDelimiter", "miniSummaryPipe");
+    }
 
     // Restore scroll position after DOM modifications
     if (window.scrollY !== savedScrollY) {
       window.scrollTo(0, savedScrollY);
     }
-
-    // Fix 6: No RAF cascade — sync is immediate and scheduleSearchAndHighlight
-    // handles its own debounce via requestAnimationFrame
-    window.syncEmojiFilterToSearch?.();
   }
 
   // ---- DOM tracking extraction ----
@@ -446,20 +502,12 @@
   // ---- Tracking state change handler ----
 
   function onTrackingTermsStateChange() {
-    // Invalidate tracking term cache on state change
     if (typeof window.invalidateTrackingCache === "function") {
       window.invalidateTrackingCache();
     }
-    // Extract tracking from highlighted shop items in main page
     extractTrackingItems();
-    // Render floating summary with augmented data
     renderSummaryList();
-    // Refresh mini-summaries in main page
-    if (typeof window.refreshNearbySummaries === "function") {
-      window.refreshNearbySummaries();
-    }
-    // Fix 3: Single filter call after all DOM is ready
-    applySummaryEmojiFilter();
+    applySummaryEmojiFilterSync();
     var summaryFilterWindow = document.getElementById("summaryFilterWindow");
     if (summaryFilterWindow?.classList.contains("visible")) {
       window.buildSummaryFilterUI?.();
@@ -496,11 +544,16 @@
     var cleanFn = utils.cleanSummaryLine || function (x) { return x; };
     var map = window.lastSummariesByAnte;
     var baseMap = window.lastBaseSummariesByAnte;
-    document.querySelectorAll(".miniSummaryEntry").forEach(function (row) {
+    // Scope to scrollingContainer to avoid full-document traversal
+    var scrollRoot = document.getElementById("scrollingContainer");
+    if (!scrollRoot) return;
+    var entries = scrollRoot.querySelectorAll(".miniSummaryEntry");
+    for (var i = 0; i < entries.length; i++) {
+      var row = entries[i];
       var anteSpan = row.querySelector(".miniSummaryAnte");
-      if (!anteSpan) return;
+      if (!anteSpan) continue;
       var match = anteSpan.textContent.match(/(\d+)/);
-      if (!match) return;
+      if (!match) continue;
       var anteNum = parseInt(match[1], 10);
       var rawText = map?.get(anteNum) || baseMap?.get(anteNum);
       var text = rawText ? (cleanFn(rawText) || rawText) : null;
@@ -511,12 +564,15 @@
       // Update popup text
       var popupText = row.querySelector(".miniSummaryTextFull");
       if (popupText) { popupText.innerHTML = ""; renderSummarySegments(text || fallback, popupText, "miniSummary"); markSearchItems(popupText); }
-    });
-    // Show/hide wrappers based on whether we have data
-    var hasContent = map?.size > 0 || baseMap?.size > 0;
-    document.querySelectorAll(".miniSummaryWrapper").forEach(function (w) {
-      w.style.display = hasContent ? "" : "none";
-    });
+    }
+    // Show/hide wrappers: match the same condition used by applySummaryEmojiFilterSync
+    var hasSearch = document.getElementById("searchInput")?.value?.trim().length > 0;
+    var hasTracking = window.hasActiveTrackingItems?.() || false;
+    var wrapperDisplay = (hasSearch || hasTracking) ? "" : "none";
+    var wrappers = scrollRoot.querySelectorAll(".miniSummaryWrapper");
+    for (var wi = 0; wi < wrappers.length; wi++) {
+      wrappers[wi].style.display = wrapperDisplay;
+    }
     // Restore scroll position after DOM modifications
     if (window.scrollY !== savedScrollY) {
       window.scrollTo(0, savedScrollY);
@@ -527,11 +583,11 @@
   window.setSummaryFloatingVisible = setSummaryFloatingVisible;
   window.setButtonLoadingState = setButtonLoadingState;
   window.resetSummaryFloatingScrollPosition = resetSummaryFloatingScrollPosition;
-  window.renderSummaryEmpty = renderSummaryEmpty;
   window.renderSummaryList = renderSummaryList;
   window.renderSummarySegments = renderSummarySegments;
   window.refreshNearbySummaries = refreshNearbySummaries;
-  window.applySummaryEmojiFilter = applySummaryEmojiFilter;
+  window.applySummaryEmojiFilter = scheduleApplySummaryEmojiFilter;
+  window.applySummaryEmojiFilterSync = applySummaryEmojiFilterSync;
   window.extractTrackingItems = extractTrackingItems;
   window.copySummaryToClipboard = copySummaryToClipboard;
   window.onTrackingTermsStateChange = onTrackingTermsStateChange;
