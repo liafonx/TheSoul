@@ -1,3 +1,38 @@
+/* ── Reset ────────────────────────────────────────── */
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
+
+html,
+body {
+  margin: 0;
+  padding: 0;
+}
+
+h1,
+h2,
+p {
+  margin: 0;
+  padding: 0;
+}
+
+textarea {
+  width: 100%;
+  resize: vertical;
+}
+
+#checkboxesOverlay {
+  display: none;
+  position: fixed;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  overflow: auto;
+}
+
+/* ── Design Tokens ────────────────────────────────── */
 :root {
   /* Source palette */
   --c-white: #ffffff;
@@ -408,17 +443,20 @@ label[for="omitBeforeAnte9"] {
 }
 
 .unlock-actions > button {
-  min-height: 26px;
-  line-height: 1.1;
-  padding: 0 8px;
-  font-size: 11px;
+  min-height: calc(var(--control-height) - 3px);
+  line-height: 1.2;
+  font-size: calc(var(--control-font-size) - 1px);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  box-sizing: border-box;
+  padding: 0 10px;
   margin: 0;
   border: 1px solid rgba(var(--ui-primary-rgb), 0.55);
-  border-radius: 7px;
+  border-radius: 8px;
   background-color: rgba(var(--ui-primary-rgb), 0.14);
   color: var(--ui-primary);
-  /* font-weight: 700; */
-  /* box-shadow: inset 0 0 0 1px rgba(var(--ui-primary-rgb), 0.12); */
+  box-shadow: inset 0 0 0 1px rgba(var(--ui-primary-rgb), 0.08);
 }
 
 .unlock-actions > button:hover {
@@ -2251,6 +2289,7 @@ html.ua-no-blur #emojiLegendWindow {
   display: block;
   max-width: 100%;
   box-sizing: border-box;
+  color: #969696;
   overflow-wrap: anywhere;
 }
 

@@ -8,9 +8,6 @@ const ROOT = path.resolve(__dirname, "..");
 const DEFAULT_EN = "/Users/liafo/Development/GitWorkspace/Balatro_src/desktop/localization/en-us.lua";
 const DEFAULT_ZH = "/Users/liafo/Development/GitWorkspace/Balatro_src/desktop/localization/zh_CN.lua";
 const OUT_DIR = path.join(ROOT, "localization", "generated");
-const OUT_JSON = path.join(OUT_DIR, "zh-CN.game.json");
-const OUT_JS = path.join(OUT_DIR, "zh-CN.game.js");
-const OUT_META = path.join(OUT_DIR, "zh-CN.meta.json");
 
 const NAME_ENTRY_RE = /([A-Za-z0-9_]+)\s*=\s*\{\s*name\s*=\s*"((?:[^"\\]|\\.)*)"/gms;
 const SCALAR_RE = /([A-Za-z0-9_]+)\s*=\s*"((?:[^"\\]|\\.)*)"/gms;
@@ -60,21 +57,23 @@ function buildTranslationMap(enText, zhText) {
   const zhScalars = extractMapByRegex(zhText, SCALAR_RE);
 
   const collisions = [];
-  const translations = {};
+  const enUS = {};
+  const zhCN = {};
+  const nameToKey = {};
 
-  const addTranslation = (english, chinese, sourceKey) => {
-    if (!english || !chinese) return;
-    const prev = translations[english];
-    if (prev && prev !== chinese) {
-      collisions.push({ english, previous: prev, next: chinese, sourceKey });
-      return;
+  const addEntry = (key, english, chinese) => {
+    if (!key || !english) return;
+    enUS[key] = english;
+    if (chinese) zhCN[key] = chinese;
+    if (!nameToKey[english]) {
+      nameToKey[english] = key;
     }
-    translations[english] = chinese;
   };
 
+  // Extract name entries (key → {name: "..."}) from both locales
   enNames.forEach((english, key) => {
-    if (!zhNames.has(key)) return;
-    addTranslation(english, zhNames.get(key), key);
+    const chinese = zhNames.get(key) || "";
+    addEntry(key, english, chinese);
   });
 
   // Pull extra scalar keys needed by this project (ranks/suits/seals/stickers).
@@ -94,14 +93,15 @@ function buildTranslationMap(enText, zhText) {
     "eternal",
     "perishable",
     "rental",
-  ].forEach((key) => {
-    const enValue = enScalars.get(key);
-    const zhValue = zhScalars.get(key);
-    if (!enValue || !zhValue) return;
-    addTranslation(enValue, zhValue, key);
+  ].forEach((scalarKey) => {
+    const enValue = enScalars.get(scalarKey);
+    const zhValue = zhScalars.get(scalarKey);
+    if (!enValue) return;
+    addEntry(scalarKey, enValue, zhValue || "");
   });
 
   // Normalize known naming variants used by this repository.
+  // These aliases map alternate English spellings to existing internal keys.
   const aliasPairs = [
     ["Seance", "Séance"],
     ["Riff-raff", "Riff-Raff"],
@@ -109,26 +109,33 @@ function buildTranslationMap(enText, zhText) {
     ["Drivers License", "Driver's License"],
   ];
   aliasPairs.forEach(([alias, canonical]) => {
-    if (!translations[alias] && translations[canonical]) {
-      translations[alias] = translations[canonical];
+    const canonicalKey = nameToKey[canonical];
+    if (canonicalKey && !nameToKey[alias]) {
+      nameToKey[alias] = canonicalKey;
+      // Also ensure the alias appears in enUS under the same key
+      // (the canonical English form is already there)
     }
   });
 
   return {
-    translations: sortedObject(translations),
+    enUS: sortedObject(enUS),
+    zhCN: sortedObject(zhCN),
+    nameToKey: sortedObject(nameToKey),
     meta: {
       enNameEntries: enNames.size,
       zhNameEntries: zhNames.size,
       enScalarEntries: enScalars.size,
       zhScalarEntries: zhScalars.size,
-      translationCount: Object.keys(translations).length,
+      enUSCount: Object.keys(enUS).length,
+      zhCNCount: Object.keys(zhCN).length,
+      nameToKeyCount: Object.keys(nameToKey).length,
       collisions,
     },
   };
 }
 
-function toBrowserModuleContent(localeMap) {
-  const json = JSON.stringify(localeMap, null, 2);
+function toBrowserModuleContent(map, globalVarName) {
+  const json = JSON.stringify(map, null, 2);
   return `(function (global) {\n` +
     `  "use strict";\n` +
     `  var locale = Object.freeze(${json});\n` +
@@ -136,7 +143,7 @@ function toBrowserModuleContent(localeMap) {
     `    module.exports = locale;\n` +
     `  }\n` +
     `  if (global) {\n` +
-    `    global.BalatroLocale_zhCN = locale;\n` +
+    `    global.${globalVarName} = locale;\n` +
     `  }\n` +
     `})(typeof globalThis !== "undefined" ? globalThis : this);\n`;
 }
@@ -152,22 +159,39 @@ function main() {
 
   const enText = fs.readFileSync(enPath, "utf8");
   const zhText = fs.readFileSync(zhPath, "utf8");
-  const { translations, meta } = buildTranslationMap(enText, zhText);
+  const { enUS, zhCN, nameToKey, meta } = buildTranslationMap(enText, zhText);
 
   fs.mkdirSync(outDir, { recursive: true });
-  const jsonPath = path.join(outDir, path.basename(OUT_JSON));
-  const jsPath = path.join(outDir, path.basename(OUT_JS));
-  const metaPath = path.join(outDir, path.basename(OUT_META));
 
-  fs.writeFileSync(jsonPath, JSON.stringify(translations, null, 2) + "\n", "utf8");
-  fs.writeFileSync(jsPath, toBrowserModuleContent(translations), "utf8");
+  // en-US game locale (key → English name)
+  const enJsPath = path.join(outDir, "en-US.game.js");
+  const enJsonPath = path.join(outDir, "en-US.game.json");
+  fs.writeFileSync(enJsPath, toBrowserModuleContent(enUS, "BalatroLocale_enUS"), "utf8");
+  fs.writeFileSync(enJsonPath, JSON.stringify(enUS, null, 2) + "\n", "utf8");
+
+  // zh-CN game locale (key → Chinese name)
+  const zhJsPath = path.join(outDir, "zh-CN.game.js");
+  const zhJsonPath = path.join(outDir, "zh-CN.game.json");
+  fs.writeFileSync(zhJsPath, toBrowserModuleContent(zhCN, "BalatroLocale_zhCN"), "utf8");
+  fs.writeFileSync(zhJsonPath, JSON.stringify(zhCN, null, 2) + "\n", "utf8");
+
+  // Name-to-key reverse map (English name → internal key)
+  const n2kJsPath = path.join(outDir, "name-to-key.js");
+  const n2kJsonPath = path.join(outDir, "name-to-key.json");
+  fs.writeFileSync(n2kJsPath, toBrowserModuleContent(nameToKey, "BalatroNameToKey"), "utf8");
+  fs.writeFileSync(n2kJsonPath, JSON.stringify(nameToKey, null, 2) + "\n", "utf8");
+
+  // Meta
+  const metaPath = path.join(outDir, "meta.json");
   fs.writeFileSync(metaPath, JSON.stringify(meta, null, 2) + "\n", "utf8");
 
-  console.log(`Generated ${jsonPath}`);
-  console.log(`Generated ${jsPath}`);
-  console.log(`Generated ${metaPath}`);
-  console.log(`Translation entries: ${meta.translationCount}`);
-  console.log(`Collisions: ${meta.collisions.length}`);
+  console.log(`Generated ${enJsPath}`);
+  console.log(`Generated ${zhJsPath}`);
+  console.log(`Generated ${n2kJsPath}`);
+  console.log(`  en-US entries: ${meta.enUSCount}`);
+  console.log(`  zh-CN entries: ${meta.zhCNCount}`);
+  console.log(`  name-to-key entries: ${meta.nameToKeyCount}`);
+  console.log(`  Collisions: ${meta.collisions.length}`);
 }
 
 if (require.main === module) {

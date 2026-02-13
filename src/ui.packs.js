@@ -13,11 +13,11 @@
 
   // Pack filter definitions
   const PACK_FILTERS = [
-    { key: "ALL", label: "All Packs" },
-    { key: "SPECTRAL_BUFFOON", label: "Spectral&Buffoon" },
-    { key: "STANDARD", label: "Standard" },
-    { key: "ARCANA", label: "Arcana" },
-    { key: "CELESTIAL", label: "Celestial" },
+    { key: "ALL", label: "ui.all_packs" },
+    { key: "SPECTRAL_BUFFOON", label: "ui.spectral_buffoon" },
+    { key: "STANDARD", label: "ui.standard" },
+    { key: "ARCANA", label: "ui.arcana" },
+    { key: "CELESTIAL", label: "ui.celestial" },
   ];
   function resolveCardRenderScale() {
     const root = document.documentElement;
@@ -254,7 +254,7 @@
 
     // Header row
     const headerRow = createElement("div", "packHeaderRow");
-    const title = createElement("div", "queueTitle packTitle", t("Packs"));
+    const title = createElement("div", "queueTitle packTitle", t("ui.packs"));
     const toggleIndicator = createElement("span", "packToggleIndicator", "▾");
     toggleIndicator.setAttribute("aria-hidden", "true");
     title.appendChild(toggleIndicator);

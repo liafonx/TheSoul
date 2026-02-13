@@ -1,16 +1,25 @@
 # AGENT.md
 
-Last updated: 2026-02-08
+Last updated: 2026-02-13
 
 ## Purpose
 This repository is a browser-based Balatro seed analyzer. The top priority for UI changes is perceived performance and interaction stability on both desktop and mobile.
 
 ## Project map
 
-### Core files
-- `index.html`: App shell, top bar controls, floating-window lifecycle, locale/theme bootstrapping, and main analyze flow wiring.
-- `UI.js`: Ordered UI module loader.
+### Root files
+- `index.html`: App shell (HTML structure only), top bar, body DOM, inline head scripts (locale/UA/asset-version init, Immolate bootstrap).
+- `UI.js`: Ordered UI module loader (dynamically loads ui.data → ui.renderers → ui.utils → ui.search → ui.cards → ui.packs → ui.app).
 - `ui.css`: Design tokens, responsive layout, button/window styles, card/packs/search/floating-window styling.
+- `ui.state.js`: Global state variables (`lastRawOutput`, `lastSummariesByAnte`, `lastBaseSummariesByAnte`, `lastTrackingSummariesByAnte`), `_emojiSyncActive` guard flag, state query helpers (`hasActiveTrackingItems`, `hasActiveSearchOrTracking`), `applyEmojiFilter` shorthand, `buildSummaryLookup`, `clampAnteValue`.
+- `ui.unlocks.js`: Unlock checkbox overlay (options array, selectedOptions, checkbox management).
+- `ui.summary.js`: Summary rendering (renderSummaryList, applySummaryEmojiFilter, extractTrackingItems), setSummaryFloatingVisible, copySummaryToClipboard, onTrackingTermsStateChange.
+- `ui.filters.js`: Settings panel (buildSummaryFilterUI) and Intro panel (buildEmojiLegendUI).
+- `ui.search-integration.js`: Raw output parsing (parseRawOutputByAnte, internal), search extraction (extractSearchResults, internal), tracking extraction (extractTrackingResults), summary augmentation (augmentSummaryWithSearch), tracking cache (getExpandedTrackingTerms, invalidateTrackingCache), getAnalyzedAnteNumbers.
+- `ui.floating.js`: Floating window management (open/close/toggle coordination, Esc, outside-click, scroll-to-top).
+- `ui.analysis.js`: WASM analysis engine (createImmolateInstance, performAnalysis, computeSingleAnteQueue, summarizeOutput).
+- `ui.locale.js`: UI localization (applyUiLocalization) and locale toggle.
+- `ui.init.js`: Initialization (service worker, URL params, input validation, button wiring, search callback registration).
 - `ui.app.js`: Main orchestrator for queue rendering, pagination, and cross-module wiring.
 - `ui.search.js`: Search input, filter panel, active term management, highlight assignment.
 - `ui.cards.js`: Card group rendering and card-item display.
@@ -20,15 +29,32 @@ This repository is a browser-based Balatro seed analyzer. The top priority for U
 - `balatro_lists.js`: Shared lists, emoji metadata, label mappings.
 - `docs/knowledge-base.md`: Prediction model summary (seed/config determinism, data flow).
 
+### tests/
+- `tests/balatro_analysis.test.js`: JS test runner (verifies analyzer against fixtures in `outputs/`).
+- `tests/balatro_analysis_test.py`: Python parity test.
+- `tests/i18n.test.js`: Localization unit tests.
+
 ### Localization
-- `localization/i18n.global.js`
-- `localization/ui-zh-CN.js`
-- `localization/generated/zh-CN.game.js`
+- `localization/i18n.global.js`: Central i18n module. Loads all locale maps, provides `t(key)`, `nameToKey(englishName)`, `setLocale()`, `getLocale()`. Both en-US and zh-CN do real lookups (English is NOT special-cased).
+- `localization/en-US.ui.js`: English UI strings (`window.BalatroUiLocale_enUS`), keyed by `ui.*` semantic keys.
+- `localization/ui-zh-CN.js`: Chinese UI strings (`window.BalatroUiLocale_zhCN`), same `ui.*` keys.
+- `localization/generated/en-US.game.js`: English game names by internal key (`window.BalatroLocale_enUS = {j_seeing_double: "Seeing Double", ...}`).
+- `localization/generated/zh-CN.game.js`: Chinese game names by internal key (`window.BalatroLocale_zhCN = {j_seeing_double: "重影", ...}`).
+- `localization/generated/name-to-key.js`: Reverse map English name → internal key (`window.BalatroNameToKey = {"Seeing Double": "j_seeing_double", ...}`).
+- `localization/generated/meta.json`: Build metadata from convert-localization.
+- `tools/convert-localization.js`: Parses vanilla Lua locale files, outputs key-based game locale JS/JSON + name-to-key reverse map.
+- `tools/build.bat`: Windows Emscripten build script for WASM.
+- `tools/serve.py`: Local dev HTTP server with BrokenPipe handling.
+- `tools/validate-localization.js`: Validates localization completeness.
 
 ## Runtime and caching contracts
-- `index.html` must keep valid document structure: scripts/styles are declared inside `<head>`; do not reintroduce script blocks before `<head>`.
+- `index.html` must keep valid document structure: scripts/styles are declared inside `<head>`; do not reintroduce inline script blocks after `<body>`.
+- All app logic lives in external `defer` JS files under `src/` (ui.state.js through ui.init.js). Only early bootstrapping (locale, UA detection, Immolate init) stays inline in `<head>`.
+- Localization script load order (before `defer` modules): `generated/en-US.game.js` → `generated/zh-CN.game.js` → `generated/name-to-key.js` → `en-US.ui.js` → `ui-zh-CN.js` → `i18n.global.js`.
+- `defer` script load order matters: ui.state → ui.unlocks → ui.summary → ui.filters → ui.search-integration → ui.floating → ui.analysis → ui.locale → ui.init → UI.js.
+- Cross-module communication uses `window.*` exports. Each module defines its public API via `window.functionName = ...`.
 - Do not reintroduce `document.write(...)` for scripts/styles.
-- Service worker registration lives in `index.html` and should run only when:
+- Service worker registration lives in `ui.init.js` and should run only when:
 1. `navigator.serviceWorker` is available.
 2. Context is secure or host is `localhost` / `127.0.0.1`.
 - `sw.js` caching strategy:
@@ -41,14 +67,21 @@ This repository is a browser-based Balatro seed analyzer. The top priority for U
 
 ## Shared data contracts
 - `BalatroSharedLists` is required for UI/analyzer startup; avoid silent fallback paths.
-- Canonical tracked arrays are:
-1. `JOKER_NAMES`
-2. `SPECTRAL_NAMES`
-3. `TAG_NAMES`
-4. `VOUCHER_NAMES`
-5. `ALERT_BOSSES`
+- Canonical tracked arrays use **internal keys** (not English display names):
+1. `JOKER_NAMES` — e.g. `["j_blueprint", "j_brainstorm", ...]`
+2. `SPECTRAL_NAMES` — e.g. `["c_cryptid", "c_soul", ...]`
+3. `TAG_NAMES` — e.g. `["tag_negative", "tag_double", ...]`
+4. `VOUCHER_NAMES` — e.g. `["v_directors_cut", "v_retcon", ...]`
+5. `ALERT_BOSSES` — e.g. `["bl_ox", "bl_psychic", ...]`
 - `ui.data.js` should consume canonical arrays directly; do not reintroduce compatibility aliases like `sharedLists.jokers` / `sharedLists.spectrals`.
 - `balatro_lists.js` uses explicit tracked fallback maps (`TRACKED_*_FALLBACK_ZH`) and exports `TRACKED_JOKERS` / `TRACKED_SPECTRALS`; keep naming explicit (avoid misleading `LEGACY_*` names).
+
+### Key-based localization architecture
+- Internal keys (e.g. `j_seeing_double`, `bl_eye`, `tag_negative`, `v_crystal_ball`) are the canonical identifiers. English is just another locale.
+- Data flow: `immolate.js` outputs English names → `BalatroNameToKey` converts to internal key → `BalatroI18n.t(key)` looks up current locale.
+- `translateGameText(englishName)` in `ui.utils.js`: English name → key via `nameToKey()` → `t(key)` for display.
+- `activeToggleTerms` Set in `ui.search.js` stores internal keys (lowercase).
+- Raw output (`window.lastRawOutput`) always contains English names from immolate WASM; conversion to keys/locale happens at display time.
 
 ## Active UX contracts
 
@@ -88,7 +121,7 @@ This repository is a browser-based Balatro seed analyzer. The top priority for U
 - Highlight semantics are split:
 1. Tracking/toggle matches: `.highlight-track` (red).
 2. Manual typed matches: `.highlight-search` (mint-cyan; current CSS value `#33fbc3`).
-- Priority rule: if a card matches both manual search and tracked filters, manual search highlight (`.highlight-search`) takes precedence.
+- Priority rule: if a card matches both manual search and tracked filters, manual search highlight (`.highlight-search`) takes precedence in the DOM. However, the item still appears in BOTH search and tracking sections of the floating summary (data extraction is independent of DOM highlight class).
 - Separator cleanup rule: when filtering hides all trailing summary segments, leading separators (`|`, `、`, `,`) must auto-hide (no orphan left delimiter).
 - Nearby mini summaries are effectively disabled when tracked-term set is empty (even if `summaryNearbyVisible` user flag is enabled), and `Nearby Summaries` setting button reflects hidden state.
 - Filter panel is custom controlled (not native `<details>`):
@@ -143,11 +176,67 @@ This repository is a browser-based Balatro seed analyzer. The top priority for U
 - Carousel mode (`.cardList.scrollable`): natural horizontal scroll; no forced snap-per-group.
 - Group visual styling alternates yellow/blue-grey by index (`group-style-yellow` / `group-style-grey`), and both `group-badge` and `group-range` follow group color theme.
 
+## Tracking and search data flow
+
+### Architecture (data-based, not DOM-based)
+- **Search results** (`extractSearchResults` in `ui.search-integration.js`, internal): Parses `window.lastRawOutput` directly. Matches manual search terms against ALL antes' Boss/Voucher/Tags/ShopItems. Returns `Map<anteNum, Array<displayName>>`.
+- **Tracking results** (`extractTrackingResults` in `ui.search-integration.js`): Same raw-output parsing approach. Matches active toggle terms (expanded to include English + Chinese display names) against all antes. Shop items include `#slot` suffix (e.g. `"Blueprint#3"`).
+- **Summary augmentation** (`augmentSummaryWithSearch`): Combines search + tracking results into `window.lastAugmentedSummary`. Search hits get `🔍:` prefix; tracking hits are appended after base summary.
+- **DOM highlighting** (`searchAndHighlight` in `ui.search.js`): Separate from data extraction. Assigns `.highlight-search` (manual) or `.highlight-track` (tracked, only when not also manual-matched) to visible queue items.
+
+### Pipeline entry points
+There are three ways the summary/search pipeline runs:
+1. **Toggle button click** → `syncSearchFiltersToEmoji()` → `scheduleSearchAndHighlight()` → `searchChangeCallbacks` → `ui.init.js` callback runs full pipeline: `invalidateTrackingCache` → `extractTrackingItems` → `renderSummaryList` → `refreshNearbySummaries` → `applyEmojiFilter`.
+2. **Emoji icon click** (`ui.filters.js`) → sets `_emojiSyncActive=true` → runs full linear pipeline directly (emoji filter → sync toggle buttons → invalidate cache → extract → render → highlight). The `_emojiSyncActive` guard prevents `searchChangeCallbacks` from duplicating work.
+3. **Boolean state transition** (first toggle on / last toggle off) → `ui.app.js` `onSearchChange` callback calls `onTrackingTermsStateChange` → `extractTrackingItems` → `renderSummaryList` → `renderCurrentPage` → `renderAnteNavigation`.
+
+### Key globals
+- `window.summaryEmojiFilter` — object, canonical source for emoji visibility (true/false per emoji).
+- `window.lastBaseSummariesByAnte` — Map, base summary from analyzer (set once per analysis).
+- `window.lastTrackingSummariesByAnte` — Map, tracking results (refreshed by `extractTrackingItems`).
+- `window.lastAugmentedSummary` — Map, combined search+tracking+base (set by `augmentSummaryWithSearch`).
+- `window.lastSummariesByAnte` — Map, the active summary map used for rendering (points to augmented or base).
+- `window._emojiSyncActive` — boolean guard, prevents redundant callback execution during emoji click pipeline.
+
+### Canonical tracking check
+`window.hasActiveTrackingItems()` (defined in `ui.state.js`) is the single canonical function for checking if any tracking toggle is active. All callers use this — do not create alternative implementations.
+
+### applyEmojiFilter shorthand
+`window.applyEmojiFilter()` (defined in `ui.state.js`) calls `applySummaryEmojiFilterSync`. Use this instead of the old verbose fallback pattern `(window.applySummaryEmojiFilterSync || window.applySummaryEmojiFilter)?.()`.
+
+### Caution: DO NOT use DOM-based extraction for tracking/search data
+Previous implementation scanned `.highlight-track` elements from rendered DOM. This caused:
+1. Only current page antes were found (pagination hides others).
+2. Items matching both search + tracking got `.highlight-search` but NOT `.highlight-track`, so they were missed.
+3. Shop slot `#number` was lost (not in DOM text).
+
+Always use raw-output parsing (via `extractTrackingResults` / `augmentSummaryWithSearch`) for data extraction. `parseRawOutputByAnte` is internal to `ui.search-integration.js` and cached — do not export or call it directly.
+
+### Caution: Emoji filter maps are NOT identical
+- `summaryFaceCardMap` / `faceEmojiMap`: Only maps joker-category face card emojis (👥, 👑, 🃏, etc.) to their card entries.
+- `summaryEmojiMap`: Maps ALL emojis including non-joker ones (♔ for King Cards, 🎞️ for tags, etc.).
+- `♔` is in `summaryEmojiMap` but NOT in `faceEmojiMap`. Code checking face card visibility must handle this.
+- `isSegmentTermVisible`: When tracking is active and a segment has emojis but matches no tracked card, it returns `false` (hides it). This prevents unrelated face card segments (e.g. ♔钢铁K) from appearing when only specific jokers are tracked.
+
+### Caution: Avoid circular callbacks
+- `_applySummaryEmojiFilterCore` is a pure DOM filter — it must NOT call `syncEmojiFilterToSearch`, `extractTrackingItems`, or `searchAndHighlight`.
+- `syncEmojiFilterToSearch` (in `ui.search.js`) must NOT call `scheduleSearchAndHighlight` — the caller is responsible for triggering search after the full pipeline.
+- `onTrackingTermsStateChange` is the correct entry point for boolean state transitions: extract data → render → filter.
+- `searchAndHighlight` fires `searchChangeCallbacks` — listeners must not re-trigger search.
+- The `_emojiSyncActive` guard (set by emoji click handler in `ui.filters.js`) prevents `searchChangeCallbacks` in `ui.init.js` and `ui.app.js` from running redundant work during the emoji pipeline.
+
+### Scroll preservation
+- `renderCurrentPage` with `skipScroll: true` preserves scroll position via `requestAnimationFrame` wrapper.
+- `onTrackingTermsStateChange` saves/restores `window.scrollY` around its render cycle.
+- Any RAF callback that triggers `searchAndHighlight` or `applySummaryEmojiFilter` should capture scroll position before and restore after.
+
 ## State invariants
 - `window.summaryEmojiVisible` controls only emoji glyph visibility in summary text.
 - `window.summaryEmojiFilter` controls summary/mini-summary face visibility and joker tracker sync state (no card dimming side effects).
 - Do not merge these states.
 - Do not reintroduce removed summary-language toggles (summary language follows locale).
+- Do not reintroduce `SummaryState` computed layer (was removed — all summary data flows through `lastBaseSummariesByAnte` → `extractTrackingItems` → `augmentSummaryWithSearch` → `lastSummariesByAnte`).
+- Do not create alternative "is tracking active" functions — use the single canonical `window.hasActiveTrackingItems()` from `ui.state.js`.
 
 ## Performance rules (UI)
 - Prefer class toggles over frequent inline style writes.
@@ -172,6 +261,13 @@ This repository is a browser-based Balatro seed analyzer. The top priority for U
 2. `Enter` closes floating search window.
 3. Track highlights remain red; manual search highlights remain mint-cyan.
 4. `Search Filters` and top-right emoji tracker toggles stay in sync both directions.
+- Tracking:
+1. Enabling filter buttons shows matching items across ALL antes in floating summary (not just current page).
+2. Items matching both manual search and tracking appear in both `🔍:` and tracking sections of summary.
+3. Shop items in tracking results include `#slot` number suffix.
+4. Toggling filter buttons does not cause page jumps (scroll position preserved).
+5. Disabling all filter buttons clears tracking summary; re-enabling restores it.
+6. No unrelated face card segments (e.g. ♔钢铁K) leak into tracking results when specific jokers are tracked.
 - Filter panel:
 1. Single-click open/close reliability.
 2. Hidden body does not keep phantom spacing when collapsed.
@@ -190,18 +286,33 @@ This repository is a browser-based Balatro seed analyzer. The top priority for U
 
 ## Local verification commands
 ```bash
-python3 serve.py --port 4173
+python3 tools/serve.py --port 4173
 ```
 Open `http://127.0.0.1:4173/index.html`.
 
 ```bash
-node balatro_analysis.test.js
-node -c balatro_analysis.js
-node -c ui.search.js
-node -c ui.cards.js
-node -c ui.packs.js
-node -c ui.app.js
+node tests/balatro_analysis.test.js
+node -c src/balatro_analysis.js
+node -c src/ui.state.js
+node -c src/ui.unlocks.js
+node -c src/ui.summary.js
+node -c src/ui.filters.js
+node -c src/ui.search-integration.js
+node -c src/ui.floating.js
+node -c src/ui.analysis.js
+node -c src/ui.locale.js
+node -c src/ui.init.js
+node -c src/ui.search.js
+node -c src/ui.cards.js
+node -c src/ui.packs.js
+node -c src/ui.app.js
 node -c sw.js
+node -c localization/i18n.global.js
+node -c localization/generated/en-US.game.js
+node -c localization/generated/zh-CN.game.js
+node -c localization/generated/name-to-key.js
+node -c localization/en-US.ui.js
+node -c localization/ui-zh-CN.js
 ```
 
 ## Playwright sanity workflow

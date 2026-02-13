@@ -264,7 +264,7 @@
     const { setButtonLoadingState } = utils;
 
     const controls = createElement("div", "groupSizeControls");
-    const label = createElement("span", "groupSizeLabel", t("Group Size:"));
+    const label = createElement("span", "groupSizeLabel", t("ui.group_size"));
     controls.appendChild(label);
 
     const localButtons = [];
@@ -321,7 +321,7 @@
       cardList.classList.toggle("scrollable", !useGrid);
       cardList.classList.toggle("grid-layout", useGrid);
       cardList.classList.toggle("no-select", !useGrid);
-      const actionLabel = useGrid ? t("Switch to Carousel") : t("Switch to Grid");
+      const actionLabel = useGrid ? t("ui.switch_to_carousel") : t("ui.switch_to_grid");
       button.textContent = useGrid ? "↔" : "▦";
       button.title = actionLabel;
       button.setAttribute("aria-label", actionLabel);

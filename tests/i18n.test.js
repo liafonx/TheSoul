@@ -3,8 +3,8 @@
 
 const assert = require("assert");
 const path = require("path");
-const locale = require("./generated/zh-CN.game.json");
-const shared = require(path.join(__dirname, "..", "balatro_lists.js"));
+const locale = require("../localization/generated/zh-CN.game.json");
+const shared = require(path.join(__dirname, "..", "src", "balatro_lists.js"));
 
 function run() {
   assert(Object.keys(locale).length >= 300, "locale should contain at least 300 entries");

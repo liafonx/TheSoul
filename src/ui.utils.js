@@ -11,10 +11,8 @@
   const voucherEmojiMap = sharedLists.VOUCHER_EMOJI || {};
   const alertBosses = sharedLists.ALERT_BOSSES || [];
   const spectralNames = sharedLists.SPECTRAL_NAMES || [];
-  const jokerTranslations = sharedLists.JOKER_TRANSLATIONS || {};
-  const translateKey = sharedLists.translateKey || ((key) => key);
-  const gameTranslations = sharedLists.GAME_TRANSLATIONS || {};
-  const reverseGameTranslations = {};
+  const translateKeyFn = sharedLists.translateKey || ((key) => key);
+  const nameToKeyFn = sharedLists.nameToKey || ((name) => name);
   const CACHE_LIMIT = 4096;
 
   const localeState = {
@@ -26,14 +24,6 @@
   const summaryEmojiCache = new Map();
   const faceInfoCache = new Map();
   const packNameCache = new Map();
-
-  Object.keys(gameTranslations).forEach((englishKey) => {
-    const chineseValue = gameTranslations[englishKey];
-    if (typeof chineseValue !== "string" || !chineseValue) return;
-    if (!(chineseValue in reverseGameTranslations)) {
-      reverseGameTranslations[chineseValue] = englishKey;
-    }
-  });
 
   function getLocaleKey() {
     const rawLocale = global.BalatroI18n?.getLocale?.() || global.__BALATRO_LOCALE__ || "zh-CN";
@@ -57,14 +47,26 @@
     return getLocaleKey() === "zh-CN";
   }
 
+  /**
+   * Convert English name to internal key.
+   * @param {string} englishName - English display name (e.g., "Seeing Double")
+   * @returns {string} Internal key (e.g., "j_seeing_double")
+   */
+  function nameToKey(englishName) {
+    if (global.BalatroI18n?.nameToKey) {
+      return global.BalatroI18n.nameToKey(englishName);
+    }
+    return nameToKeyFn(englishName);
+  }
+
   function localizeStandardCardName(name) {
     if (!isChineseLocale()) return name;
     const cardMatch = /^(\d+|Jack|Queen|King|Ace)\s+of\s+(Spades|Hearts|Clubs|Diamonds)$/i.exec((name || "").trim());
     if (!cardMatch) return name;
     const rank = cardMatch[1];
     const suit = cardMatch[2];
-    const rankCn = translateKey(rank);
-    const suitCn = translateKey(suit);
+    const rankCn = translateKeyFn(rank);
+    const suitCn = translateKeyFn(suit);
     return `${suitCn}${rankCn}`;
   }
 
@@ -90,6 +92,12 @@
     return setCached(packNameCache, raw, text);
   }
 
+  /**
+   * Translate game text (English name) to current locale.
+   * Converts English name → internal key → locale lookup.
+   * @param {string} text - English display name or text with prefixes
+   * @returns {string} Translated text
+   */
   function translateGameText(text) {
     const raw = String(text ?? "");
     if (!raw) return raw;
@@ -102,35 +110,37 @@
   }
 
   function translateGameTextUncached(raw) {
-    if (!isChineseLocale()) {
-      const normalizedRaw = raw.replace(/\s+/g, " ").trim();
-      const prefixMatch = /^(‼️|🔘)\s*/.exec(normalizedRaw);
-      if (prefixMatch) {
-        const englishRest = translateGameTextUncached(normalizedRaw.slice(prefixMatch[0].length));
-        return `${prefixMatch[1]} ${englishRest}`;
-      }
-      return reverseGameTranslations[normalizedRaw] || raw;
-    }
-
     const normalized = raw.replace(/\s+/g, " ").trim();
+
+    // Handle prefixes (‼️, 🔘)
     const prefixMatch = /^(‼️|🔘)\s*/.exec(normalized);
     if (prefixMatch) {
       const translatedRest = translateGameTextUncached(normalized.slice(prefixMatch[0].length));
       return `${prefixMatch[1]} ${translatedRest}`;
     }
 
+    // Try standard card name localization first
     const standard = localizeStandardCardName(normalized);
     if (standard !== normalized) return standard;
 
-    const direct = translateKey(normalized);
+    // Convert English name to internal key, then translate
+    const key = nameToKey(normalized);
+    if (key !== normalized) {
+      // We have an internal key, use i18n to translate
+      const translated = global.BalatroI18n?.t?.(key);
+      if (translated && translated !== key) return translated;
+    }
+
+    // Fallback: try direct translation via translateKey
+    const direct = translateKeyFn(normalized);
     if (direct !== normalized) return direct;
 
     return raw;
   }
 
   // Build normalized maps for face emoji lookups
-  // summaryFaceEmojiMap: emoji -> { color, cards: [eng], cardColors: { eng: color } }
-  // summaryFaceCardMap: eng -> { emoji, color, cn }
+  // summaryFaceEmojiMap: emoji -> { color, cards: [keys], cardColors: { key: color } }
+  // summaryFaceCardMap: key -> { emoji, color, cn }
   const summaryFaceEmojiMap = {};
   const summaryEmojiMap = {};
   const summaryFaceCardMap = {};
@@ -153,10 +163,10 @@
     }
     summaryFaceEmojiMap[emoji] = { color, cards, cardColors };
     summaryEmojiMap[emoji] = { color, cards: [...cards], cardColors: { ...cardColors } };
-    cards.forEach((name) => {
-      const cn = translateKey(name);
-      const cardColor = cardColors[name] || color;
-      summaryFaceCardMap[name] = { emoji, color: cardColor, cn };
+    cards.forEach((key) => {
+      const cn = translateKeyFn(key);
+      const cardColor = cardColors[key] || color;
+      summaryFaceCardMap[key] = { emoji, color: cardColor, cn };
     });
   });
 
@@ -170,48 +180,55 @@
     return summaryEmojiMap[emoji];
   }
 
-  function addEmojiCard(emoji, cardName, color) {
+  function addEmojiCard(emoji, cardKey, color) {
     const entry = ensureSummaryEmoji(emoji, color);
-    if (!entry || !cardName) return;
-    if (!entry.cards.includes(cardName)) entry.cards.push(cardName);
+    if (!entry || !cardKey) return;
+    if (!entry.cards.includes(cardKey)) entry.cards.push(cardKey);
   }
 
-  Object.entries(tagEmojiMap).forEach(([name, emoji]) => {
+  const enLocale = global.BalatroLocale_enUS || {};
+
+  Object.entries(tagEmojiMap).forEach(([key, emoji]) => {
     if (!emoji) return;
-    tagNameEmojiMap[name] = emoji;
-    addEmojiCard(emoji, name, "");
-    mappedEmojiEntries.push({ englishName: name, localizedName: translateKey(name), emoji });
+    tagNameEmojiMap[key] = emoji;
+    addEmojiCard(emoji, key, "");
+    mappedEmojiEntries.push({ key, localizedName: translateKeyFn(key), enName: enLocale[key] || "", emoji });
   });
 
-  Object.entries(voucherEmojiMap).forEach(([name, emoji]) => {
+  Object.entries(voucherEmojiMap).forEach(([key, emoji]) => {
     if (!emoji) return;
-    voucherNameEmojiMap[name] = emoji;
-    addEmojiCard(emoji, name, "");
-    mappedEmojiEntries.push({ englishName: name, localizedName: translateKey(name), emoji });
+    voucherNameEmojiMap[key] = emoji;
+    addEmojiCard(emoji, key, "");
+    mappedEmojiEntries.push({ key, localizedName: translateKeyFn(key), enName: enLocale[key] || "", emoji });
   });
 
-  alertBosses.forEach((name) => {
-    if (!name) return;
-    bossNameEmojiMap[name] = "☠️";
-    addEmojiCard("☠️", name, "#ff7a7a");
-    mappedEmojiEntries.push({ englishName: name, localizedName: translateKey(name), emoji: "☠️" });
+  alertBosses.forEach((key) => {
+    if (!key) return;
+    bossNameEmojiMap[key] = "☠️";
+    addEmojiCard("☠️", key, "#ff7a7a");
+    mappedEmojiEntries.push({ key, localizedName: translateKeyFn(key), enName: enLocale[key] || "", emoji: "☠️" });
   });
 
-  spectralNames.forEach((name) => {
-    if (!name) return;
-    spectralNameEmojiMap[name] = "💠";
-    addEmojiCard("💠", name, "#5fd4d4");
-    mappedEmojiEntries.push({ englishName: name, localizedName: translateKey(name), emoji: "💠" });
+  spectralNames.forEach((key) => {
+    if (!key) return;
+    spectralNameEmojiMap[key] = "💠";
+    addEmojiCard("💠", key, "#5fd4d4");
+    mappedEmojiEntries.push({ key, localizedName: translateKeyFn(key), enName: enLocale[key] || "", emoji: "💠" });
   });
 
   addEmojiCard("♔", "King Cards", "#ffd36a");
   addEmojiCard("‼️", "Negative marker", "#ff7a7a");
 
-  Object.entries(summaryFaceCardMap).forEach(([cardName, info]) => {
+  Object.entries(summaryFaceCardMap).forEach(([cardKey, info]) => {
     if (info.cn) {
-      faceMatchers.push({ token: info.cn, info });
+      faceMatchers.push({ token: info.cn, info, key: cardKey });
     }
-    faceMatchers.push({ token: cardName, info });
+    // Also match by English name from locale
+    const enName = global.BalatroLocale_enUS?.[cardKey];
+    if (enName) {
+      faceMatchers.push({ token: enName, info, key: cardKey });
+    }
+    faceMatchers.push({ token: cardKey, info, key: cardKey });
   });
 
   /**
@@ -257,7 +274,7 @@
     }
 
     mappedEmojiEntries.forEach((entry) => {
-      if (source.includes(entry.englishName) || source.includes(entry.localizedName)) {
+      if (source.includes(entry.key) || source.includes(entry.localizedName) || (entry.enName && source.includes(entry.enName))) {
         hits.add(entry.emoji);
       }
     });
@@ -410,6 +427,7 @@
     summaryFaceEmojiMap,
     summaryEmojiMap,
     summaryFaceCardMap,
+    nameToKey,
     translateGameText,
     localizeStandardCardName,
     localizePackName,
