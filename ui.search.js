@@ -134,7 +134,7 @@
     });
 
     syncSummaryFilterButtons();
-    global.applySummaryEmojiFilter?.();
+    global.applyEmojiFilter?.();
     scheduleSearchAndHighlight();
   }
 
@@ -407,7 +407,6 @@
     });
 
     syncSummaryFilterButtons();
-    scheduleSearchAndHighlight();
     return changed;
   }
 
@@ -418,10 +417,6 @@
     return initActiveTerms();
   }
 
-  function hasActiveTrackingTerms() {
-    return getActiveToggleTerms().size > 0;
-  }
-
   // Export search module
   global.BalatroSearch = {
     searchAndHighlight,
@@ -430,7 +425,6 @@
     onSearchChange,
     syncEmojiFilterToSearch,
     getActiveToggleTerms,
-    hasActiveTrackingTerms,
     setSearchScope,
     markSearchDomDirty,
     jokerFilterButtons,

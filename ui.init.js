@@ -149,7 +149,7 @@
     // Initial render
     window.applyUiLocalization?.();
     window.renderSummaryList?.();
-    window.applySummaryEmojiFilter?.();
+    window.applyEmojiFilter();
 
     // ---- Search callback registration ----
     // Must wait for BalatroSearch to be available (loaded dynamically by UI.js)
@@ -157,12 +157,15 @@
     function registerSearchCallback() {
       if (window.BalatroSearch?.onSearchChange) {
         window.BalatroSearch.onSearchChange(function () {
-          window.augmentSummaryWithSearch?.();
-          if (window.lastAugmentedSummary?.size) {
-            window.lastSummariesByAnte = window.lastAugmentedSummary;
-          } else {
-            window.lastSummariesByAnte = window.lastBaseSummariesByAnte || new Map();
+          // Skip when emoji click handler is managing the full pipeline
+          if (window._emojiSyncActive) return;
+          // Refresh tracking data from raw output using current activeToggleTerms.
+          // extractTrackingItems updates lastTrackingSummariesByAnte, then calls
+          // augmentSummaryWithSearch internally — so we must NOT call augment separately.
+          if (typeof window.invalidateTrackingCache === "function") {
+            window.invalidateTrackingCache();
           }
+          window.extractTrackingItems?.();
           window.renderSummaryList?.();
           if (typeof window.updateNearbySummaryButton === "function") {
             window.updateNearbySummaryButton();
@@ -170,7 +173,7 @@
           // Update nearby summaries in-place (no full page re-render)
           if (typeof window.refreshNearbySummaries === "function") {
             window.refreshNearbySummaries();
-            window.applySummaryEmojiFilter?.();
+            window.applyEmojiFilter();
           }
         });
       } else {

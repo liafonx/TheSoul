@@ -17,15 +17,42 @@
     return _cachedParsedAntes;
   }
 
+  // Lazy-init static emoji lookup tables (built once, reused across calls)
+  var _emojiLookup = null;
+  function getEmojiLookup() {
+    if (_emojiLookup) return _emojiLookup;
+    var sharedLists = window.BalatroSharedLists || {};
+    var tagEmojiLookup = sharedLists.TAG_EMOJI || {};
+    var voucherEmojiLookup = sharedLists.VOUCHER_EMOJI || {};
+    var alertBossSet = new Set(sharedLists.ALERT_BOSSES || []);
+    var faceEmojiData = sharedLists.SUMMARY_FACE_EMOJI || {};
+    var jokerFaceEmoji = {};
+    Object.keys(faceEmojiData).forEach(function (emoji) {
+      var cfg = faceEmojiData[emoji];
+      if (!cfg || !cfg.cards) return;
+      var cards = Array.isArray(cfg.cards) ? cfg.cards : Object.keys(cfg.cards);
+      cards.forEach(function (key) { if (!jokerFaceEmoji[key]) jokerFaceEmoji[key] = emoji; });
+    });
+    _emojiLookup = {
+      tagEmojiLookup: tagEmojiLookup,
+      voucherEmojiLookup: voucherEmojiLookup,
+      alertBossSet: alertBossSet,
+      jokerFaceEmoji: jokerFaceEmoji
+    };
+    return _emojiLookup;
+  }
+
   // Fix 4: Cache expanded tracking terms — only rebuild when terms change
-  var _lastTermsSize = -1;
+  var _lastTermsSnapshot = "";
   var _cachedExpandedTerms = null;
 
   function getExpandedTrackingTerms() {
     var terms = window.BalatroSearch?.getActiveToggleTerms?.();
     if (!terms || !terms.size) return null;
-    if (terms.size === _lastTermsSize && _cachedExpandedTerms) return _cachedExpandedTerms;
-    _lastTermsSize = terms.size;
+    // Build a snapshot string from all active terms to detect any change (not just size)
+    var snapshot = Array.from(terms).sort().join("\0");
+    if (snapshot === _lastTermsSnapshot && _cachedExpandedTerms) return _cachedExpandedTerms;
+    _lastTermsSnapshot = snapshot;
     var enLocale = window.BalatroLocale_enUS || {};
     var cnLocale = window.BalatroLocale_zhCN || {};
     var expanded = [];
@@ -41,7 +68,7 @@
   }
 
   function invalidateTrackingCache() {
-    _lastTermsSize = -1;
+    _lastTermsSnapshot = "";
     _cachedExpandedTerms = null;
   }
 
@@ -77,10 +104,15 @@
           .replace(/^(Foil |Holographic |Polychrome |Negative )+/, "")
           .replace(/^(Eternal |Perishable |Rental )+/, "")
           .trim();
-        return { index: index, name: name };
+        return { index: index, name: name, nameLower: name.toLowerCase() };
       });
 
-      antes.set(anteNum, { boss: boss, voucher: voucher, tags: tags, shopItems: shopItems });
+      antes.set(anteNum, {
+        boss: boss, bossLower: boss ? boss.toLowerCase() : null,
+        voucher: voucher, voucherLower: voucher ? voucher.toLowerCase() : null,
+        tags: tags, tagsLower: tags.map(function (t) { return t.toLowerCase(); }),
+        shopItems: shopItems
+      });
     }
 
     return antes;
@@ -102,13 +134,26 @@
 
     if (manualTerms.length === 0) return new Map();
 
-    var matchesSearch = function (text) {
-      var lowerText = text.toLowerCase();
+    var matchesSearchLower = function (lowerText) {
       return manualTerms.some(function (term) { return lowerText.includes(term); });
     };
 
     var utils = window.BalatroUtils;
     var isChinese = utils?.isChineseLocale?.() || false;
+
+    // Pre-build a cache: enName → { localizedLower, displayName } to avoid repeated translateGameText calls
+    var _searchItemCache = new Map();
+    var getSearchMeta = function (enName) {
+      var cached = _searchItemCache.get(enName);
+      if (cached) return cached;
+      var localizedName = utils?.translateGameText?.(enName) || enName;
+      var meta = {
+        searchLower: (enName + " " + localizedName).toLowerCase(),
+        displayName: isChinese ? localizedName : enName
+      };
+      _searchItemCache.set(enName, meta);
+      return meta;
+    };
 
     /**
      * Match an item by English name, converting to locale display.
@@ -117,17 +162,9 @@
      * @returns {string|null} Display name if matched, null otherwise
      */
     var matchItem = function (enName, suffix) {
-      // Get localized name via translateGameText (handles English→key→locale)
-      var localizedName = utils?.translateGameText?.(enName) || enName;
-
-      // Build search text from both English and localized names
-      var searchText = (enName + " " + localizedName).toLowerCase();
-
-      if (!matchesSearch(searchText)) return null;
-
-      // Return display name in current locale
-      var displayName = isChinese ? localizedName : enName;
-      return suffix ? displayName + suffix : displayName;
+      var meta = getSearchMeta(enName);
+      if (!matchesSearchLower(meta.searchLower)) return null;
+      return suffix ? meta.displayName + suffix : meta.displayName;
     };
 
     var parsedAntes = getCachedParsedAntes();
@@ -176,48 +213,69 @@
     var utils = window.BalatroUtils;
     var isChinese = utils?.isChineseLocale?.() || false;
 
-    var matchesTracking = function (text) {
-      var lower = text.toLowerCase();
-      return expandedTerms.some(function (t) { return lower.includes(t); });
+    var matchesTrackingLower = function (lowerText) {
+      return expandedTerms.some(function (t) { return lowerText.includes(t); });
     };
 
     var parsedAntes = getCachedParsedAntes();
     if (!parsedAntes.size) return new Map();
     var results = new Map();
 
+    // Use cached emoji lookup tables (built once)
+    var nameToKeyFn = utils?.nameToKey || function (n) { return n; };
+    var emojiLookup = getEmojiLookup();
+
+    var getItemEmoji = function (enName, type) {
+      var key = nameToKeyFn(enName);
+      if (type === "boss") return emojiLookup.alertBossSet.has(key) ? "\u2620\uFE0F" : "";
+      if (type === "voucher") return emojiLookup.voucherEmojiLookup[key] || "";
+      if (type === "tag") return emojiLookup.tagEmojiLookup[key] || "";
+      if (type === "shop") return emojiLookup.jokerFaceEmoji[key] || "";
+      return "";
+    };
+
     parsedAntes.forEach(function (anteData, anteNum) {
-      var addMatch = function (enName, suffix) {
+      var addMatch = function (enName, suffix, emoji) {
         var displayName = isChinese ? (utils?.translateGameText?.(enName) || enName) : enName;
-        return suffix ? displayName + suffix : displayName;
+        var name = suffix ? displayName + suffix : displayName;
+        return emoji ? emoji + name : name;
       };
 
       // Collect matches by type group
       var groups = [];
 
-      // Boss
+      // Boss — use pre-lowered field
       var bossHits = [];
-      if (anteData.boss && matchesTracking(anteData.boss)) bossHits.push(addMatch(anteData.boss));
+      if (anteData.bossLower && matchesTrackingLower(anteData.bossLower)) {
+        bossHits.push(addMatch(anteData.boss, null, getItemEmoji(anteData.boss, "boss")));
+      }
       if (bossHits.length) groups.push(bossHits.join("\u3001"));
 
-      // Voucher
+      // Voucher — use pre-lowered field
       var voucherHits = [];
-      if (anteData.voucher && matchesTracking(anteData.voucher)) voucherHits.push(addMatch(anteData.voucher));
+      if (anteData.voucherLower && matchesTrackingLower(anteData.voucherLower)) {
+        voucherHits.push(addMatch(anteData.voucher, null, getItemEmoji(anteData.voucher, "voucher")));
+      }
       if (voucherHits.length) groups.push(voucherHits.join("\u3001"));
 
-      // Tags
+      // Tags — use pre-lowered array
       var tagHits = [];
       if (anteData.tags) {
-        anteData.tags.forEach(function (tag) {
-          if (matchesTracking(tag)) tagHits.push(addMatch(tag));
+        anteData.tags.forEach(function (tag, idx) {
+          if (matchesTrackingLower(anteData.tagsLower[idx])) {
+            tagHits.push(addMatch(tag, null, getItemEmoji(tag, "tag")));
+          }
         });
       }
       if (tagHits.length) groups.push(tagHits.join("\u3001"));
 
-      // Shop items
+      // Shop items — use pre-lowered nameLower
       var shopHits = [];
       if (anteData.shopItems) {
         anteData.shopItems.forEach(function (item) {
-          if (matchesTracking(item.name)) shopHits.push(addMatch(item.name, "#" + item.index));
+          if (matchesTrackingLower(item.nameLower)) {
+            shopHits.push(addMatch(item.name, "#" + item.index, getItemEmoji(item.name, "shop")));
+          }
         });
       }
       if (shopHits.length) groups.push(shopHits.join("\u3001"));
@@ -289,11 +347,19 @@
     window.lastAugmentedSummary = augmented;
   }
 
+  /**
+   * Return all analyzed ante numbers from cached parsed output.
+   * @returns {number[]} Sorted ante numbers
+   */
+  function getAnalyzedAnteNumbers() {
+    var parsed = getCachedParsedAntes();
+    return [...parsed.keys()].sort(function (a, b) { return a - b; });
+  }
+
   // Exports
-  window.parseRawOutputByAnte = parseRawOutputByAnte;
-  window.extractSearchResults = extractSearchResults;
   window.extractTrackingResults = extractTrackingResults;
   window.augmentSummaryWithSearch = augmentSummaryWithSearch;
   window.getExpandedTrackingTerms = getExpandedTrackingTerms;
   window.invalidateTrackingCache = invalidateTrackingCache;
+  window.getAnalyzedAnteNumbers = getAnalyzedAnteNumbers;
 })();
