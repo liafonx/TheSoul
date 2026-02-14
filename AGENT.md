@@ -11,7 +11,7 @@ This repository is a browser-based Balatro seed analyzer. The top priority for U
 - `index.html`: App shell (HTML structure only), top bar, body DOM, inline head scripts (locale/UA/asset-version init, Immolate bootstrap).
 - `UI.js`: Ordered UI module loader (dynamically loads ui.data → ui.renderers → ui.utils → ui.search → ui.cards → ui.packs → ui.app).
 - `ui.css`: Design tokens, responsive layout, button/window styles, card/packs/search/floating-window styling.
-- `ui.state.js`: Global state variables (`lastRawOutput`, `lastSummariesByAnte`, `lastBaseSummariesByAnte`, `lastTrackingSummariesByAnte`), `_emojiSyncActive` guard flag, state query helpers (`hasActiveTrackingItems`, `hasActiveSearchOrTracking`), `applyEmojiFilter` shorthand, `buildSummaryLookup`, `clampAnteValue`.
+- `ui.state.js`: Global state variables (`lastRawOutput`, `lastSummariesByAnte`, `lastBaseSummariesByAnte`, `lastTrackingSummariesByAnte`, `cardTextOnlyMode`), `_emojiSyncActive` guard flag, state query helpers (`hasActiveTrackingItems`, `hasActiveSearchOrTracking`), `applyEmojiFilter` shorthand, `buildSummaryLookup`, `clampAnteValue`.
 - `ui.unlocks.js`: Unlock checkbox overlay (options array, selectedOptions, checkbox management).
 - `ui.summary.js`: Summary rendering (renderSummaryList, applySummaryEmojiFilter, extractTrackingItems), setSummaryFloatingVisible, copySummaryToClipboard, onTrackingTermsStateChange.
 - `ui.filters.js`: Settings panel (buildSummaryFilterUI) and Intro panel (buildEmojiLegendUI).
@@ -142,6 +142,16 @@ This repository is a browser-based Balatro seed analyzer. The top priority for U
 2. Tag/Voucher/Boss/Spectral: disabling a filter hides corresponding summary/mini-summary segments and restoring re-shows them.
 - Disabling via Settings emoji icons must not apply visual dimming (`.emojiFilterOff`) to cards; cards should only return to normal un-highlighted state.
 - `cardSetHitFilterToggle` (`◎/◉`) hides/shows groups based on existing highlights (`.highlight`, `.highlight-track`, `.highlight-search`) and not on a separate filter channel.
+
+### High card count mode toggle
+- State variable: `window.cardTextOnlyMode` (default: `false` = images shown).
+- Settings panel has 4th full-width button (after emoji/color/nearby toggles) controlling text-only mode for recalc operations.
+- When `false` (default): clicking ante recalc button renders cards with images (canvas).
+- When `true`: clicking ante recalc button renders cards as text-only (no canvas).
+- Settings toggle applies immediately: if already in high card count mode, changing the setting auto-re-renders current antes via `container.dataset.highCardMode` tracking and programmatic recalc button click.
+- Restore button always uses image mode (`textOnly: false`), unaffected by setting.
+- CSS: first 4 buttons in `#summaryFilterContent` span full width via `:nth-child(-n + 4)` (lines 1086, 1096 in `ui.css`).
+- i18n keys: `ui.cards_text_only` / `ui.cards_with_images` (English: "High card no. mode: text/images", Chinese: "大牌数模式：纯文字/带图片").
 
 ### Intro window contract
 - Intro button is `#emojiLegendButton` (label `Intro` / `说明` via i18n).
@@ -283,37 +293,6 @@ Always use raw-output parsing (via `extractTrackingResults` / `augmentSummaryWit
 1. Service worker controls page after reload in supported contexts.
 2. `immolate.wasm` still loads successfully (HTTP 200 / no wasm init failures).
 3. No console errors after first load and reload.
-
-## Local verification commands
-```bash
-python3 tools/serve.py --port 4173
-```
-Open `http://127.0.0.1:4173/index.html`.
-
-```bash
-node tests/balatro_analysis.test.js
-node -c src/balatro_analysis.js
-node -c src/ui.state.js
-node -c src/ui.unlocks.js
-node -c src/ui.summary.js
-node -c src/ui.filters.js
-node -c src/ui.search-integration.js
-node -c src/ui.floating.js
-node -c src/ui.analysis.js
-node -c src/ui.locale.js
-node -c src/ui.init.js
-node -c src/ui.search.js
-node -c src/ui.cards.js
-node -c src/ui.packs.js
-node -c src/ui.app.js
-node -c sw.js
-node -c localization/i18n.global.js
-node -c localization/generated/en-US.game.js
-node -c localization/generated/zh-CN.game.js
-node -c localization/generated/name-to-key.js
-node -c localization/en-US.ui.js
-node -c localization/ui-zh-CN.js
-```
 
 ## Playwright sanity workflow
 Use Playwright CLI for interaction checks when regressions are reported:
