@@ -70,6 +70,29 @@
     });
     summaryFilterContent.appendChild(nearbyBtn);
 
+    // Text-only mode toggle
+    var textOnlyBtn = document.createElement("button");
+    textOnlyBtn.type = "button";
+    textOnlyBtn.className = "summaryFilterButton";
+    var updateTextOnlyBtn = function () {
+      textOnlyBtn.classList.toggle("active", !window.cardTextOnlyMode);
+      textOnlyBtn.textContent = window.cardTextOnlyMode ? t("ui.cards_text_only") : t("ui.cards_with_images");
+    };
+    updateTextOnlyBtn();
+    textOnlyBtn.addEventListener("click", function () {
+      window.cardTextOnlyMode = !window.cardTextOnlyMode;
+      updateTextOnlyBtn();
+
+      // Re-render any antes currently in high card count mode
+      document.querySelectorAll("[data-high-card-mode='true']").forEach(function (anteSection) {
+        var recalcBtn = anteSection.querySelector("[data-ante-recalc='true']");
+        if (recalcBtn && !recalcBtn.disabled) {
+          recalcBtn.click();
+        }
+      });
+    });
+    summaryFilterContent.appendChild(textOnlyBtn);
+
     // Emoji filter buttons
     Object.keys(faceEmojiMap).forEach(function (emoji) {
       if (!(emoji in window.summaryEmojiFilter)) {

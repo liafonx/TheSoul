@@ -40,6 +40,8 @@
     "ui.color_colorful": "Summary text color: colorful",
     "ui.nearby_visible": "Nearby Summaries: visible",
     "ui.nearby_hidden": "Nearby Summaries: hidden",
+    "ui.cards_text_only": "High card no. mode: text",
+    "ui.cards_with_images": "High card no. mode: images",
     "ui.nothing_to_summarize": "Nothing to summarize yet.",
     "ui.nothing_to_download": "Nothing to download yet.",
     "ui.link_copied": "Link copied to clipboard!",

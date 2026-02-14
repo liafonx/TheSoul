@@ -1083,7 +1083,7 @@ button.is-loading::after,
 }
 
 /* Make first controls span full width and fit text */
-#summaryFilterContent .summaryFilterButton:nth-child(-n + 3) {
+#summaryFilterContent .summaryFilterButton:nth-child(-n + 4) {
   grid-column: 1 / -1;
   min-height: 0;
   padding-inline: 10px;
@@ -1093,7 +1093,7 @@ button.is-loading::after,
   white-space: nowrap;
 }
 
-#summaryFilterContent .summaryFilterButton:nth-child(-n + 3) .summaryFilterEmoji {
+#summaryFilterContent .summaryFilterButton:nth-child(-n + 4) .summaryFilterEmoji {
   font-size: 13px;
 }
 

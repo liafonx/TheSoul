@@ -40,6 +40,8 @@
     "ui.color_colorful": "总结文本颜色：多彩",
     "ui.nearby_visible": "最近4注总结：显示",
     "ui.nearby_hidden": "最近4注总结：隐藏",
+    "ui.cards_text_only": "大牌数模式：纯文字",
+    "ui.cards_with_images": "大牌数模式：带图片",
     "ui.nothing_to_summarize": "暂无可总结内容。",
     "ui.nothing_to_download": "暂无可下载内容。",
     "ui.link_copied": "链接已复制到剪贴板！",

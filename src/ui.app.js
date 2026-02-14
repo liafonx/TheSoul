@@ -429,12 +429,18 @@
             layout.setMode(mode);
             rerender();
             syncJumpRange();
+            // Mark if we're in high card count mode (recalc) or normal mode (restore)
+            container.dataset.highCardMode = (btn === recalcBtn) ? "true" : "";
           } finally {
             setButtonLoadingState?.(btn, false);
           }
         }, 0);
       };
-      recalcBtn.addEventListener("click", () => runCompute(recalcBtn, true, "grid"));
+
+      // Store reference for settings-triggered re-render
+      recalcBtn.dataset.anteRecalc = "true";
+
+      recalcBtn.addEventListener("click", () => runCompute(recalcBtn, Boolean(window.cardTextOnlyMode), "grid"));
       restoreBtn.addEventListener("click", () => runCompute(restoreBtn, false, "scroll"));
 
       // Packs section

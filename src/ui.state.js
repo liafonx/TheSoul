@@ -13,6 +13,7 @@
   window.lastBaseSummariesByAnte = new Map();
   window.lastTrackingSummariesByAnte = new Map();
   window.__RESET_SUMMARY_ON_NEXT_OPEN__ = false;
+  window.cardTextOnlyMode = false;
 
   // ---- Emoji sync guard ----
   // When true, onSearchChange callbacks skip redundant work because
