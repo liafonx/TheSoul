@@ -141,12 +141,6 @@
       return;
     }
 
-    if (workload > 30000) {
-      alert(t("ui.analyze_too_large"));
-      window.setButtonLoadingState(analyzeButton, false);
-      window.setGroupButtonsLoading?.(false);
-      return;
-    }
 
     setTimeout(function () {
       var inst = null;
