@@ -12,7 +12,6 @@
     "ui.version": "版本：",
     "ui.analyze": "生成预测",
     "ui.summarize": "总结",
-    "ui.copy_summary": "复制总结",
     "ui.download_output": "下载输出",
     "ui.copy_link": "复制链接",
     "ui.modify_unlocks": "修改解锁",
@@ -35,7 +34,7 @@
     "ui.emojis_visible": "总结中的 Emoji：显示",
     "ui.emojis_hidden": "总结中的 Emoji：隐藏",
     "ui.analyze_failed": "分析失败，请检查种子或版本后重试。",
-    "ui.analyze_too_large": "分析规模过大，请降低最高底注或每底注牌数。",
+    "ui.analyze_too_large": "分析规模过大，有失败可能。建议通过“重设本注牌数”单独设定目标底注卡牌数。",
     "ui.color_default": "总结文本颜色：单色",
     "ui.color_colorful": "总结文本颜色：多彩",
     "ui.nearby_visible": "最近4注总结：显示",
@@ -45,8 +44,6 @@
     "ui.nothing_to_summarize": "暂无可总结内容。",
     "ui.nothing_to_download": "暂无可下载内容。",
     "ui.link_copied": "链接已复制到剪贴板！",
-    "ui.summary_copied": "总结已复制到剪贴板！",
-    "ui.copy_failed": "复制总结失败。",
     "ui.summary_placeholder": "点击「分析」后会显示总结。",
     "ui.no_tracking_items": "暂无追踪项",
     "ui.summarizing": "正在生成总结...",
@@ -100,7 +97,14 @@
     "ui.jump_to_card": "跳至牌序号",
     "ui.hide_non_hit": "仅显示命中",
     "ui.only_groups_with_hits": "仅显示命中",
-    "ui.show_all_groups": "显示全部"
+    "ui.show_all_groups": "显示全部",
+    "ui.confirm_continue": "仍然继续？",
+    "ui.error_reason_memory": "失败原因：WASM 引擎内存不足",
+    "ui.error_reason_stack": "失败原因：调用栈溢出",
+    "ui.error_reason_timeout": "失败原因：脚本执行超时",
+    "ui.error_reason_wasm": "失败原因：WASM 引擎运行时错误",
+    "ui.wasm_crashed": "分析引擎已崩溃，请刷新页面后重试。",
+    "ui.wasm_crashed_reload": "分析引擎已崩溃，是否立即刷新页面？"
   });
 
   if (typeof module === "object" && module.exports) {

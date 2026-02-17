@@ -37,7 +37,6 @@
     var openCheckboxesBtn = document.getElementById("openCheckboxesBtn");
     var copyLinkButton = document.getElementById("copyButton");
     var downloadButton = document.getElementById("downloadButton");
-    var exportButton = document.getElementById("exportButton");
     var summaryToggleButton = document.getElementById("summaryFloatingToggle");
     var summaryFilterToggle = document.getElementById("summaryFilterToggle");
     var searchFloatingToggle = document.getElementById("searchFloatingToggle");
@@ -54,7 +53,6 @@
     if (openCheckboxesBtn) openCheckboxesBtn.textContent = t("ui.modify_unlocks");
     if (copyLinkButton) copyLinkButton.textContent = t("ui.copy_link");
     if (downloadButton) downloadButton.textContent = t("ui.download_output");
-    if (exportButton) exportButton.textContent = t("ui.copy_summary");
     if (summaryToggleButton) summaryToggleButton.textContent = t("ui.summary");
     if (summaryFilterToggle) summaryFilterToggle.textContent = t("ui.settings");
     if (searchFloatingToggle) {

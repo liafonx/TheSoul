@@ -12,7 +12,6 @@
     "ui.version": "Version:",
     "ui.analyze": "Analyze",
     "ui.summarize": "Summarize",
-    "ui.copy_summary": "Copy Summary",
     "ui.download_output": "Download output",
     "ui.copy_link": "Copy Link",
     "ui.modify_unlocks": "Modify Unlocks",
@@ -35,7 +34,7 @@
     "ui.emojis_visible": "Emojis in summary: visible",
     "ui.emojis_hidden": "Emojis in summary: hidden",
     "ui.analyze_failed": "Analyze failed. Check seed/version and try again.",
-    "ui.analyze_too_large": "Analyze workload is too large. Reduce Max Ante or Cards per Ante.",
+    "ui.analyze_too_large": "Analyze workload is too large. There is a risk of failure. It is recommended to set the target ante card number separately through \"Cards (this Ante)\".",
     "ui.color_default": "Summary text color: default",
     "ui.color_colorful": "Summary text color: colorful",
     "ui.nearby_visible": "Nearby Summaries: visible",
@@ -45,8 +44,6 @@
     "ui.nothing_to_summarize": "Nothing to summarize yet.",
     "ui.nothing_to_download": "Nothing to download yet.",
     "ui.link_copied": "Link copied to clipboard!",
-    "ui.summary_copied": "Summary copied to clipboard!",
-    "ui.copy_failed": "Failed to copy summary.",
     "ui.summary_placeholder": "Summary will appear here after you click Analyze.",
     "ui.no_tracking_items": "No tracking items",
     "ui.summarizing": "Summarizing results...",
@@ -100,7 +97,14 @@
     "ui.jump_to_card": "Jump to card #",
     "ui.hide_non_hit": "Hide non-hit groups",
     "ui.only_groups_with_hits": "Only groups with hits",
-    "ui.show_all_groups": "Show all groups"
+    "ui.show_all_groups": "Show all groups",
+    "ui.confirm_continue": "Continue anyway?",
+    "ui.error_reason_memory": "Failure reason: WASM engine out of memory",
+    "ui.error_reason_stack": "Failure reason: Call stack overflow",
+    "ui.error_reason_timeout": "Failure reason: Script execution timed out",
+    "ui.error_reason_wasm": "Failure reason: WASM engine runtime error",
+    "ui.wasm_crashed": "The analysis engine has crashed. Reload the page to continue.",
+    "ui.wasm_crashed_reload": "The analysis engine has crashed. Reload now?"
   });
 
   if (typeof module === "object" && module.exports) {

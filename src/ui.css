@@ -319,6 +319,38 @@ button#analyzeButton {
   margin-top: 8px;
 }
 
+/* Analysis progress bar */
+.analyzeProgress {
+  width: 100%;
+  max-width: 540px;
+  height: 22px;
+  margin-top: 8px;
+  background-color: var(--ui-surface-4);
+  border: 1px solid rgba(var(--ui-accent-rgb), 0.3);
+  border-radius: 6px;
+  overflow: hidden;
+  position: relative;
+}
+
+.analyzeProgressBar {
+  height: 100%;
+  width: 0%;
+  background: linear-gradient(90deg, rgba(var(--ui-accent-rgb), 0.35), rgba(var(--ui-accent-rgb), 0.55));
+  border-radius: 6px;
+  transition: width 0.05s linear;
+}
+
+.analyzeProgressText {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 11px;
+  color: var(--ui-text-primary);
+  pointer-events: none;
+}
+
 .settings-actions > button {
   min-height: calc(var(--control-height) - 3px);
   line-height: 1.2;
@@ -1152,6 +1184,11 @@ button.is-loading::after,
 .summaryFaceSegment.negativeFace {
   color: var(--negative-face-color) !important;
   font-weight: 600;
+}
+
+.negativePrefix {
+  font-weight: 700;
+  color: #ff4444;
 }
 
 .summaryPipe {

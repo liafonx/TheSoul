@@ -1,6 +1,6 @@
 # AGENT.md
 
-Last updated: 2026-02-13
+Last updated: 2026-02-17
 
 ## Purpose
 This repository is a browser-based Balatro seed analyzer. The top priority for UI changes is perceived performance and interaction stability on both desktop and mobile.
@@ -13,16 +13,16 @@ This repository is a browser-based Balatro seed analyzer. The top priority for U
 - `ui.css`: Design tokens, responsive layout, button/window styles, card/packs/search/floating-window styling.
 - `ui.state.js`: Global state variables (`lastRawOutput`, `lastSummariesByAnte`, `lastBaseSummariesByAnte`, `lastTrackingSummariesByAnte`, `cardTextOnlyMode`), `_emojiSyncActive` guard flag, state query helpers (`hasActiveTrackingItems`, `hasActiveSearchOrTracking`), `applyEmojiFilter` shorthand, `buildSummaryLookup`, `clampAnteValue`.
 - `ui.unlocks.js`: Unlock checkbox overlay (options array, selectedOptions, checkbox management).
-- `ui.summary.js`: Summary rendering (renderSummaryList, applySummaryEmojiFilter, extractTrackingItems), setSummaryFloatingVisible, copySummaryToClipboard, onTrackingTermsStateChange.
+- `ui.summary.js`: Summary rendering (renderSummaryList, renderSummarySegments, applySummaryEmojiFilter, extractTrackingItems), setSummaryFloatingVisible, refreshNearbySummaries, onTrackingTermsStateChange.
 - `ui.filters.js`: Settings panel (buildSummaryFilterUI) and Intro panel (buildEmojiLegendUI).
-- `ui.search-integration.js`: Raw output parsing (parseRawOutputByAnte, internal), search extraction (extractSearchResults, internal), tracking extraction (extractTrackingResults), summary augmentation (augmentSummaryWithSearch), tracking cache (getExpandedTrackingTerms, invalidateTrackingCache), getAnalyzedAnteNumbers.
+- `ui.search-integration.js`: Raw output parsing (parseRawOutputByAnte, internal), search extraction (extractSearchResults, internal — supports edition search and base-summary fallback), tracking extraction (extractTrackingResults), summary augmentation (augmentSummaryWithSearch), tracking cache (getExpandedTrackingTerms, invalidateTrackingCache), analysis cache (invalidateAnalysisCache), getAnalyzedAnteNumbers.
 - `ui.floating.js`: Floating window management (open/close/toggle coordination, Esc, outside-click, scroll-to-top).
-- `ui.analysis.js`: WASM analysis engine (createImmolateInstance, performAnalysis, computeSingleAnteQueue, summarizeOutput).
+- `ui.analysis.js`: WASM analysis engine (createImmolateInstance, performAnalysis, computeSingleAnteQueue, summarizeOutput). Async chunked analysis with progress bar (one ante per event-loop tick). Error helpers: formatAnalysisError (exported), classifyErrorReason, checkWasmCrashed (internal). Cleans up previous analysis state on re-analyze.
 - `ui.locale.js`: UI localization (applyUiLocalization) and locale toggle.
 - `ui.init.js`: Initialization (service worker, URL params, input validation, button wiring, search callback registration).
 - `ui.app.js`: Main orchestrator for queue rendering, pagination, and cross-module wiring.
 - `ui.search.js`: Search input, filter panel, active term management, highlight assignment.
-- `ui.cards.js`: Card group rendering and card-item display.
+- `ui.cards.js`: Card group rendering, card-item display, lazy canvas rendering via IntersectionObserver (renderCardCanvas, unrenderCardCanvas, setupLazyCanvasObserver). Uses DocumentFragment for batch group insertion.
 - `ui.packs.js`: Pack section rendering, pack header/toggle behavior, pack filters.
 - `sw.js`: Service worker for static asset caching (stale-while-revalidate) and navigation fallback.
 - `balatro_analysis.js`: Analyzer logic (browser + Node use).
@@ -82,6 +82,12 @@ This repository is a browser-based Balatro seed analyzer. The top priority for U
 - `translateGameText(englishName)` in `ui.utils.js`: English name → key via `nameToKey()` → `t(key)` for display.
 - `activeToggleTerms` Set in `ui.search.js` stores internal keys (lowercase).
 - Raw output (`window.lastRawOutput`) always contains English names from immolate WASM; conversion to keys/locale happens at display time.
+- Edition prefixes (Negative, Foil, Holographic, Polychrome) are output as English text in raw output (both `performAnalysis` and `computeSingleAnteQueue` use `item.jokerData.edition + " "` format). `parseCardItem` in `ui.renderers.js` extracts these as `itemModifiers`.
+
+### Summary negative prefix rendering
+- In `balatro_analysis.js`, negative jokers use text prefix (`"Negative"` / `"负片"`) instead of `‼️` emoji suffix.
+- `renderSummarySegments` in `ui.summary.js` detects `Negative`/`负片` prefix via regex and renders it as `<span class="negativePrefix">` (bold red `#ff4444`).
+- `getSummaryEmojisForText` in `ui.utils.js` detects `‼️`, `\bNegative\b`, and `负片` to map to the `‼️` emoji filter entry.
 
 ## Active UX contracts
 
@@ -123,7 +129,9 @@ This repository is a browser-based Balatro seed analyzer. The top priority for U
 2. Manual typed matches: `.highlight-search` (mint-cyan; current CSS value `#33fbc3`).
 - Priority rule: if a card matches both manual search and tracked filters, manual search highlight (`.highlight-search`) takes precedence in the DOM. However, the item still appears in BOTH search and tracking sections of the floating summary (data extraction is independent of DOM highlight class).
 - Separator cleanup rule: when filtering hides all trailing summary segments, leading separators (`|`, `、`, `,`) must auto-hide (no orphan left delimiter).
-- Nearby mini summaries are effectively disabled when tracked-term set is empty (even if `summaryNearbyVisible` user flag is enabled), and `Nearby Summaries` setting button reflects hidden state.
+- Search supports card edition terms (e.g. "Negative"/"负片", "Foil"/"箔片"). Edition translations are matched in both English and locale.
+- Search has a fallback path: if an ante has no raw-output match, it searches `lastBaseSummariesByAnte` text (catches pack items not in parsed shop data).
+- Nearby mini summaries default to hidden (`summaryNearbyVisible` = false). They are also effectively disabled when tracked-term set is empty (even if user enables the toggle), and `Nearby Summaries` setting button reflects hidden state.
 - Filter panel is custom controlled (not native `<details>`):
 1. `.filter-panel`
 2. `.filter-summary` button
@@ -145,11 +153,12 @@ This repository is a browser-based Balatro seed analyzer. The top priority for U
 
 ### High card count mode toggle
 - State variable: `window.cardTextOnlyMode` (default: `false` = images shown).
+- Auto text-only: when `cardsPerAnte > 2000`, initial render uses text-only mode automatically (`window.__analysisAutoTextOnly`).
 - Settings panel has 4th full-width button (after emoji/color/nearby toggles) controlling text-only mode for recalc operations.
 - When `false` (default): clicking ante recalc button renders cards with images (canvas).
 - When `true`: clicking ante recalc button renders cards as text-only (no canvas).
 - Settings toggle applies immediately: if already in high card count mode, changing the setting auto-re-renders current antes via `container.dataset.highCardMode` tracking and programmatic recalc button click.
-- Restore button always uses image mode (`textOnly: false`), unaffected by setting.
+- Restore button always uses image mode (`textOnly: false`), resets cardsInput to global "Cards per Ante" value, and rebuilds from original analysis queue (no WASM recompute).
 - CSS: first 4 buttons in `#summaryFilterContent` span full width via `:nth-child(-n + 4)` (lines 1086, 1096 in `ui.css`).
 - i18n keys: `ui.cards_text_only` / `ui.cards_with_images` (English: "High card no. mode: text/images", Chinese: "大牌数模式：纯文字/带图片").
 
@@ -207,6 +216,8 @@ There are three ways the summary/search pipeline runs:
 - `window.lastAugmentedSummary` — Map, combined search+tracking+base (set by `augmentSummaryWithSearch`).
 - `window.lastSummariesByAnte` — Map, the active summary map used for rendering (points to augmented or base).
 - `window._emojiSyncActive` — boolean guard, prevents redundant callback execution during emoji click pipeline.
+- `window.__wasmAborted` — boolean, set `true` after fatal WASM crash (OOM/abort). Checked by `checkWasmCrashed()` to prompt page reload. Cleared on new analysis start.
+- `window.__analysisAutoTextOnly` — boolean, set `true` when `cardsPerAnte > 2000`. Used by `renderAnteQueue` to auto-enable text-only mode on initial render.
 
 ### Canonical tracking check
 `window.hasActiveTrackingItems()` (defined in `ui.state.js`) is the single canonical function for checking if any tracking toggle is active. All callers use this — do not create alternative implementations.
@@ -254,6 +265,10 @@ Always use raw-output parsing (via `extractTrackingResults` / `augmentSummaryWit
 - Avoid repeated full-tree queries in hot paths (`input`, `scroll`, `resize`).
 - Keep animation/blur usage conservative; preserve `ua-no-blur` fallback quality.
 - Maintain one-open-floating-window rule to reduce paint/interaction conflicts.
+- Analysis runs async-chunked: one ante per event-loop tick via `setTimeout(processNextAnte, 0)`. This prevents script-timeout on large workloads. A soft `confirm()` warning fires when `workload > 50000`.
+- Card canvases use lazy rendering via IntersectionObserver in `ui.cards.js`. Canvas creation is deferred until the card group scrolls into view (800px horizontal / 400px vertical buffer). Groups with >50 cards also unrender canvases when scrolling far away to reclaim memory.
+- `buildQueueNodes` stores render params as `data-*` attributes (baseName, modifiers, stickers) on `.cardCanvasWrapper` divs; `renderCardCanvas` reads them lazily. Search data attributes (`data-searchText`, `data-faceEmoji`, `data-summaryEmojis`) are set eagerly (not affected by lazy canvas).
+- Re-analysis cleans up all previous results (`lastRawOutput`, summaries, caches) before starting new work via `invalidateAnalysisCache()`.
 - Search hot-path contract (`ui.search.js`):
 1. Use scoped search roots (`setSearchScope`) instead of whole-document scans.
 2. Mark search DOM dirty (`markSearchDomDirty`) whenever queue/pack/card DOM is rebuilt.
@@ -289,6 +304,14 @@ Always use raw-output parsing (via `extractTrackingResults` / `augmentSummaryWit
 2. No touch lag from duplicated handlers.
 3. No blur transparency in `ua-no-blur` mode.
 4. Number inputs show no native spin arrows.
+- Analysis:
+1. Progress bar advances evenly per ante during analysis.
+2. Large workload (>50,000) shows soft warning confirm dialog.
+3. WASM OOM/crash shows categorized error with ante number, sets `__wasmAborted`, and prompts page reload on next analyze attempt.
+4. Re-analyzing clears all previous results before starting.
+5. Per-ante recalc and restore both re-apply search highlights and hit-only filter.
+6. Searching edition terms (e.g. "负片", "Negative") matches cards with that edition.
+7. Negative cards show `Negative`/`负片` as bold red prefix in summary (not ‼️ suffix).
 - Caching/runtime:
 1. Service worker controls page after reload in supported contexts.
 2. `immolate.wasm` still loads successfully (HTTP 200 / no wasm init failures).

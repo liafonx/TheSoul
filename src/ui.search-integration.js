@@ -72,6 +72,12 @@
     _cachedExpandedTerms = null;
   }
 
+  function invalidateAnalysisCache() {
+    _cachedRawText = null;
+    _cachedParsedAntes = null;
+    invalidateTrackingCache();
+  }
+
   /**
    * Parse raw output to extract Boss, Voucher, Tags, and Shop items by ante.
    * @param {string} rawText - The raw output text
@@ -100,11 +106,14 @@
       var shopMatches = [...content.matchAll(/^(\d+)\) (.+)$/gm)];
       var shopItems = shopMatches.map(function (m) {
         var index = m[1];
-        var name = m[2]
+        var rawName = m[2].trim();
+        var editionMatch = /^((?:Foil |Holographic |Polychrome |Negative )+)/.exec(rawName);
+        var edition = editionMatch ? editionMatch[1].trim() : "";
+        var name = rawName
           .replace(/^(Foil |Holographic |Polychrome |Negative )+/, "")
           .replace(/^(Eternal |Perishable |Rental )+/, "")
           .trim();
-        return { index: index, name: name, nameLower: name.toLowerCase() };
+        return { index: index, name: name, nameLower: name.toLowerCase(), edition: edition, editionLower: edition.toLowerCase() };
       });
 
       antes.set(anteNum, {
@@ -141,6 +150,14 @@
     var utils = window.BalatroUtils;
     var isChinese = utils?.isChineseLocale?.() || false;
 
+    // Edition translations for search matching
+    var editionTranslations = {
+      "negative": isChinese ? "负片" : "Negative",
+      "foil": isChinese ? "箔片" : "Foil",
+      "holographic": isChinese ? "全息" : "Holographic",
+      "polychrome": isChinese ? "多彩" : "Polychrome"
+    };
+
     // Pre-build a cache: enName → { localizedLower, displayName } to avoid repeated translateGameText calls
     var _searchItemCache = new Map();
     var getSearchMeta = function (enName) {
@@ -159,12 +176,21 @@
      * Match an item by English name, converting to locale display.
      * @param {string} enName - English name from raw output
      * @param {string} suffix - Optional suffix like "#1"
+     * @param {string} [edition] - Optional edition string (e.g. "Negative")
      * @returns {string|null} Display name if matched, null otherwise
      */
-    var matchItem = function (enName, suffix) {
+    var matchItem = function (enName, suffix, edition) {
       var meta = getSearchMeta(enName);
-      if (!matchesSearchLower(meta.searchLower)) return null;
-      return suffix ? meta.displayName + suffix : meta.displayName;
+      var editionLower = edition ? edition.toLowerCase().trim() : "";
+      var editionLocalized = editionLower ? (editionTranslations[editionLower] || edition) : "";
+      var fullSearchLower = editionLower
+        ? editionLower + " " + editionLocalized.toLowerCase() + " " + meta.searchLower
+        : meta.searchLower;
+      if (!matchesSearchLower(fullSearchLower)) return null;
+      var prefix = editionLocalized && matchesSearchLower(editionLower + " " + editionLocalized.toLowerCase())
+        ? editionLocalized : "";
+      var displayName = prefix ? prefix + meta.displayName : meta.displayName;
+      return suffix ? displayName + suffix : displayName;
     };
 
     var parsedAntes = getCachedParsedAntes();
@@ -190,7 +216,7 @@
       }
       if (anteData.shopItems) {
         anteData.shopItems.forEach(function (item) {
-          var hit = matchItem(item.name, "#" + item.index);
+          var hit = matchItem(item.name, "#" + item.index, item.edition);
           if (hit) matches.push(hit);
         });
       }
@@ -198,6 +224,27 @@
         results.set(anteNum, matches);
       }
     });
+
+    // Fallback: search base summary text for antes not yet matched
+    // This catches cards in packs, buffoon jokers, and other items not in raw parsed data
+    var baseSummary = window.lastBaseSummariesByAnte;
+    if (baseSummary) {
+      baseSummary.forEach(function (summaryText, anteNum) {
+        if (results.has(anteNum)) return;
+        var summaryLower = (summaryText || "").toLowerCase();
+        if (matchesSearchLower(summaryLower)) {
+          // Extract approximate matches from summary segments
+          var segments = summaryText.split(/[、,|]/).map(function (s) { return s.trim(); }).filter(Boolean);
+          var matched = segments.filter(function (seg) {
+            return matchesSearchLower(seg.toLowerCase());
+          });
+          if (matched.length > 0) {
+            results.set(anteNum, matched);
+          }
+        }
+      });
+    }
+
     return results;
   }
 
@@ -361,5 +408,6 @@
   window.augmentSummaryWithSearch = augmentSummaryWithSearch;
   window.getExpandedTrackingTerms = getExpandedTrackingTerms;
   window.invalidateTrackingCache = invalidateTrackingCache;
+  window.invalidateAnalysisCache = invalidateAnalysisCache;
   window.getAnalyzedAnteNumbers = getAnalyzedAnteNumbers;
 })();

@@ -70,13 +70,26 @@
         if (!chunk) return;
         if (chunk === "|") { container.appendChild(Object.assign(document.createElement("span"), { className: pipeClass, textContent: " | " })); return; }
         var span = document.createElement("span");
-        span.textContent = chunk;
         span.dataset.originalText = chunk;
         var info = utils.getFaceInfoForSegment?.(chunk);
+        var isNegative = chunk.includes("\u203C\uFE0F") || /Negative|负片/.test(chunk);
         if (info) {
           span.className = itemClass;
           span.dataset.faceEmoji = info.emoji;
-          chunk.includes("\u203C\uFE0F") ? span.classList.add("negativeFace") : info.color && (span.style.color = info.color);
+          isNegative ? span.classList.add("negativeFace") : info.color && (span.style.color = info.color);
+        }
+        // Render Negative/负片 prefix with bold red styling
+        var negPrefixMatch = /^([^\w]*)(Negative|负片)(.*)$/.exec(chunk);
+        if (negPrefixMatch) {
+          span.textContent = "";
+          if (negPrefixMatch[1]) span.appendChild(document.createTextNode(negPrefixMatch[1]));
+          var negSpan = document.createElement("span");
+          negSpan.className = "negativePrefix";
+          negSpan.textContent = negPrefixMatch[2];
+          span.appendChild(negSpan);
+          span.appendChild(document.createTextNode(negPrefixMatch[3]));
+        } else {
+          span.textContent = chunk;
         }
         var summaryEmojis = utils.getSummaryEmojisForText?.(chunk) || [];
         if (summaryEmojis.length) {
@@ -387,10 +400,8 @@
       row.style.display = "";
     }
 
-    // Hide entire nearby summary when no search and no tracking active
-    var hasSearch = document.getElementById("searchInput")?.value?.trim().length > 0;
-    var hasTracking = window.hasActiveTrackingItems?.() || false;
-    var wrapperDisplay = (hasSearch || hasTracking) ? "" : "none";
+    // Hide entire nearby summary when no search/tracking active OR user toggled off
+    var wrapperDisplay = window.hasActiveSearchOrTracking() && window.summaryNearbyVisible !== false ? "" : "none";
     var miniWrappers = scrollRoot ? scrollRoot.querySelectorAll(".miniSummaryWrapper") : [];
     for (var wi = 0; wi < miniWrappers.length; wi++) {
       miniWrappers[wi].style.display = wrapperDisplay;
@@ -465,40 +476,6 @@
     }
   }
 
-  // ---- Copy summary to clipboard ----
-
-  function copySummaryToClipboard() {
-    if (!window.lastRawOutput?.trim()) {
-      alert(t("ui.nothing_to_summarize"));
-      return;
-    }
-
-    var exportButton = document.getElementById("exportButton");
-    setButtonLoadingState(exportButton, true);
-    var summaryReady = window.lastSummary?.trim()
-      ? Promise.resolve()
-      : window.summarizeOutput?.();
-
-    summaryReady
-      .then(function () {
-        var summary = (window.lastSummary || "").trim();
-        if (!summary) {
-          alert(t("ui.nothing_to_summarize"));
-          return;
-        }
-        return navigator.clipboard.writeText(summary).then(function () {
-          alert(t("ui.summary_copied"));
-        });
-      })
-      .catch(function (err) {
-        console.error("Failed to copy summary:", err);
-        alert(t("ui.copy_failed"));
-      })
-      .finally(function () {
-        setButtonLoadingState(exportButton, false);
-      });
-  }
-
   // ---- Tracking state change handler ----
 
   function onTrackingTermsStateChange() {
@@ -566,9 +543,7 @@
       if (popupText) { popupText.innerHTML = ""; renderSummarySegments(text || fallback, popupText, "miniSummary"); markSearchItems(popupText); }
     }
     // Show/hide wrappers: match the same condition used by applySummaryEmojiFilterSync
-    var hasSearch = document.getElementById("searchInput")?.value?.trim().length > 0;
-    var hasTracking = window.hasActiveTrackingItems?.() || false;
-    var wrapperDisplay = (hasSearch || hasTracking) ? "" : "none";
+    var wrapperDisplay = window.hasActiveSearchOrTracking() && window.summaryNearbyVisible !== false ? "" : "none";
     var wrappers = scrollRoot.querySelectorAll(".miniSummaryWrapper");
     for (var wi = 0; wi < wrappers.length; wi++) {
       wrappers[wi].style.display = wrapperDisplay;
@@ -589,6 +564,5 @@
   window.applySummaryEmojiFilter = scheduleApplySummaryEmojiFilter;
   window.applySummaryEmojiFilterSync = applySummaryEmojiFilterSync;
   window.extractTrackingItems = extractTrackingItems;
-  window.copySummaryToClipboard = copySummaryToClipboard;
   window.onTrackingTermsStateChange = onTrackingTermsStateChange;
 })();

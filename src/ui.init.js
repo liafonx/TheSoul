@@ -87,12 +87,10 @@
 
   var copyLinkButton = document.getElementById("copyButton");
   var downloadButton = document.getElementById("downloadButton");
-  var exportButton = document.getElementById("exportButton");
   var analyzeButton = document.getElementById("analyzeButton");
 
   copyLinkButton?.addEventListener("click", copyLink);
   downloadButton?.addEventListener("click", downloadOutput);
-  exportButton?.addEventListener("click", function () { window.copySummaryToClipboard?.(); });
   analyzeButton?.addEventListener("click", function () { window.performAnalysis?.(); });
 
   // ---- DOMContentLoaded: URL params, input validation, initial render ----

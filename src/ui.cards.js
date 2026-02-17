@@ -145,19 +145,15 @@
         queueItem.dataset.summaryEmojis = summaryEmojis.join(",");
       }
 
-      // Render card image (unless text-only)
+      // Render card image (unless text-only) — canvas deferred via lazy rendering
       if (!textOnly) {
         const canvasWrapper = createElement("div", "cardCanvasWrapper");
-        const canvas = document.createElement("canvas");
-        setCanvasResolution(canvas, 80, 107);
+        canvasWrapper.dataset.lazyCard = "1";
+        canvasWrapper.dataset.baseName = baseName;
+        canvasWrapper.dataset.modifiers = itemModifiers.join(",");
+        canvasWrapper.dataset.stickers = itemStickers.join(",");
 
-        const itemType = determineItemType?.(baseName);
-        if (itemType !== "unknown" && maskToCanvas) {
-          maskToCanvas(canvas, baseName, itemType, itemModifiers, itemStickers);
-        }
-        canvasWrapper.appendChild(canvas);
-
-        // Add modifier overlay
+        // Add modifier overlay (eager — lightweight text)
         const overlayMod = itemModifiers.find((m) =>
           ["Foil", "Holographic", "Polychrome", "Negative"].includes(m)
         );
@@ -169,7 +165,7 @@
 
         queueItem.appendChild(canvasWrapper);
 
-        // Add sticker labels
+        // Add sticker labels (eager — lightweight text)
         itemStickers.forEach((stick) => {
           queueItem.appendChild(createElement("div", "sticker", translateGameText(stick)));
         });
@@ -187,6 +183,71 @@
 
       return queueItem;
     });
+  }
+
+  /**
+   * Lazily render a card canvas when its group becomes visible.
+   * @param {HTMLElement} canvasWrapper - Wrapper with data-lazy-card attributes
+   */
+  function renderCardCanvas(canvasWrapper) {
+    if (canvasWrapper.dataset.lazyRendered === "1") return;
+    const renderers = getRenderers();
+    const { maskToCanvas, determineItemType } = renderers;
+    const baseName = canvasWrapper.dataset.baseName || "";
+    const modifiers = canvasWrapper.dataset.modifiers ? canvasWrapper.dataset.modifiers.split(",") : [];
+    const stickers = canvasWrapper.dataset.stickers ? canvasWrapper.dataset.stickers.split(",") : [];
+    const canvas = document.createElement("canvas");
+    setCanvasResolution(canvas, 80, 107);
+    const itemType = determineItemType?.(baseName);
+    if (itemType !== "unknown" && maskToCanvas) {
+      maskToCanvas(canvas, baseName, itemType, modifiers, stickers);
+    }
+    canvasWrapper.insertBefore(canvas, canvasWrapper.firstChild);
+    canvasWrapper.dataset.lazyRendered = "1";
+  }
+
+  /**
+   * Remove canvas from wrapper to reclaim memory when group scrolls far away.
+   * @param {HTMLElement} canvasWrapper - Wrapper with data-lazy-rendered attribute
+   */
+  function unrenderCardCanvas(canvasWrapper) {
+    const canvas = canvasWrapper.querySelector("canvas");
+    if (canvas) canvas.remove();
+    canvasWrapper.dataset.lazyRendered = "0";
+  }
+
+  /**
+   * Set up IntersectionObserver to lazily render/unrender card canvases.
+   * @param {HTMLElement} cardList - Card list container
+   */
+  function setupLazyCanvasObserver(cardList) {
+    if (cardList._lazyObserver) {
+      cardList._lazyObserver.disconnect();
+      cardList._lazyObserver = null;
+    }
+    const groups = cardList.querySelectorAll(".cardGroup");
+    if (!groups.length || !cardList.querySelector("[data-lazy-card]")) return;
+
+    const isCarousel = cardList.classList.contains("scrollable");
+    const rootMargin = isCarousel ? "0px 800px 0px 800px" : "400px 0px 400px 0px";
+    const root = isCarousel ? cardList : null;
+    const manyGroups = groups.length > 50;
+
+    const observer = new IntersectionObserver(function (entries) {
+      entries.forEach(function (entry) {
+        if (entry.isIntersecting) {
+          entry.target.querySelectorAll("[data-lazy-card]").forEach(renderCardCanvas);
+        } else if (manyGroups) {
+          entry.target.querySelectorAll("[data-lazy-rendered='1']").forEach(unrenderCardCanvas);
+        }
+      });
+    }, { root: root, rootMargin: rootMargin });
+
+    groups.forEach(function (group) {
+      observer.observe(group);
+    });
+
+    cardList._lazyObserver = observer;
   }
 
   /**
@@ -210,6 +271,10 @@
    * @param {HTMLElement[]} queueNodes - Queue item nodes
    */
   function renderCardGroups(cardList, queueNodes) {
+    if (cardList._lazyObserver) {
+      cardList._lazyObserver.disconnect();
+      cardList._lazyObserver = null;
+    }
     cardList.innerHTML = "";
     if (!queueNodes.length) {
       cardList.classList.remove("cardList-text-only");
@@ -224,6 +289,7 @@
 
     const groupSize = currentGroupSize;
     const totalGroups = Math.ceil(queueNodes.length / groupSize);
+    const fragment = document.createDocumentFragment();
 
     for (let i = 0; i < totalGroups; i++) {
       const wrapper = createElement("div", "cardGroup");
@@ -249,8 +315,10 @@
       }
 
       wrapper.appendChild(groupItems);
-      cardList.appendChild(wrapper);
+      fragment.appendChild(wrapper);
     }
+    cardList.appendChild(fragment);
+    setupLazyCanvasObserver(cardList);
     global.BalatroSearch?.markSearchDomDirty?.();
   }
 

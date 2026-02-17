@@ -272,10 +272,10 @@ class AnteData {
         .map(({ name, negative, index }) => {
           const cn = translateKey(name);
           const face = getFaceEmoji(name);
-          const neg = negative ? "‼️" : "";
+          const negPrefix = negative ? (chineseOnly ? "负片" : "Negative") : "";
           return chineseOnly
-            ? `${face}${cn}${neg}#${index}`
-            : `${face}${name}${neg}#${index}`;
+            ? `${face}${negPrefix}${cn}#${index}`
+            : `${face}${negPrefix}${name}#${index}`;
         });
       parts.push(jesters.join("、"));
     }

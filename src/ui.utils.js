@@ -280,7 +280,7 @@
     });
 
     if (source.includes("King")) hits.add("♔");
-    if (source.includes("‼️") || /\bNegative\b/i.test(source)) hits.add("‼️");
+    if (source.includes("‼️") || /\bNegative\b/i.test(source) || source.includes("负片")) hits.add("‼️");
 
     return setCached(summaryEmojiCache, source, [...hits]);
   }
@@ -419,8 +419,8 @@
 
   // Initialize global color toggle state
   global.summaryColorOff = Boolean(global.summaryColorOff);
-  // Initialize nearby summary visibility (default enabled)
-  global.summaryNearbyVisible = global.summaryNearbyVisible !== false;
+  // Initialize nearby summary visibility (default hidden)
+  global.summaryNearbyVisible = Boolean(global.summaryNearbyVisible);
 
   // Export utilities
   global.BalatroUtils = {

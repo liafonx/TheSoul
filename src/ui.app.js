@@ -319,7 +319,8 @@
       // Card set with controls
       const cardSet = createElement("div", "cardSet");
       const cardSetHeader = createElement("div", "cardSetHeader");
-      let queueNodes = cards.buildQueueNodes?.(queue, { textOnly: false }) || [];
+      const autoTextOnly = Boolean(global.__analysisAutoTextOnly) || Boolean(global.cardTextOnlyMode);
+      let queueNodes = cards.buildQueueNodes?.(queue, { textOnly: autoTextOnly }) || [];
       const cardList = createElement("div", "cardList scrollable no-select");
 
       const rerender = () => { cards.renderCardGroups?.(cardList, queueNodes); search.searchAndHighlight?.(); };
@@ -420,17 +421,23 @@
 
       const runCompute = (btn, textOnly, mode) => {
         if (btn.disabled || !anteNum) return;
-        const limit = Math.max(0, Number(textOnly ? cardsInput.value : document.getElementById("cardsPerAnte")?.value) || 0);
+        const limit = Math.max(0, Number(cardsInput.value) || 0);
         if (!limit || !global.computeSingleAnteQueue) return;
         setButtonLoadingState?.(btn, true);
         setTimeout(() => {
           try {
-            queueNodes = cards.buildQueueNodes?.(global.computeSingleAnteQueue(anteNum, limit) || [], { textOnly }) || [];
+            const result = global.computeSingleAnteQueue(anteNum, limit);
+            queueNodes = cards.buildQueueNodes?.(result || [], { textOnly }) || [];
             layout.setMode(mode);
             rerender();
+            applyFilter();
             syncJumpRange();
             // Mark if we're in high card count mode (recalc) or normal mode (restore)
             container.dataset.highCardMode = (btn === recalcBtn) ? "true" : "";
+          } catch (err) {
+            console.error("Per-ante compute failed at ante " + anteNum + ":", err);
+            var result = global.formatAnalysisError?.(err.message || String(err), anteNum);
+            alert(result ? result.message : t("ui.analyze_failed"));
           } finally {
             setButtonLoadingState?.(btn, false);
           }
@@ -441,7 +448,17 @@
       recalcBtn.dataset.anteRecalc = "true";
 
       recalcBtn.addEventListener("click", () => runCompute(recalcBtn, Boolean(window.cardTextOnlyMode), "grid"));
-      restoreBtn.addEventListener("click", () => runCompute(restoreBtn, false, "scroll"));
+      restoreBtn.addEventListener("click", () => {
+        // Restore original queue from analysis, reset cardsInput to global value
+        const globalCards = document.getElementById("cardsPerAnte");
+        if (globalCards) cardsInput.value = globalCards.value;
+        queueNodes = cards.buildQueueNodes?.(queue, { textOnly: false }) || [];
+        layout.setMode("scroll");
+        rerender();
+        applyFilter();
+        syncJumpRange();
+        container.dataset.highCardMode = "";
+      });
 
       // Packs section
       if (packsList.length > 0 && packs.createPackSection) {

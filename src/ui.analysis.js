@@ -105,9 +105,86 @@
     return inst;
   }
 
+  // ---- Progress helpers ----
+
+  function getOrCreateProgressElement() {
+    var existing = document.getElementById("analyzeProgress");
+    if (existing) return existing;
+    var el = document.createElement("div");
+    el.id = "analyzeProgress";
+    el.className = "analyzeProgress";
+    el.style.display = "none";
+    var bar = document.createElement("div");
+    bar.className = "analyzeProgressBar";
+    var text = document.createElement("div");
+    text.className = "analyzeProgressText";
+    el.appendChild(bar);
+    el.appendChild(text);
+    var anchor = document.querySelector(".settings-actions");
+    if (anchor && anchor.parentNode) {
+      anchor.parentNode.insertBefore(el, anchor.nextSibling);
+    }
+    return el;
+  }
+
+  function showProgress(el, current, total) {
+    if (!el) return;
+    el.style.display = "";
+    var pct = total > 0 ? Math.round((current / total) * 100) : 0;
+    var bar = el.querySelector(".analyzeProgressBar");
+    var text = el.querySelector(".analyzeProgressText");
+    if (bar) bar.style.width = pct + "%";
+    if (text) text.textContent = t("ui.ante") + " " + current + " / " + total;
+  }
+
+  function hideProgress(el) {
+    if (!el) return;
+    el.style.display = "none";
+  }
+
+  // ---- Error classification ----
+
+  function classifyErrorReason(detail) {
+    if (/memory|oom|alloc|heap/i.test(detail)) return "ui.error_reason_memory";
+    if (/stack|recursion/i.test(detail)) return "ui.error_reason_stack";
+    if (/time.?out/i.test(detail)) return "ui.error_reason_timeout";
+    if (/RuntimeError|unreachable|abort/i.test(detail)) return "ui.error_reason_wasm";
+    return "";
+  }
+
+  /**
+   * Check if WASM has crashed; prompt for page reload if so.
+   * @returns {boolean} true if crashed (caller should abort)
+   */
+  function checkWasmCrashed() {
+    if (!window.__wasmAborted) return false;
+    if (confirm(t("ui.wasm_crashed_reload"))) location.reload();
+    return true;
+  }
+
+  /**
+   * Format an analysis error into a user-facing alert message.
+   * @param {string} detail - Error detail string (err.message)
+   * @param {number} anteNum - Ante where error occurred
+   * @returns {{ message: string, isFatal: boolean }}
+   */
+  function formatAnalysisError(detail, anteNum) {
+    var reasonKey = classifyErrorReason(detail);
+    var isFatal = reasonKey === "ui.error_reason_memory" || reasonKey === "ui.error_reason_wasm";
+    var prefix = (reasonKey === "ui.error_reason_memory" || reasonKey === "ui.error_reason_stack")
+      ? t("ui.analyze_too_large")
+      : t("ui.analyze_failed");
+    var reasonText = reasonKey ? "\n" + t(reasonKey) : "";
+    return {
+      message: prefix + reasonText + "\n\n" + t("ui.ante") + " " + anteNum + ": " + detail,
+      isFatal: isFatal
+    };
+  }
+
   // ---- Main analysis ----
 
   function performAnalysis() {
+    if (checkWasmCrashed()) return;
     var anteInput = document.getElementById("ante");
     var cardsPerAnteInput = document.getElementById("cardsPerAnte");
     var deckSelect = document.getElementById("deck");
@@ -126,37 +203,91 @@
     var version = parseInt(versionSelect.value);
     var seed = seedInput.value.toUpperCase().replace(/0/g, "O");
 
-    var output = "";
     var outputChunks = [];
     var workload = ante * cardsPerAnteValue;
+
+    if (!Number.isFinite(ante) || ante < 1 || !Number.isFinite(cardsPerAnteValue) || cardsPerAnteValue < 0) {
+      alert(t("ui.analyze_failed"));
+      return;
+    }
+
+    // Soft warning for very large workloads
+    if (workload > 50000) {
+      if (!confirm(t("ui.analyze_too_large") + "\n\n" + t("ui.confirm_continue"))) {
+        return;
+      }
+    }
+
+    // Store auto-text-only flag for rendering
+    window.__analysisAutoTextOnly = cardsPerAnteValue > 2000;
+
+    // Clean up resources from previous analysis
+    window.lastRawOutput = "";
+    window.lastSummary = "";
+    window.lastSummariesByAnte = new Map();
+    window.lastBaseSummariesByAnte = new Map();
+    window.lastTrackingSummariesByAnte = new Map();
+    window.lastAugmentedSummary = null;
+    window.invalidateAnalysisCache?.();
+    window.BalatroSearch?.markSearchDomDirty?.();
+
     window.setButtonLoadingState(analyzeButton, true);
     window.setGroupButtonsLoading?.(true);
     window.__RESET_SUMMARY_ON_NEXT_OPEN__ = true;
     window.resetSummaryFloatingScrollPosition();
 
-    if (!Number.isFinite(ante) || ante < 1 || !Number.isFinite(cardsPerAnteValue) || cardsPerAnteValue < 0) {
-      alert(t("ui.analyze_failed"));
+    var progressEl = getOrCreateProgressElement();
+    showProgress(progressEl, 0, ante);
+
+    var inst = null;
+    var currentAnte = 0;
+    var didFinalize = false;
+
+    var finalizeAnalysis = function () {
+      if (didFinalize) return;
+      didFinalize = true;
+      hideProgress(progressEl);
       window.setButtonLoadingState(analyzeButton, false);
       window.setGroupButtonsLoading?.(false);
-      return;
-    }
+    };
 
+    var cleanupInst = function () {
+      if (inst) {
+        try { inst.delete(); } catch (_) {}
+        inst = null;
+      }
+    };
 
-    setTimeout(function () {
-      var inst = null;
-      var didFinalize = false;
-      var finalizeAnalysis = function () {
-        if (didFinalize) return;
-        didFinalize = true;
-        window.setButtonLoadingState(analyzeButton, false);
-        window.setGroupButtonsLoading?.(false);
-      };
+    var handleError = function (err) {
+      console.error("Analyze failed at ante " + currentAnte + ":", err);
+      cleanupInst();
+      var result = formatAnalysisError(err.message || String(err), currentAnte);
+      if (result.isFatal) window.__wasmAborted = true;
+      alert(result.message);
+      finalizeAnalysis();
+    };
 
-      try {
-        inst = createImmolateInstance(seed, deck, stake, version);
-        var omitBeforeAnte9 = omitBeforeAnte9Checkbox.checked;
+    try {
+      inst = createImmolateInstance(seed, deck, stake, version);
+      var omitBeforeAnte9 = omitBeforeAnte9Checkbox.checked;
 
-        for (var a = 1; a <= ante; a++) {
+      var processNextAnte = function () {
+        try {
+          currentAnte++;
+          if (currentAnte > ante) {
+            // All antes done — clean up inst before async summarize
+            cleanupInst();
+            showProgress(progressEl, ante, ante);
+            window.lastRawOutput = outputChunks.join("");
+            summarizeOutput().finally(function () {
+              finalizeAnalysis();
+              window.pendingScrollToResults = true;
+              window.refreshShopDisplay?.() || document.getElementById("scrollingContainer")?.scrollIntoView({ behavior: "smooth", block: "start" });
+            });
+            return;
+          }
+
+          var a = currentAnte;
           inst.initUnlocks(a, false);
           var shouldOutput = !(omitBeforeAnte9 && a < 9);
           var addOutput = shouldOutput ? function (t) { outputChunks.push(t); } : function () {};
@@ -255,34 +386,24 @@
             addOutput("\n");
           }
           addOutput("\n");
-        }
 
-        output = outputChunks.join("");
-        window.lastRawOutput = output;
-        summarizeOutput().finally(function () {
-          finalizeAnalysis();
-          window.pendingScrollToResults = true;
-          window.refreshShopDisplay?.() || document.getElementById("scrollingContainer")?.scrollIntoView({ behavior: "smooth", block: "start" });
-        });
-      } catch (err) {
-        console.error("Analyze failed:", err);
-        alert(t("ui.analyze_failed"));
-        finalizeAnalysis();
-      } finally {
-        if (inst) {
-          try {
-            inst.delete();
-          } catch (_deleteErr) {
-            // Ignore cleanup errors
-          }
+          showProgress(progressEl, a, ante);
+          setTimeout(processNextAnte, 0);
+        } catch (err) {
+          handleError(err);
         }
-      }
-    }, 0);
+      };
+
+      setTimeout(processNextAnte, 0);
+    } catch (err) {
+      handleError(err);
+    }
   }
 
   // ---- Single ante queue computation ----
 
   function computeSingleAnteQueue(targetAnte, cardsLimit) {
+    if (checkWasmCrashed()) return [];
     var deckSelect = document.getElementById("deck");
     var stakeSelect = document.getElementById("stake");
     var versionSelect = document.getElementById("version");
@@ -316,7 +437,7 @@
             if (item.jokerData.stickers.eternal) line += "Eternal ";
             if (item.jokerData.stickers.perishable) line += "Perishable ";
             if (item.jokerData.stickers.rental) line += "Rental ";
-            if (item.jokerData.edition === "Negative") line += "\u203C\uFE0F ";
+            if (item.jokerData.edition !== "No Edition") line += item.jokerData.edition + " ";
             line += item.item;
           } else {
             line += item.item;
@@ -339,6 +460,7 @@
   }
 
   // ---- Exports ----
+  window.formatAnalysisError = formatAnalysisError;
   window.summarizeOutput = summarizeOutput;
   window.performAnalysis = performAnalysis;
   window.computeSingleAnteQueue = computeSingleAnteQueue;
