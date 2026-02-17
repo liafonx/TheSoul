@@ -144,7 +144,7 @@
     // Input validation
     seedInput.addEventListener("input", function () { seedInput.value = filterSeed(seedInput.value); });
     anteInput.addEventListener("input", function () { anteInput.value = window.clampAnteValue(anteInput.value); });
-    cardsPerAnteInput.addEventListener("input", function () { cardsPerAnteInput.value = Math.min(Math.max(Number(cardsPerAnteInput.value), 0), 999); });
+    cardsPerAnteInput.addEventListener("input", function () { cardsPerAnteInput.value = Math.max(Number(cardsPerAnteInput.value), 0); });
 
     // Initial render
     window.applyUiLocalization?.();
